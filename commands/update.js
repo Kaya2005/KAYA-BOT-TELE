@@ -80,7 +80,7 @@ export default {
       await edit(`⬇️ Downloading updates...\n${bar(50)}`);
 
       execSync(`git -C ${REPO_DIR} stash`, { stdio: "ignore" });
-      execSync(`git -C ${REPO_DIR} pull origin index`, { stdio: "ignore" });
+      execSync(`git -C ${REPO_DIR} pull origin main`, { stdio: "ignore" });
       execSync(`git -C ${REPO_DIR} stash pop`, { stdio: "ignore" }).catch(() => {});
 
       /* ================= ANALYSIS ================= */
