@@ -1,6 +1,8 @@
 import { execSync } from "child_process";
+import path from "path";
 
-const REPO_DIR = process.cwd();
+// Correction : On pointe vers le sous-dossier Kaya-MD où se trouve le dépôt Git
+const REPO_DIR = path.join(process.cwd(), 'Kaya-MD');
 
 /* ================= GIT HELPERS ================= */
 function getLocalCommit() {
@@ -15,7 +17,7 @@ function getLocalCommit() {
 
 function getRemoteCommit() {
   try {
-    return execSync(`git ls-remote https://github.com/Kaya2005/KAYA-BOT-TELE.git HEAD`)
+    return execSync(`git -C ${REPO_DIR} ls-remote origin HEAD`)
       .toString()
       .split("\t")[0];
   } catch {
@@ -54,8 +56,6 @@ export default {
 
   async execute(kaya, mek, from, args) {
     try {
-      const localBefore = getLocalCommit();
-
       let msg = await kaya.sendMessage(
         from,
         { text: `🔄 Checking for updates...\n${bar(10)}` },
@@ -70,7 +70,7 @@ export default {
       await sleep(400);
       await edit(`🔍 Verifying repository...\n${bar(25)}`);
 
-      execSync(`git -C ${REPO_DIR} fetch`, { stdio: "ignore" });
+      execSync(`git -C ${REPO_DIR} fetch origin`, { stdio: "ignore" });
 
       const remote = getRemoteCommit();
       if (!remote) return edit("❌ Failed to verify remote repository.");
