@@ -1,8 +1,7 @@
 import { execSync } from "child_process";
-import path from "path";
 
-// Correction : On pointe vers le sous-dossier Kaya-MD où se trouve le dépôt Git
-const REPO_DIR = path.join(process.cwd(), 'Kaya-MD');
+// Chemin absolu vers ton dossier Kaya-MD
+const REPO_DIR = "/home/container/Kaya-MD";
 
 /* ================= GIT HELPERS ================= */
 function getLocalCommit() {
@@ -17,7 +16,8 @@ function getLocalCommit() {
 
 function getRemoteCommit() {
   try {
-    return execSync(`git -C ${REPO_DIR} ls-remote origin HEAD`)
+    // Vérifie le commit sur la branche main
+    return execSync(`git -C ${REPO_DIR} ls-remote origin main`)
       .toString()
       .split("\t")[0];
   } catch {
@@ -79,6 +79,7 @@ export default {
       await sleep(400);
       await edit(`⬇️ Downloading updates...\n${bar(50)}`);
 
+      // Stash, pull main, puis pop
       execSync(`git -C ${REPO_DIR} stash`, { stdio: "ignore" });
       execSync(`git -C ${REPO_DIR} pull origin main`, { stdio: "ignore" });
       execSync(`git -C ${REPO_DIR} stash pop`, { stdio: "ignore" }).catch(() => {});
@@ -101,7 +102,7 @@ export default {
       );
 
       setTimeout(() => {
-        process.exit(0);
+        process.exit(0); // Le loader redémarrera le bot automatiquement
       }, 1500);
 
     } catch (e) {
