@@ -5,49 +5,52 @@ import path from "path";
 const cache = new Map();
 
 /**
- * Génère le chemin du fichier de configuration.
- * Structure : /userall/user/[ID]/settings.json
+ * Génère le chemin du fichier de configuration en utilisant un chemin absolu sécurisé.
  */
 function getSettingsPath(jid, createIfMissing = false) {
+    // Nettoyage de l'ID pour éviter les caractères invalides
     const id = jid.split('@')[0];
-    // On ajoute un dossier 'user' intermédiaire comme demandé
-    const userDir = path.join(process.cwd(), "userall", "user", id);
     
-    if (createIfMissing && !fs.existsSync(userDir)) {
-        fs.mkdirSync(userDir, { recursive: true });
+    // Utilisation du chemin absolu pour garantir la stabilité sur le serveur
+    const baseDir = path.join('/home/container/Kaya-MD', "userall", "user", id);
+    
+    if (createIfMissing && !fs.existsSync(baseDir)) {
+        fs.mkdirSync(baseDir, { recursive: true });
     }
     
-    return path.join(userDir, "settings.json");
+    return path.join(baseDir, "settings.json");
 }
 
 /**
- * Récupère un réglage (depuis le cache ou le disque)
+ * Récupère un réglage
  */
 export function getSetting(jid, key, defaultValue = false) {
+    // Si pas en cache, on charge depuis le disque
     if (!cache.has(jid)) {
         try {
             const filePath = getSettingsPath(jid, false);
-            if (!fs.existsSync(filePath)) {
-                cache.set(jid, {}); 
-            } else {
+            if (fs.existsSync(filePath)) {
                 const data = JSON.parse(fs.readFileSync(filePath, "utf8") || "{}");
                 cache.set(jid, data);
+            } else {
+                cache.set(jid, {});
             }
         } catch (e) {
-            console.error(`Failed to load settings for ${jid}`, e);
+            console.error(`[SETTING] Erreur lecture ${jid}:`, e);
             return defaultValue;
         }
     }
 
     const settings = cache.get(jid);
-    return settings[key] !== undefined ? settings[key] : defaultValue;
+    return settings && settings.hasOwnProperty(key) ? settings[key] : defaultValue;
 }
 
 /**
- * Enregistre un réglage (met à jour le cache et écrit sur le disque)
+ * Enregistre un réglage
  */
 export function setSetting(jid, key, value) {
     try {
+        // S'assurer que le cache est initialisé
         if (!cache.has(jid)) {
             getSetting(jid, key);
         }
@@ -55,10 +58,13 @@ export function setSetting(jid, key, value) {
         const settings = cache.get(jid);
         settings[key] = value;
         
-        // Crée le dossier /userall/user/[ID] uniquement lors de la sauvegarde
+        // Mise à jour du cache
+        cache.set(jid, settings);
+        
+        // Écriture sur le disque
         const filePath = getSettingsPath(jid, true); 
         fs.writeFileSync(filePath, JSON.stringify(settings, null, 2));
     } catch (e) {
-        console.error(`Failed to save settings for ${jid}`, e);
+        console.error(`[SETTING] Erreur sauvegarde ${jid}:`, e);
     }
 }
