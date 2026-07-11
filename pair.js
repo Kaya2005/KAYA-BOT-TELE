@@ -17,7 +17,6 @@ import handler, { commands } from "./case.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// 🚀 CORRECTION : Utilise le chemin exact vers ton dossier actuel
 const PAIRING_DIR = path.join(process.cwd(), "richstore", "pairing");
 
 if (!fs.existsSync(PAIRING_DIR)) {
@@ -93,19 +92,17 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
 
     tracker.connection = kaya;
 
-    // Gestion des participants (Welcome/Bye)
+    // 🚀 DÉTECTION UNIVERSELLE : Parcourt toutes les commandes pour voir si l'une veut gérer l'événement
     kaya.ev.on("group-participants.update", async (update) => {
         try {
-            const groupId = update.id; 
+            const groupId = update.id;
             if (!groupId) return;
 
-            const cmdName = (update.action === 'add') ? 'welcome' : (update.action === 'remove' ? 'bye' : null);
-            
-            if (cmdName) {
-                const cmd = commands.get(cmdName);
-                if (cmd && typeof cmd.detect === 'function') {
+            // Parcourt la Map des commandes chargées dans case.js
+            for (let [name, cmd] of commands) {
+                if (typeof cmd.detect === 'function') {
                     await cmd.detect(kaya, update, groupId).catch((err) => {
-                        console.error("❌ Erreur exécution méthode detect:", err);
+                        console.error(`❌ Erreur dans la méthode detect de ${name}:`, err);
                     });
                 }
             }
