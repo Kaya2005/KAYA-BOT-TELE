@@ -6,25 +6,19 @@ const cache = new Map();
 
 /**
  * Génère le chemin du fichier de configuration.
- * Utilise path.resolve(process.cwd(), '..') pour sortir du dossier cloné (Kaya-MD)
- * et stocker les données à la racine du serveur.
+ * Structure : /userall/user/[ID]/settings.json
  */
-// Remplace la fonction getSettingsPath actuelle par celle-ci :
-function getSettingsPath(jid) {
+function getSettingsPath(jid, createIfMissing = false) {
     const id = jid.split('@')[0];
+    // On ajoute un dossier 'user' intermédiaire comme demandé
+    const userDir = path.join(process.cwd(), "userall", "user", id);
     
-    // On utilise simplement process.cwd() pour pointer vers la racine 
-    // là où se trouve déjà ton dossier 'richstore'
-    const rootDir = path.join(process.cwd(), "userall");
-    const userDir = path.join(rootDir, id);
-    
-    if (!fs.existsSync(userDir)) {
+    if (createIfMissing && !fs.existsSync(userDir)) {
         fs.mkdirSync(userDir, { recursive: true });
     }
     
     return path.join(userDir, "settings.json");
 }
-
 
 /**
  * Récupère un réglage (depuis le cache ou le disque)
@@ -32,7 +26,7 @@ function getSettingsPath(jid) {
 export function getSetting(jid, key, defaultValue = false) {
     if (!cache.has(jid)) {
         try {
-            const filePath = getSettingsPath(jid);
+            const filePath = getSettingsPath(jid, false);
             if (!fs.existsSync(filePath)) {
                 cache.set(jid, {}); 
             } else {
@@ -61,7 +55,8 @@ export function setSetting(jid, key, value) {
         const settings = cache.get(jid);
         settings[key] = value;
         
-        const filePath = getSettingsPath(jid);
+        // Crée le dossier /userall/user/[ID] uniquement lors de la sauvegarde
+        const filePath = getSettingsPath(jid, true); 
         fs.writeFileSync(filePath, JSON.stringify(settings, null, 2));
     } catch (e) {
         console.error(`Failed to save settings for ${jid}`, e);
