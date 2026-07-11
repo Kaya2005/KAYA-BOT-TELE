@@ -1,3 +1,4 @@
+//welcome.js
 import { getContextInfo } from '../setting/contextInfo.js';
 import checkAdminOrOwner from '../setting/checkAdminOrOwner.js';
 import { getSetting, setSetting } from '../setting.js';
@@ -18,6 +19,8 @@ export default {
             }
 
             const action = args.join(' ').toLowerCase();
+            // Nettoyage du JID pour la cohérence avec le système de fichiers
+            const groupId = from.split('@')[0];
 
             if (!action) {
                 return kaya.sendMessage(from, {
@@ -26,17 +29,17 @@ export default {
             }
 
             if (action === "on") {
-                setSetting(from, 'welcomeEnabled', true);
+                setSetting(groupId, 'welcomeEnabled', true);
                 return kaya.sendMessage(from, { text: "✅ Welcome activé pour ce groupe." });
             }
 
             if (action === "off") {
-                setSetting(from, 'welcomeEnabled', false);
+                setSetting(groupId, 'welcomeEnabled', false);
                 return kaya.sendMessage(from, { text: "❌ Welcome désactivé pour ce groupe." });
             }
 
             if (action === "status") {
-                const isEnabled = getSetting(from, 'welcomeEnabled', false);
+                const isEnabled = getSetting(groupId, 'welcomeEnabled', false);
                 return kaya.sendMessage(from, {
                     text: `📊 *WELCOME STATUS*\n\nÉtat: ${isEnabled ? "ON" : "OFF"}`
                 });
@@ -52,8 +55,12 @@ export default {
             // 1. On ne traite que les ajouts
             if (update.action !== "add") return;
 
-            // 2. Vérification si activé (from est ici le JID du groupe complet)
-            const isEnabled = getSetting(from, 'welcomeEnabled', false);
+            // 2. Nettoyage du JID et vérification si activé
+            const groupId = from.split('@')[0];
+            const isEnabled = getSetting(groupId, 'welcomeEnabled', false);
+            
+            console.log(`DEBUG: Checking welcome for ${groupId}, enabled: ${isEnabled}`);
+            
             if (!isEnabled) return;
 
             // 3. Récupération des infos du groupe
@@ -65,7 +72,7 @@ export default {
 
                 await kaya.sendMessage(from, {
                     text: msg,
-                    mentions: [user], // Ajout explicite pour forcer la mention
+                    mentions: [user],
                     contextInfo: {
                         ...getContextInfo(),
                         mentionedJid: [user]
