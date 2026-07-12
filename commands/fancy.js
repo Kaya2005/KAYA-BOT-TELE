@@ -1,12 +1,9 @@
-import { getBotName } from '../setting/botAssets.js';
-
-// Configuration des 25 styles
 const alpha = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const maps = [
     "𝕒𝕓𝕔𝕕𝕖𝕗𝕘𝕙𝕚𝕛𝕜𝕝𝕞𝕟𝕠𝕡𝕢𝕣𝕤𝕥𝕦𝕧𝕨𝕩𝕪𝕫𝔸𝔹ℂ𝔻𝔼𝔽𝔾ℍ𝕀𝕁𝕂𝕃𝕄ℕ𝕆ℙℚℝ𝕊𝕋𝕌𝕍𝕎𝕏𝕐ℤ",
     "𝔞𝔟𝔠𝔡𝔢𝔣𝔤𝔥𝔦𝔧𝔨𝔩𝔪𝔫𝔬𝔭𝔮𝔯𝔰𝔱𝔲𝔳𝔴𝔵𝔶𝔷𝔄𝔅ℭ𝔇𝔈𝔉𝔊ℌℑ𝔍𝔎𝔏𝔐𝔑𝔒𝔓𝔔ℜ𝔖𝔗𝔘𝔙𝔚𝔛𝔜ℨ",
     "ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ",
-    "ⓐⓑⓒⓓⓔ╒ⓖⓗⓘⓙⓚⓛⓜⓝⓞⓟⓠⓡⓢⓣⓤⓥⓦⓧⓨⓩⒶⒷⒸⒹⒺⒻⒼⒽⒾⒿⓀⓁⓂⓃⓄⓅⓆⓇⓈⓉⓊⓋⓌⓍⓎⓏ",
+    "ⓐⓑⓒⓓⓔⓕⓖⓗⓘⓙⓚⓛⓜⓝⓞⓟⓠⓡⓢⓣⓤⓥⓦⓧⓨⓩⒶⒷⒸⒹⒺⒻⒼⒽⒾⒿⓀⓁⓂⓃⓄⓅⓆⓇⓈⓉⓊⓋⓌⓍⓎⓏ",
     "🅐🅑🅒🅓🅔🅕🅖🅗🅘🅙🅚🅛🅜🅝🅞🅟🅠🅡🅢🅣🅤🅥🅦🅧🅨🅩🅐🅑🅒🅓🅔🅕🅖🅗🅘🅙🅚🅛🅜🅝🅞🅟🅠🅡🅢🅣🅤🅥🅦🅧🅨🅩",
     "ᴀʙᴄᴅᴇꜰɢʜɪᴊᴋʟᴍɴᴏᴘQʀsᴛᴜᴠᴡxʏᴢᴀʙᴄᴅᴇꜰɢʜɪᴊᴋʟᴍɴᴏᴘQʀsᴛᴜᴠᴡxʏᴢ",
     "卂乃匚ᗪ乇千Ꮆ卄丨ﾌҜㄥ爪几ㄖ卩Ɋ尺丂ㄒㄩᐯ山乂ㄚ乙卂乃匚ᗪ乇千Ꮆ卄丨ﾌҜㄥ爪几ㄖ卩Ɋ尺丂ㄒㄩᐯ山乂ㄚ乙",
@@ -32,14 +29,19 @@ const maps = [
 
 export default {
     name: 'fancy',
-    description: '🎨 Transforme le texte avec 25 styles.',
+    description: '🎨 Transforme le texte.',
     usage: '.fancy <1-25> <texte>',
 
     async execute(kaya, mek, from, args, prefix) {
-        // Afficher la liste si pas assez d'arguments
         if (args.length < 2) {
             let msg = '╭── *STYLES FANCY* ──\n';
-            maps.forEach((m, i) => msg += `│ *${i + 1}.* Style ${i + 1}\n`);
+            maps.forEach((m, i) => {
+                const sample = "Exemple".split('').map(c => {
+                    const idx = alpha.indexOf(c);
+                    return idx !== -1 ? m[idx] : c;
+                }).join('');
+                msg += `│ *${i + 1}.* ${sample}\n`;
+            });
             msg += `╰──────────────\n*Usage:* ${prefix}fancy <1-25> <texte>`;
             return await kaya.sendMessage(from, { text: msg }, { quoted: mek });
         }
@@ -48,16 +50,16 @@ export default {
         const content = args.slice(1).join(' ');
 
         if (styleNum < 1 || styleNum > 25) {
-            return await kaya.sendMessage(from, { text: '❌ Style invalide, choisis entre 1 et 25.' }, { quoted: mek });
+            return await kaya.sendMessage(from, { text: '❌ Style invalide (1-25).' }, { quoted: mek });
         }
 
-        // Application du style
         const map = maps[styleNum - 1];
         const result = content.split('').map(char => {
             const index = alpha.indexOf(char);
             return index !== -1 ? map[index] : char;
         }).join('');
 
-        await kaya.sendMessage(from, { text: `✨ *Résultat:*\n\n${result}` }, { quoted: mek });
+        // Envoi uniquement du résultat sans texte supplémentaire
+        await kaya.sendMessage(from, { text: result }, { quoted: mek });
     }
 };
