@@ -9,7 +9,7 @@ export default {
     category: 'Group',
     ownerOnly: true,
 
-    // --- Partie Commande (appelée par case.js) ---
+    // --- Partie Commande ---
     async execute(kaya, mek, from, args, prefix) {
         try {
             const status = await checkAdminOrOwner(kaya, from, mek.sender);
@@ -47,10 +47,9 @@ export default {
         }
     },
 
-    // --- Partie Événement (appelée par votre index.js sur 'group-participants.update') ---
+    // --- Partie Événement corrigée avec débogage ---
     async participantUpdate(kaya, update) {
         try {
-            // update = { id: "jid@g.us", action: "add", participants: ["..."] }
             if (update.action !== "add") return;
 
             const from = update.id;
@@ -66,17 +65,17 @@ export default {
             for (const user of update.participants) {
                 const msg = `👋 *WELCOME*\n\n👤 User: @${user.split("@")[0]}\n👥 Group: ${metadata.subject}\n\n✨ Welcome to the family!`;
 
+                // Envoi simplifié pour éviter l'erreur
                 await kaya.sendMessage(from, {
                     text: msg,
-                    mentions: [user],
-                    contextInfo: {
-                        ...getContextInfo(),
-                        mentionedJid: [user]
-                    }
+                    mentions: [user]
+                }).catch(err => {
+                    console.log("DÉTAIL ERREUR SENDMESSAGE WELCOME :", err);
                 });
             }
         } catch (e) {
-            console.error("Welcome participantUpdate error:", e);
+            // Log détaillé pour identifier pourquoi ça plante
+            console.log("DÉTAIL ERREUR WELCOME PARTICIPANTUPDATE :", e);
         }
     }
 };
