@@ -92,48 +92,23 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
 
     tracker.connection = kaya;
 
-    // 🚀 DÉTECTION UNIVERSSELLE AVEC ANTI-DUPLICATION
-const welcomeEvents = new Set();
-
-kaya.ev.on("group-participants.update", async (update) => {
-
-    const eventId = JSON.stringify(update);
-
-    // Bloque les événements identiques pendant 5 secondes
-    if (welcomeEvents.has(eventId)) return;
-
-    welcomeEvents.add(eventId);
-
-    setTimeout(() => {
-        welcomeEvents.delete(eventId);
-    }, 5000);
-
-    console.log("GROUP UPDATE:", update);
-
-    try {
-        // Parcourt la Map des commandes chargées dans case.js
-        for (let [name, cmd] of commands) {
-
-            if (typeof cmd.participantUpdate === 'function') {
-
-                await cmd.participantUpdate(kaya, update)
-                .catch((err) => {
-                    console.error(
-                        `❌ Erreur dans participantUpdate de ${name}:`,
-                        err
-                    );
-                });
-
+    // 🚀 DÉTECTION UNIVERSELLE : Appelle maintenant la méthode participantUpdate
+    kaya.ev.on("group-participants.update", async (update) => {
+        console.log("GROUP UPDATE:", update);
+        try {
+            // Parcourt la Map des commandes chargées dans case.js
+            for (let [name, cmd] of commands) {
+                // Appel de participantUpdate au lieu de detect
+                if (typeof cmd.participantUpdate === 'function') {
+                    await cmd.participantUpdate(kaya, update).catch((err) => {
+                        console.error(`❌ Erreur dans la méthode participantUpdate de ${name}:`, err);
+                    });
+                }
             }
+        } catch (err) {
+            console.error("❌ Erreur critique dans group-participants-update:", err);
         }
-
-    } catch (err) {
-        console.error(
-            "❌ Erreur critique dans group-participants-update:",
-            err
-        );
-    }
-});
+    });
 
     if (!state.creds.registered) {
         setTimeout(async () => {
