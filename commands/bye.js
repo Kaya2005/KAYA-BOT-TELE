@@ -68,17 +68,11 @@ export default {
 ➠ Date: ${new Date().toLocaleDateString()}
 ______________________`.trim();
 
-                // Sécurisation de contextInfo identique à votre welcome.js
-                const ctx = getContextInfo() || {}; 
-
                 await kaya.sendMessage(from, {
                     image: { url: ppUrl },
                     caption: msg,
                     mentions: [userId],
-                    contextInfo: {
-                        ...ctx,
-                        mentionedJid: [userId]
-                    }
+                    contextInfo: getContextInfo()
                 });
             }
         } catch (e) { console.log("ERREUR GOODBYE :", e); }

@@ -69,17 +69,11 @@ export default {
 ➠ Date: ${creationDate}
 ______________________`.trim();
 
-                // Sécurisation de contextInfo
-                const ctx = getContextInfo() || {}; 
-                
                 await kaya.sendMessage(from, {
                     image: { url: ppUrl },
                     caption: msg,
                     mentions: [userId],
-                    contextInfo: {
-                        ...ctx,
-                        mentionedJid: [userId]
-                    }
+                    contextInfo: getContextInfo()
                 });
             }
         } catch (e) { console.log("ERREUR WELCOME :", e); }
