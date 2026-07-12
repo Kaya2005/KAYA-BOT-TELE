@@ -40,7 +40,7 @@ export default {
             const groupId = from.split('@')[0];
             const ownerId = getTeleIdFromJid(mek.sender) || "global";
 
-            if (!action) return kaya.sendMessage(from, { text: `⚙️ *GOODBYE SETTINGS*\n\n${prefix}bye on (Current group)\n${prefix}bye off (Current group)\n${prefix}bye all (Global for your groups)\n${prefix}bye status`, contextInfo: getContextInfo() });
+            if (!action) return kaya.sendMessage(from, { text: `⚙️ *GOODBYE SETTINGS*\n\n${prefix}bye on (Current group)\n${prefix}bye off (Current group)\n${prefix}bye all (Global)\n${prefix}bye alloff (Disable global)\n${prefix}bye status`, contextInfo: getContextInfo() });
 
             if (action === "on") { 
                 setSetting(groupId, 'goodbyeEnabled', true); 
@@ -52,7 +52,11 @@ export default {
             }
             if (action === "all") {
                 setSetting(ownerId, 'goodbyeAll', true);
-                return kaya.sendMessage(from, { text: `✅ Goodbye enabled globally for all your groups (ID: ${ownerId}).`, contextInfo: getContextInfo() });
+                return kaya.sendMessage(from, { text: `✅ Goodbye enabled globally for all your groups.`, contextInfo: getContextInfo() });
+            }
+            if (action === "alloff") {
+                setSetting(ownerId, 'goodbyeAll', false);
+                return kaya.sendMessage(from, { text: `❌ Goodbye disabled globally for all your groups.`, contextInfo: getContextInfo() });
             }
             if (action === "status") {
                 const isEnabled = getSetting(groupId, 'goodbyeEnabled', false);
@@ -68,7 +72,6 @@ export default {
             const from = update.id;
             const groupId = from.split('@')[0];
             
-            // Retrieve owner ID to check their specific "All" setting
             const ownerId = getTeleIdFromJid(from) || "global";
             
             const isEnabled = getSetting(groupId, 'goodbyeEnabled', false) || getSetting(ownerId, 'goodbyeAll', false);
@@ -85,6 +88,14 @@ export default {
                 goodbyeCache.add(userId);
                 setTimeout(() => goodbyeCache.delete(userId), 30000);
 
+                // Get profile picture of the person who left
+                let ppUrl;
+                try {
+                    ppUrl = await kaya.profilePictureUrl(userId, 'image');
+                } catch {
+                    ppUrl = 'https://telegra.ph/file/24fa902ead26340f3df2c.png'; // Default image
+                }
+
                 const msg = `▉ \`GOODBYE\` ▉
 ▰▰▰▰▰▰▰▰▰▰
 ➠ User: @${userId.split("@")[0]}
@@ -94,7 +105,8 @@ export default {
 ______________________`.trim();
 
                 await kaya.sendMessage(from, { 
-                    text: msg, 
+                    image: { url: ppUrl },
+                    caption: msg, 
                     mentions: [userId],
                     contextInfo: getContextInfo() 
                 });
