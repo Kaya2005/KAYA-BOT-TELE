@@ -88,6 +88,7 @@
     "similarity": "^1.2.1",
     "telegraf": "^4.16.3",
     "telegraf-ratelimit": "^2.0.0",
+    "telegraph-uploader": "1.0.0",
     "translate-google-api": "^1.0.4",
     "user-agents": "^1.1.379",
     "uuid": "^10.0.0",
