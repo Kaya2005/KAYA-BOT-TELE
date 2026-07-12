@@ -15,7 +15,7 @@ const formatTypes = () => Object.keys(TEXT_TYPES).map(t => `• ${t}`).join('\n'
 export default {
   name: 'textmaker',
   alias: ['textgen', 'ephoto', 'tm'],
-  category: 'Image',
+  category: 'Tools',
   description: 'Generates stylish text with different ePhoto360 effects',
 
   async execute(kaya, mek, from, args, prefix) {

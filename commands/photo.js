@@ -10,7 +10,7 @@ export default {
     name: 'photo',
     alias: ['p', 'image', 'topng'],
     description: 'Convert a sticker into a PNG image',
-    category: 'Image',
+    category: 'Tools',
 
     async execute(kaya, mek, from, args, prefix) {
         try {

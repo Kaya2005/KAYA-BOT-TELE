@@ -3,7 +3,7 @@ import { downloadContentFromMessage } from '@whiskeysockets/baileys';
 export default {
     name: 'vv',
     alias: ['v1', 'once'],
-    category: 'Image',
+    category: 'Tools',
     description: 'Allows viewing and saving a “view-once” image or video',
 
     async execute(kaya, m, args) {
