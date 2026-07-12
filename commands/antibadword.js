@@ -39,7 +39,7 @@ function getMessage(key, sender, lang = 'en') {
 export default {
   name: 'antibadword',
   description: 'Active/configure AntiBadword (FR/EN)',
-  category: 'Groupe',
+  category: 'Group',
 
   run: async (kaya, m, args, lang = 'en') => {
     try {

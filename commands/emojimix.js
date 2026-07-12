@@ -8,7 +8,7 @@ export default {
   name: 'emojimix',
   alias: ['emojimix', 'mixemoji'],
   description: '🎴 Mix two emojis to create a sticker',
-  category: 'Sticker',
+  category: 'Tools',
 
   async execute(kaya, mek, from, args, prefix) {
     try {

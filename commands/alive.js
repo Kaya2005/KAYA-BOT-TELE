@@ -4,7 +4,7 @@ import { getBotName } from '../setting/botAssets.js';
 export default {
     name: 'alive',
     description: '🤖 Vérifie si le bot est en ligne',
-    category: 'Main',
+    category: 'General',
 
     async execute(kaya, mek, from, args, prefix) {
         try {

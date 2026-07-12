@@ -3,7 +3,7 @@ import chalk from 'chalk';
 export default {
   name: "staff",
   description: "Affiche la liste des admins et du propriétaire du groupe",
-  category: "Groupe",
+  category: "Group",
   group: true,
   admin: false,
   botAdmin: false,

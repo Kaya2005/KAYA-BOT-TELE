@@ -4,7 +4,7 @@ export default {
   name: 'unmute',
   alias: ['unlock', 'deverrouiller'],
   description: '🔓 Unlock the group silently',
-  category: 'Groupe',
+  category: 'Group',
   group: true,
   admin: true,
   botAdmin: true,
