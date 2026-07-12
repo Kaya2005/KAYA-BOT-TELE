@@ -49,6 +49,15 @@ export default {
                 welcomeCache.add(userId);
                 setTimeout(() => welcomeCache.delete(userId), 30000);
 
+                // Récupération de la photo de profil
+                let ppUrl;
+                try {
+                    ppUrl = await kaya.profilePictureUrl(userId, 'image');
+                } catch {
+                    // Image par défaut si aucune photo trouvée
+                    ppUrl = 'https://telegra.ph/file/24fa902ead26340f3df2c.png';
+                }
+
                 const msg = `▉ \`WELCOME\` ▉
 ▰▰▰▰▰▰▰▰▰▰
 ➠ User: @${userId.split("@")[0]}
@@ -57,7 +66,12 @@ export default {
 ➠ Date: ${creationDate}
 ______________________`.trim();
 
-                await kaya.sendMessage(from, { text: msg, mentions: [userId] });
+                // Envoi avec l'image et la légende
+                await kaya.sendMessage(from, {
+                    image: { url: ppUrl },
+                    caption: msg,
+                    mentions: [userId]
+                });
             }
         } catch (e) { console.log("DÉTAIL ERREUR WELCOME :", e); }
     }
