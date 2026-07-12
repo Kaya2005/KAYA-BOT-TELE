@@ -2,122 +2,84 @@ import { getContextInfo } from '../setting/contextInfo.js';
 import checkAdminOrOwner from '../setting/checkAdminOrOwner.js';
 import { getSetting, setSetting } from '../setting.js';
 
+const goodbyeCache = new Set();
+
 export default {
-    name:'bye',
-    alias:['aurevoir','leave'],
-    description:'Enable/disable goodbye messages',
-    category:'Group',
-    ownerOnly:true,
+    name: 'goodbye',
+    alias: ['partir', 'bye', 'leave'],
+    description: 'Gestion des messages de départ',
+    category: 'Group',
+    ownerOnly: true,
 
+    async execute(kaya, mek, from, args, prefix) {
+        try {
+            const status = await checkAdminOrOwner(kaya, from, mek.sender);
+            if (!status.isBotOwner) return kaya.sendMessage(from, { text: '❌ Owner Only' });
 
-    async execute(kaya,mek,from,args,prefix){
+            const action = args[0]?.toLowerCase();
+            const groupId = from.split('@')[0];
 
-        try{
-
-            const botJid=kaya.user.id;
-            const status=await checkAdminOrOwner(kaya,from,mek.sender);
-
-            if(!status.isBotOwner){
-                return kaya.sendMessage(from,{text:"❌ Owner Only"});
+            if (action === "on") {
+                setSetting(groupId, 'goodbyeEnabled', true);
+                return kaya.sendMessage(from, { text: "✅ Goodbye activé pour ce groupe." });
+            } else if (action === "off") {
+                setSetting(groupId, 'goodbyeEnabled', false);
+                return kaya.sendMessage(from, { text: "❌ Goodbye désactivé pour ce groupe." });
+            } else if (action === "all") {
+                setSetting('global', 'goodbyeEnabled', true);
+                return kaya.sendMessage(from, { text: "✅ Goodbye activé globalement." });
             }
 
-
-            const action=args.join(' ').toLowerCase();
-
-
-            if(!action){
-                return kaya.sendMessage(from,{
-                    text:`⚙️ *BYE SETTINGS*\n\n${prefix}bye on\n${prefix}bye off\n${prefix}bye all on\n${prefix}bye all off\n${prefix}bye status`
-                });
-            }
-
-
-            if(action==="on"){
-                setSetting(from,'byeEnabled',true);
-                return kaya.sendMessage(from,{text:"✅ Goodbye enabled"});
-            }
-
-
-            if(action==="off"){
-                setSetting(from,'byeEnabled',false);
-                return kaya.sendMessage(from,{text:"❌ Goodbye disabled"});
-            }
-
-
-            if(action==="all on"){
-                setSetting(botJid,'byeGlobal',true);
-                return kaya.sendMessage(from,{text:"✅ Global bye enabled"});
-            }
-
-
-            if(action==="all off"){
-                setSetting(botJid,'byeGlobal',false);
-                return kaya.sendMessage(from,{text:"❌ Global bye disabled"});
-            }
-
-
-            if(action==="status"){
-
-                const global=getSetting(botJid,'byeGlobal',false);
-                const group=getSetting(from,'byeEnabled',null);
-
-                return kaya.sendMessage(from,{
-                    text:`📊 *BYE STATUS*\n\nGlobal: ${global?"ON":"OFF"}\nGroup: ${group===null?"Global":group?"ON":"OFF"}`
-                });
-            }
-
-
-        }catch(e){
-            console.error("bye error:",e);
-        }
+            const isEnabled = getSetting(groupId, 'goodbyeEnabled', false);
+            return kaya.sendMessage(from, { text: `📊 *GOODBYE STATUS*\n\nÉtat: ${isEnabled ? "ON" : "OFF"}` });
+        } catch (e) { console.error(e); }
     },
 
+    async participantUpdate(kaya, update) {
+        try {
+            // Ici, on surveille l'action 'remove'
+            if (update.action !== "remove") return;
+            const from = update.id;
+            const groupId = from.split('@')[0];
+            
+            const isEnabled = getSetting(groupId, 'goodbyeEnabled', false) || getSetting('global', 'goodbyeEnabled', false);
+            if (!isEnabled) return;
 
-    async detect(kaya,update,from){
+            const metadata = await kaya.groupMetadata(from).catch(() => ({}));
+            const groupName = metadata.subject || "ce groupe";
 
-        try{
+            for (let user of update.participants) {
+                const userId = typeof user === 'string' ? user : user.id;
+                if (goodbyeCache.has(userId)) continue;
+                goodbyeCache.add(userId);
+                setTimeout(() => goodbyeCache.delete(userId), 10000);
 
-            if(update.action!=="remove" && update.action!=="leave") return;
+                let ppUrl;
+                try {
+                    ppUrl = await kaya.profilePictureUrl(userId, 'image');
+                } catch {
+                    ppUrl = 'https://telegra.ph/file/24fa902ead26340f3df2c.png';
+                }
 
+                // Design Goodbye harmonisé
+                const msg = `▉ \`GOODBYE\` ▉
+▰▰▰▰▰▰▰▰▰▰
+➠ User: @${userId.split("@")[0]}
+➠ Group: ${groupName}
+➠ Statut: A quitté le groupe
+➠ Date: ${new Date().toLocaleDateString()}
+______________________`.trim();
 
-            const botJid=kaya.user.id;
-
-            const groupStatus=getSetting(from,'byeEnabled',null);
-            const globalStatus=getSetting(botJid,'byeGlobal',false);
-
-
-            if(groupStatus===false)return;
-            if(groupStatus===null && !globalStatus)return;
-
-
-            const metadata=await kaya.groupMetadata(from);
-
-
-            for(const user of update.participants){
-
-                const msg=
-`👋 *GOODBYE*
-
-👤 User: @${user.split("@")[0]}
-
-👥 Group: ${metadata.subject}
-
-😢 Goodbye, see you again!`;
-
-
-                await kaya.sendMessage(from,{
-                    text:msg,
-                    contextInfo:{
+                await kaya.sendMessage(from, {
+                    image: { url: ppUrl },
+                    caption: msg,
+                    mentions: [userId],
+                    contextInfo: {
                         ...getContextInfo(),
-                        mentionedJid:[user]
+                        mentionedJid: [userId]
                     }
                 });
-
             }
-
-
-        }catch(e){
-            console.error("Bye detect error:",e);
-        }
+        } catch (e) { console.log("ERREUR GOODBYE :", e); }
     }
 };
