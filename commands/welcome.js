@@ -15,7 +15,7 @@ export default {
         try {
             const status = await checkAdminOrOwner(kaya, from, mek.sender);
             if (!status.isBotOwner) return kaya.sendMessage(from, { text: '❌ Owner Only' });
-
+            
             const action = args[0]?.toLowerCase();
             const groupId = from.split('@')[0];
 
@@ -29,7 +29,6 @@ export default {
                 setSetting('global', 'welcomeEnabled', true);
                 return kaya.sendMessage(from, { text: "✅ Welcome activé globalement." });
             }
-
             const isEnabled = getSetting(groupId, 'welcomeEnabled', false);
             return kaya.sendMessage(from, { text: `📊 *WELCOME STATUS*\n\nÉtat: ${isEnabled ? "ON" : "OFF"}` });
         } catch (e) { console.error(e); }
@@ -62,8 +61,7 @@ export default {
                     ppUrl = 'https://telegra.ph/file/24fa902ead26340f3df2c.png';
                 }
 
-                // Utilisation de votre design personnalisé
-                const msg = `▉ \`WELCOME \` ▉
+                const msg = `▉ \`WELCOME\` ▉
 ▰▰▰▰▰▰▰▰▰▰
 ➠ User: @${userId.split("@")[0]}
 ➠ Group: ${groupName}
@@ -71,12 +69,15 @@ export default {
 ➠ Date: ${creationDate}
 ______________________`.trim();
 
+                // Sécurisation de contextInfo
+                const ctx = getContextInfo() || {}; 
+                
                 await kaya.sendMessage(from, {
                     image: { url: ppUrl },
                     caption: msg,
                     mentions: [userId],
                     contextInfo: {
-                        ...getContextInfo(),
+                        ...ctx,
                         mentionedJid: [userId]
                     }
                 });

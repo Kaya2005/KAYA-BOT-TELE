@@ -37,7 +37,6 @@ export default {
 
     async participantUpdate(kaya, update) {
         try {
-            // Ici, on surveille l'action 'remove'
             if (update.action !== "remove") return;
             const from = update.id;
             const groupId = from.split('@')[0];
@@ -61,7 +60,6 @@ export default {
                     ppUrl = 'https://telegra.ph/file/24fa902ead26340f3df2c.png';
                 }
 
-                // Design Goodbye harmonisé
                 const msg = `▉ \`GOODBYE\` ▉
 ▰▰▰▰▰▰▰▰▰▰
 ➠ User: @${userId.split("@")[0]}
@@ -70,12 +68,15 @@ export default {
 ➠ Date: ${new Date().toLocaleDateString()}
 ______________________`.trim();
 
+                // Sécurisation de contextInfo identique à votre welcome.js
+                const ctx = getContextInfo() || {}; 
+
                 await kaya.sendMessage(from, {
                     image: { url: ppUrl },
                     caption: msg,
                     mentions: [userId],
                     contextInfo: {
-                        ...getContextInfo(),
+                        ...ctx,
                         mentionedJid: [userId]
                     }
                 });
