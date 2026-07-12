@@ -1,63 +1,43 @@
-// ==================== commands/url.js ====================
-import axios from 'axios';
-import FormData from 'form-data';
 import { downloadContentFromMessage } from '@whiskeysockets/baileys';
-import { getBotName } from '../setting/botAssets.js';
+import { uploadByBuffer } from 'telegraph-uploader';
 
 export default {
-  name: 'url',
-  description: '🔗 Génère un lien Catbox à partir d’un média',
-  category: 'Tools',
+    name: 'url',
+    alias: ['geturl', 'upload'],
+    description: 'Get an URL for an image/video',
+    category: 'Tools',
 
-  async execute(kaya, mek, from, args, prefix) {
-    try {
-      const quoted = mek.quoted ? mek.quoted : mek;
-      const mime = (quoted.msg || quoted).mimetype || '';
+    async execute(kaya, mek, from, args, prefix) {
+        try {
+            // Détection du média (image ou vidéo)
+            const quoted = mek.message?.extendedTextMessage?.contextInfo?.quotedMessage;
+            const mediaMsg = mek.message?.imageMessage || mek.message?.videoMessage || 
+                             quoted?.imageMessage || quoted?.videoMessage;
 
-      if (!/image|video|audio|document/.test(mime)) {
-        return await kaya.sendMessage(from, {
-          text: '📸 *Veuillez répondre à une image, vidéo ou audio.*'
-        }, { quoted: mek });
-      }
+            if (!mediaMsg) {
+                return kaya.sendMessage(from, { text: `⚠️ *Usage:* Réponds à une image ou une vidéo avec ${prefix}url` }, { quoted: mek });
+            }
 
-      // Simulation de présence pendant l'upload
-      await kaya.sendPresenceUpdate('composing', from);
+            await kaya.sendPresenceUpdate('composing', from);
 
-      // Téléchargement du buffer
-      const stream = await downloadContentFromMessage(quoted, mime.split('/')[0]);
-      let buffer = Buffer.alloc(0);
-      for await (const chunk of stream) {
-        buffer = Buffer.concat([buffer, chunk]);
-      }
+            // Téléchargement
+            const type = mediaMsg.mimetype?.includes('video') ? 'video' : 'image';
+            const stream = await downloadContentFromMessage(mediaMsg, type);
+            const chunks = [];
+            for await (const chunk of stream) chunks.push(chunk);
+            const buffer = Buffer.concat(chunks);
 
-      // Préparation du FormData pour Catbox
-      const form = new FormData();
-      form.append('reqtype', 'fileupload');
-      form.append('fileToUpload', buffer, {
-        filename: `media.${mime.split('/')[1]?.split(';')[0] || 'bin'}`
-      });
+            // Upload sur Telegra.ph
+            const res = await uploadByBuffer(buffer, type);
 
-      // Envoi vers Catbox
-      const response = await axios.post('https://catbox.moe/user/api.php', form, {
-        headers: {
-          ...form.getHeaders()
+            // Envoi du résultat
+            await kaya.sendMessage(from, { 
+                text: `✅ *Lien généré avec succès :*\n\n${res.link}` 
+            }, { quoted: mek });
+
+        } catch (error) {
+            console.error('❌ URL command error:', error);
+            await kaya.sendMessage(from, { text: '❌ Erreur lors de l\'upload du média.' }, { quoted: mek });
         }
-      });
-
-      const url = response.data;
-      if (!url || url.includes("Error")) throw new Error("API Response invalid");
-
-      const botName = getBotName(mek.sender);
-      const caption = `▉ \`${botName}\` ▉\n▰▰▰▰▰▰▰▰▰▰▰▰▰\n*🔗 MEDIA URL GENERATED*\n\n*➡️ Type:* ${mime.split('/')[0].toUpperCase()}\n*🌐 Link:* ${url}`;
-
-      // Envoi du message texte simple sans image
-      return await kaya.sendMessage(from, { text: caption }, { quoted: mek });
-
-    } catch (err) {
-      console.error('❌ url.js error:', err);
-      return await kaya.sendMessage(from, { 
-        text: '❌ Erreur lors de l’upload vers Catbox.'
-      }, { quoted: mek });
     }
-  }
 };
