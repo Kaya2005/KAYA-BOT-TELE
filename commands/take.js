@@ -1,55 +1,52 @@
-// ==================== commands/take.js ====================
 import { downloadContentFromMessage } from '@whiskeysockets/baileys';
 import { Sticker, StickerTypes } from 'wa-sticker-formatter';
 
 export default {
     name: 'take',
-    alias: ['steal', 'reprendre', 'vol'],
-    description: 'Reprend un média en modifiant l\'auteur',
-    category: 'Sticker',
+    alias: ['steal', 't'],
+    description: 'Steal a sticker and change its pack/author name',
+    category: 'Tools',
 
     async execute(kaya, mek, from, args, prefix) {
         try {
-            const quoted = mek.quoted ? mek.quoted : mek;
-            const mime = (quoted.msg || quoted).mimetype || '';
+            // 1. Vérifier si l'utilisateur répond à un sticker
+            const quoted = mek.message?.extendedTextMessage?.contextInfo?.quotedMessage;
+            const stickerMsg = mek.message?.stickerMessage || quoted?.stickerMessage;
 
-            if (!/image|video|sticker/.test(mime)) {
-                return await kaya.sendMessage(from, { 
-                    text: '⚠️ *Usage:* Reply to a sticker/image/video with .take [name]' 
-                }, { quoted: mek });
+            if (!stickerMsg) {
+                return kaya.sendMessage(from, { text: `⚠️ *Usage:* Réponds à un sticker avec ${prefix}take [nom du pack] | [auteur]` }, { quoted: mek });
             }
 
-            await kaya.sendPresenceUpdate('composing', from);
+            // 2. Définir le nom et l'auteur
+            // Si args est vide, on prend le nom du pushName (pseudo WhatsApp)
+            // Sinon, on divise par "|" pour séparer PackName et Author
+            const input = args.join(' ');
+            const [packName, authorName] = input.includes('|') 
+                ? input.split('|').map(s => s.trim()) 
+                : [input || mek.pushName, "Kaya Bot"];
 
-            // Téléchargement du buffer
-            const stream = await downloadContentFromMessage(quoted, mime.split('/')[0]);
-            let buffer = Buffer.alloc(0);
-            for await (const chunk of stream) {
-                buffer = Buffer.concat([buffer, chunk]);
-            }
+            // 3. Télécharger le sticker
+            const stream = await downloadContentFromMessage(stickerMsg, 'sticker');
+            const chunks = [];
+            for await (const chunk of stream) chunks.push(chunk);
+            const buffer = Buffer.concat(chunks);
 
-            // Définition de l'auteur
-            const authorName = args.length > 0 ? args.join(' ') : (mek.pushName || 'Kaya-MD');
-
-            // Création du sticker avec wa-sticker-formatter
+            // 4. Reformater le sticker avec les nouvelles métadonnées
             const sticker = new Sticker(buffer, {
-                pack: ' ', // Espace insécable pour éviter le bug de chaîne vide
+                pack: packName,
                 author: authorName,
-                type: mime.includes('video') ? StickerTypes.ANIMATED : StickerTypes.FULL,
-                categories: ['🎨'],
-                quality: 70,
-                background: 'transparent'
+                type: StickerTypes.FULL,
+                quality: 50
             });
 
             const stickerBuffer = await sticker.toBuffer();
 
-            await kaya.sendMessage(from, { 
-                sticker: stickerBuffer 
-            }, { quoted: mek });
+            // 5. Envoyer
+            await kaya.sendMessage(from, { sticker: stickerBuffer }, { quoted: mek });
 
-        } catch (err) {
-            console.error('❌ Take error:', err);
-            await kaya.sendMessage(from, { text: '❌ Failed to create sticker.' }, { quoted: mek });
+        } catch (error) {
+            console.error('❌ Take error:', error);
+            await kaya.sendMessage(from, { text: '❌ Erreur lors de la récupération du sticker.' }, { quoted: mek });
         }
     }
 };

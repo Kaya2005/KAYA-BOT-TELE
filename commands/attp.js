@@ -64,7 +64,7 @@ function renderBlinkingVideoWithFfmpeg(text) {
 // ==================== MAIN EXPORT ====================
 export default {
     name: 'attp',
-    category: 'sticker',
+    category: 'Tools',
     description: 'Creates an animated sticker from text.',
 
     async execute(kaya, mek, from, args, prefix) {

@@ -23,7 +23,7 @@ function convertMedia(input, output, animated = false) {
 export default {
     name: 'tg',
     alias: ['telegram', 'stickertg'],
-    category: 'Sticker',
+    category: 'Tools',
     description: 'Download Telegram sticker pack',
 
     async execute(kaya, mek, from, args, prefix) {
