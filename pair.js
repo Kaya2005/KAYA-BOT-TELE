@@ -23,10 +23,32 @@ if (!fs.existsSync(PAIRING_DIR)) {
     fs.mkdirSync(PAIRING_DIR, { recursive: true });
 }
 
+// Fonction pour surveiller les demandes créées par la commande pair
+export function watchPairingRequests() {
+    setInterval(async () => {
+        if (!fs.existsSync(PAIRING_DIR)) return;
+        const files = fs.readdirSync(PAIRING_DIR);
+        for (const file of files) {
+            if (file.startsWith('request_')) {
+                try {
+                    const filePath = path.join(PAIRING_DIR, file);
+                    const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+                    const teleId = file.replace('request_', '').replace('.json', '');
+                    
+                    console.log(`✨ Traitement automatique de la demande pour : ${data.jid}`);
+                    await startpairing(data.jid, teleId, data.name);
+                    fs.unlinkSync(filePath);
+                } catch (e) {
+                    console.error("❌ Erreur de traitement de demande:", e);
+                }
+            }
+        }
+    }, 5000);
+}
+
 export async function restoreSessions() {
     if (!fs.existsSync(PAIRING_DIR)) return;
     
-    // Récupération uniquement des dossiers de sessions
     const items = fs.readdirSync(PAIRING_DIR);
     const sessionFolders = items.filter(item => {
         return fs.lstatSync(path.join(PAIRING_DIR, item)).isDirectory();
@@ -37,20 +59,14 @@ export async function restoreSessions() {
     for (const folder of sessionFolders) {
         try {
             console.log(`⏳ Initialisation de la session : ${folder}`);
-            
-            // Lancement de la session avec gestion d'erreur isolée
             startpairing(folder).catch((err) => {
-                console.error(`❌ Erreur lors du démarrage de la session ${folder}:`, err);
+                console.error(`❌ Erreur session ${folder}:`, err);
             });
-
-            // Délai de 10 secondes pour éviter la surcharge RAM (Code 13)
             await new Promise(resolve => setTimeout(resolve, 10000));
-            
         } catch (err) {
             console.error(`❌ Erreur critique sur le dossier ${folder}:`, err);
         }
     }
-    console.log(`✅ Toutes les sessions ont été traitées.`);
 }
 
 const rentbotTracker = new Map();
@@ -81,7 +97,7 @@ export function forceCleanupSession(number, teleId) {
 
 export default async function startpairing(nexusDevNumber, teleId = "default", userName = "Unknown") {
     const number = nexusDevNumber.replace(/[^0-9]/g, "");
-    if (!number) throw new Error("Invalid phone number");
+    if (!number) return;
 
     if (rentbotTracker.has(number)) {
         const tracker = rentbotTracker.get(number);
@@ -111,18 +127,13 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
     tracker.connection = kaya;
 
     kaya.ev.on("group-participants.update", async (update) => {
-        console.log("GROUP UPDATE:", update);
         try {
             for (let [name, cmd] of commands) {
                 if (typeof cmd.participantUpdate === 'function') {
-                    await cmd.participantUpdate(kaya, update).catch((err) => {
-                        console.error(`❌ Erreur dans la méthode participantUpdate de ${name}:`, err);
-                    });
+                    await cmd.participantUpdate(kaya, update).catch((err) => console.error(err));
                 }
             }
-        } catch (err) {
-            console.error("❌ Erreur critique dans group-participants-update:", err);
-        }
+        } catch (err) {}
     });
 
     if (!state.creds.registered) {
@@ -163,9 +174,6 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
                 await sleep(10000);
                 startpairing(nexusDevNumber, teleId);
             }
-        } else if (connection === "open") {
-            tracker.retryCount = 0;
-            tracker.disconnected = false;
         }
     });
 

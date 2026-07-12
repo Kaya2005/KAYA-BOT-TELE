@@ -7,7 +7,7 @@ import fs from 'fs';
 import readline from 'readline';
 import chalk from 'chalk';
 import { startupPassword } from './token.js';
-import { restoreSessions } from './pair.js';
+import { restoreSessions, watchPairingRequests } from './pair.js';
 
 const AUTH_FILE = './richstore/auth.json';
 
@@ -50,8 +50,12 @@ function launchBot() {
   // Import dynamique
   import('./bot.js');
 
-  // Restauration des sessions
+  // Restauration des sessions existantes
   restoreSessions();
+
+  // ACTIVATION DE LA SURVEILLANCE DES DEMANDES DE PAIRAGE
+  // Ceci évite les conflits d'accès fichiers (Code 13)
+  watchPairingRequests();
 
   // ================= ERROR HANDLING ROBUSTE =================
   const ignoredErrors = [
@@ -71,7 +75,6 @@ function launchBot() {
   });
 
   // RÉACTIVATION DES LOGS POUR DÉBOGUER
-  // On remplace le filtrage restrictif par un affichage complet pour voir vos événements WELCOME
   console.log = (message, ...args) => {
       process.stdout.write(chalk.white(new Date().toLocaleTimeString()) + ' ' + message + ' ' + args.join(' ') + '\n');
   };
