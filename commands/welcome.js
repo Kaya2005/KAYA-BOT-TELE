@@ -9,7 +9,7 @@ export default {
     category: 'Group',
     ownerOnly: true,
 
-    // --- Partie Commande ---
+    // --- Partie Commande (appelée par case.js) ---
     async execute(kaya, mek, from, args, prefix) {
         try {
             const status = await checkAdminOrOwner(kaya, from, mek.sender);
@@ -47,7 +47,7 @@ export default {
         }
     },
 
-    // --- Partie Événement corrigée avec débogage ---
+    // --- Partie Événement (appelée par votre index.js sur 'group-participants.update') ---
     async participantUpdate(kaya, update) {
         try {
             if (update.action !== "add") return;
@@ -62,19 +62,21 @@ export default {
 
             const metadata = await kaya.groupMetadata(from).catch(() => ({ subject: "ce groupe" }));
 
-            for (const user of update.participants) {
-                const msg = `👋 *WELCOME*\n\n👤 User: @${user.split("@")[0]}\n👥 Group: ${metadata.subject}\n\n✨ Welcome to the family!`;
+            for (let user of update.participants) {
+                // Gestion sécurisée pour éviter TypeError: user.split is not a function
+                const userId = typeof user === 'string' ? user : user.id;
+                const userNumber = userId.split('@')[0];
 
-                // Envoi simplifié pour éviter l'erreur
+                const msg = `👋 *WELCOME*\n\n👤 User: @${userNumber}\n👥 Group: ${metadata.subject}\n\n✨ Welcome to the family!`;
+
                 await kaya.sendMessage(from, {
                     text: msg,
-                    mentions: [user]
+                    mentions: [userId]
                 }).catch(err => {
                     console.log("DÉTAIL ERREUR SENDMESSAGE WELCOME :", err);
                 });
             }
         } catch (e) {
-            // Log détaillé pour identifier pourquoi ça plante
             console.log("DÉTAIL ERREUR WELCOME PARTICIPANTUPDATE :", e);
         }
     }
