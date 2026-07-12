@@ -9,10 +9,10 @@ export default {
     category: 'Group',
     ownerOnly: true,
 
+    // --- Partie Commande (appelée par case.js) ---
     async execute(kaya, mek, from, args, prefix) {
         try {
             const status = await checkAdminOrOwner(kaya, from, mek.sender);
-
             if (!status.isBotOwner) {
                 return kaya.sendMessage(from, { text: '❌ Owner Only' });
             }
@@ -42,45 +42,29 @@ export default {
                     text: `📊 *WELCOME STATUS*\n\nÉtat: ${isEnabled ? "ON" : "OFF"}`
                 });
             }
-
         } catch (e) {
             console.error("welcome command error:", e);
         }
     },
 
-    async detect(kaya, update, from) {
+    // --- Partie Événement (appelée par votre index.js sur 'group-participants.update') ---
+    async participantUpdate(kaya, update) {
         try {
-            console.log("========== WELCOME DETECT ==========");
-            console.log("FROM :", from);
-            console.log("UPDATE :", update);
+            // update = { id: "jid@g.us", action: "add", participants: ["..."] }
+            if (update.action !== "add") return;
 
-            if (update.action !== "add") {
-                console.log("Action ignorée :", update.action);
-                return;
-            }
-
+            const from = update.id;
             const groupId = from.split('@')[0];
-            console.log("GROUP ID :", groupId);
-
             const isEnabled = getSetting(groupId, 'welcomeEnabled', false);
-            console.log("WELCOME ENABLED :", isEnabled);
 
-            if (!isEnabled) {
-                console.log("Le welcome est désactivé.");
-                return;
-            }
+            if (!isEnabled) return;
 
-            const metadata = await kaya.groupMetadata(from).catch(err => {
-                console.error("Erreur groupMetadata :", err);
-                return { subject: "ce groupe" };
-            });
+            console.log(`[WELCOME] Nouvelle arrivée dans ${groupId}`);
 
-            console.log("Participants :", update.participants);
+            const metadata = await kaya.groupMetadata(from).catch(() => ({ subject: "ce groupe" }));
 
             for (const user of update.participants) {
                 const msg = `👋 *WELCOME*\n\n👤 User: @${user.split("@")[0]}\n👥 Group: ${metadata.subject}\n\n✨ Welcome to the family!`;
-
-                console.log("Envoi du message à :", user);
 
                 await kaya.sendMessage(from, {
                     text: msg,
@@ -90,12 +74,9 @@ export default {
                         mentionedJid: [user]
                     }
                 });
-
-                console.log("Message envoyé.");
             }
-
         } catch (e) {
-            console.error("Welcome detect error:", e);
+            console.error("Welcome participantUpdate error:", e);
         }
     }
 };
