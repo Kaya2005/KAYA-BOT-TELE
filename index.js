@@ -60,24 +60,24 @@ function launchBot() {
     'Socket closed', 'ReferenceError'
   ];
 
-  // Protection contre les crashs fatals
   process.on('uncaughtException', (err) => {
     if (ignoredErrors.some((e) => String(err).includes(e))) return;
-    // On ne log pas pour éviter de saturer la console
+    console.error(err);
   });
 
   process.on('unhandledRejection', (reason) => {
     if (ignoredErrors.some((e) => String(reason).includes(e))) return;
+    console.error(reason);
   });
 
-  // Neutralisation silencieuse des logs système
-  console.error = () => {};
-  process.stderr.write = () => {};
-  console.log = (message) => {
-      // Filtrage sélectif : on ne garde que les messages importants si besoin
-      if (typeof message === 'string' && message.includes('KAYA')) {
-          process.stdout.write(message + '\n');
-      }
+  // RÉACTIVATION DES LOGS POUR DÉBOGUER
+  // On remplace le filtrage restrictif par un affichage complet pour voir vos événements WELCOME
+  console.log = (message, ...args) => {
+      process.stdout.write(chalk.white(new Date().toLocaleTimeString()) + ' ' + message + ' ' + args.join(' ') + '\n');
+  };
+  
+  console.error = (message) => {
+      process.stderr.write(chalk.red('[ERROR] ') + message + '\n');
   };
 }
 

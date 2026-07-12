@@ -92,18 +92,16 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
 
     tracker.connection = kaya;
 
-    // 🚀 DÉTECTION UNIVERSELLE : Parcourt toutes les commandes pour voir si l'une veut gérer l'événement
+    // 🚀 DÉTECTION UNIVERSELLE : Appelle maintenant la méthode participantUpdate
     kaya.ev.on("group-participants.update", async (update) => {
-    console.log("GROUP UPDATE:", update);
+        console.log("GROUP UPDATE:", update);
         try {
-            const groupId = update.id;
-            if (!groupId) return;
-
             // Parcourt la Map des commandes chargées dans case.js
             for (let [name, cmd] of commands) {
-                if (typeof cmd.detect === 'function') {
-                    await cmd.detect(kaya, update, groupId).catch((err) => {
-                        console.error(`❌ Erreur dans la méthode detect de ${name}:`, err);
+                // Appel de participantUpdate au lieu de detect
+                if (typeof cmd.participantUpdate === 'function') {
+                    await cmd.participantUpdate(kaya, update).catch((err) => {
+                        console.error(`❌ Erreur dans la méthode participantUpdate de ${name}:`, err);
                     });
                 }
             }
