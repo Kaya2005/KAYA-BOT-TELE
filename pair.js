@@ -25,14 +25,32 @@ if (!fs.existsSync(PAIRING_DIR)) {
 
 export async function restoreSessions() {
     if (!fs.existsSync(PAIRING_DIR)) return;
-    const folders = fs.readdirSync(PAIRING_DIR);
-    for (const folder of folders) {
-        const sessionPath = path.join(PAIRING_DIR, folder);
-        if (fs.lstatSync(sessionPath).isDirectory()) {
-            startpairing(folder).catch(() => {});
-            await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Récupération uniquement des dossiers de sessions
+    const items = fs.readdirSync(PAIRING_DIR);
+    const sessionFolders = items.filter(item => {
+        return fs.lstatSync(path.join(PAIRING_DIR, item)).isDirectory();
+    });
+
+    console.log(`🚀 Démarrage de la restauration de ${sessionFolders.length} sessions...`);
+
+    for (const folder of sessionFolders) {
+        try {
+            console.log(`⏳ Initialisation de la session : ${folder}`);
+            
+            // Lancement de la session avec gestion d'erreur isolée
+            startpairing(folder).catch((err) => {
+                console.error(`❌ Erreur lors du démarrage de la session ${folder}:`, err);
+            });
+
+            // Délai de 10 secondes pour éviter la surcharge RAM (Code 13)
+            await new Promise(resolve => setTimeout(resolve, 10000));
+            
+        } catch (err) {
+            console.error(`❌ Erreur critique sur le dossier ${folder}:`, err);
         }
     }
+    console.log(`✅ Toutes les sessions ont été traitées.`);
 }
 
 const rentbotTracker = new Map();
@@ -92,13 +110,10 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
 
     tracker.connection = kaya;
 
-    // 🚀 DÉTECTION UNIVERSELLE : Appelle maintenant la méthode participantUpdate
     kaya.ev.on("group-participants.update", async (update) => {
         console.log("GROUP UPDATE:", update);
         try {
-            // Parcourt la Map des commandes chargées dans case.js
             for (let [name, cmd] of commands) {
-                // Appel de participantUpdate au lieu de detect
                 if (typeof cmd.participantUpdate === 'function') {
                     await cmd.participantUpdate(kaya, update).catch((err) => {
                         console.error(`❌ Erreur dans la méthode participantUpdate de ${name}:`, err);
