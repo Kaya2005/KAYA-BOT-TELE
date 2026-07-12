@@ -1,4 +1,3 @@
-//welcome.js
 import { getContextInfo } from '../setting/contextInfo.js';
 import checkAdminOrOwner from '../setting/checkAdminOrOwner.js';
 import { getSetting, setSetting } from '../setting.js';
@@ -19,7 +18,6 @@ export default {
             }
 
             const action = args.join(' ').toLowerCase();
-            // Nettoyage du JID pour la cohérence avec le système de fichiers
             const groupId = from.split('@')[0];
 
             if (!action) {
@@ -52,23 +50,37 @@ export default {
 
     async detect(kaya, update, from) {
         try {
-            // 1. On ne traite que les ajouts
-            if (update.action !== "add") return;
+            console.log("========== WELCOME DETECT ==========");
+            console.log("FROM :", from);
+            console.log("UPDATE :", update);
 
-            // 2. Nettoyage du JID et vérification si activé
+            if (update.action !== "add") {
+                console.log("Action ignorée :", update.action);
+                return;
+            }
+
             const groupId = from.split('@')[0];
+            console.log("GROUP ID :", groupId);
+
             const isEnabled = getSetting(groupId, 'welcomeEnabled', false);
-            
-            console.log(`DEBUG: Checking welcome for ${groupId}, enabled: ${isEnabled}`);
-            
-            if (!isEnabled) return;
+            console.log("WELCOME ENABLED :", isEnabled);
 
-            // 3. Récupération des infos du groupe
-            const metadata = await kaya.groupMetadata(from).catch(() => ({ subject: "ce groupe" }));
+            if (!isEnabled) {
+                console.log("Le welcome est désactivé.");
+                return;
+            }
 
-            // 4. Envoi du message pour chaque nouvel utilisateur
+            const metadata = await kaya.groupMetadata(from).catch(err => {
+                console.error("Erreur groupMetadata :", err);
+                return { subject: "ce groupe" };
+            });
+
+            console.log("Participants :", update.participants);
+
             for (const user of update.participants) {
                 const msg = `👋 *WELCOME*\n\n👤 User: @${user.split("@")[0]}\n👥 Group: ${metadata.subject}\n\n✨ Welcome to the family!`;
+
+                console.log("Envoi du message à :", user);
 
                 await kaya.sendMessage(from, {
                     text: msg,
@@ -78,7 +90,10 @@ export default {
                         mentionedJid: [user]
                     }
                 });
+
+                console.log("Message envoyé.");
             }
+
         } catch (e) {
             console.error("Welcome detect error:", e);
         }
