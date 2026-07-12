@@ -94,6 +94,7 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
 
     // 🚀 DÉTECTION UNIVERSELLE : Parcourt toutes les commandes pour voir si l'une veut gérer l'événement
     kaya.ev.on("group-participants.update", async (update) => {
+    console.log("GROUP UPDATE:", update);
         try {
             const groupId = update.id;
             if (!groupId) return;
