@@ -5,9 +5,9 @@ import path from 'path';
 
 export default {
   name: 'pair',
-  description: '🔗 Connectez votre compte WhatsApp au bot',
+  description: '🔗 Link your WhatsApp account to the bot',
   category: 'General',
-  usage: '.pair <numéro>',
+  usage: '.pair <number>',
 
   async execute(kaya, mek, from, args, prefix) {
     try {
@@ -15,25 +15,38 @@ export default {
       const botName = getBotName(sender);
       const pairingFolder = './richstore/pairing';
 
+      // Vérification de l'argument
       if (!args[0]) {
         return await sendWithBotImage(kaya, from, sender, { 
-            caption: `*AIDE PAIRAGE*\nUsage: ${prefix}pair 243xxxxxxxxx`,
+            caption: `*PAIRING HELP* 🔗\n\n` +
+                     `To link your account, use the format below:\n` +
+                     `*Usage:* \`${prefix}pair 243xxxxxxxxx\`\n\n` +
+                     `> _Example: ${prefix}pair 243910474238_`,
             contextInfo: getContextInfo() 
         });
       }
 
       const targetNumber = args[0].replace(/[^0-9]/g, '');
-      const sessionIdentifier = sender.replace(/[^0-9]/g, ''); 
+      // IMPORTANT: Nous utilisons targetNumber comme identifiant pour permettre de pairer d'autres numéros
+      const sessionIdentifier = targetNumber; 
 
-      // On crée un fichier de signalement au lieu de lancer la fonction directement
+      // Création du fichier de requête pour le système automatique
       const requestFile = path.join(pairingFolder, `request_${sessionIdentifier}.json`);
-      fs.writeFileSync(requestFile, JSON.stringify({ jid: targetNumber + "@s.whatsapp.net", name: botName }));
+      fs.writeFileSync(requestFile, JSON.stringify({ 
+          jid: targetNumber + "@s.whatsapp.net", 
+          name: botName 
+      }));
 
-      await kaya.sendMessage(from, { text: '⏳ *Demande de pairage enregistrée. Le système va générer le code sous peu...*' }, { quoted: mek });
+      // Message de confirmation élégant
+      await kaya.sendMessage(from, { 
+          text: `✅ *Pairing Request Received*\n\n` +
+                `The system is now generating your pairing code for *+${targetNumber}*.\n` +
+                `Please wait a few seconds, the code will appear in the pairing folder.` 
+      }, { quoted: mek });
 
     } catch (err) {
-      console.error('❌ Erreur pair.js:', err);
-      await kaya.sendMessage(from, { text: '❌ Une erreur est survenue.' }, { quoted: mek });
+      console.error('❌ Pairing Error:', err);
+      await kaya.sendMessage(from, { text: '❌ An internal error occurred while processing your request.' }, { quoted: mek });
     }
   }
 };
