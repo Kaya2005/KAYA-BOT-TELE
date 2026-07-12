@@ -9,7 +9,6 @@ export default {
 
     async execute(kaya, mek, from, args, prefix) {
         try {
-            // Détection du média (image ou vidéo)
             const quoted = mek.message?.extendedTextMessage?.contextInfo?.quotedMessage;
             const mediaMsg = mek.message?.imageMessage || mek.message?.videoMessage || 
                              quoted?.imageMessage || quoted?.videoMessage;
@@ -20,23 +19,27 @@ export default {
 
             await kaya.sendPresenceUpdate('composing', from);
 
+            // Déterminer le type MIME
+            const mime = mediaMsg.mimetype || (mediaMsg.videoMessage ? 'video/mp4' : 'image/jpeg');
+            const type = mime.split('/')[0]; // "image" ou "video"
+
             // Téléchargement
-            const type = mediaMsg.mimetype?.includes('video') ? 'video' : 'image';
             const stream = await downloadContentFromMessage(mediaMsg, type);
             const chunks = [];
             for await (const chunk of stream) chunks.push(chunk);
             const buffer = Buffer.concat(chunks);
 
-            // Upload sur Telegra.ph
-            const res = await uploadByBuffer(buffer, type);
+            // Upload - On envoie le buffer et le type
+            // Note: telegraph-uploader attend souvent le type 'image' ou 'video'
+            const res = await uploadByBuffer(buffer, type === 'video' ? 'video' : 'image');
 
-            // Envoi du résultat
             await kaya.sendMessage(from, { 
-                text: `✅ *Lien généré avec succès :*\n\n${res.link}` 
+                text: `✅ *Lien généré avec succès :*\n\nhttps://telegra.ph${res.link}` 
             }, { quoted: mek });
 
         } catch (error) {
-            console.error('❌ URL command error:', error);
+            // Afficher l'erreur réelle dans la console pour déboguer
+            console.error('❌ URL command error details:', error);
             await kaya.sendMessage(from, { text: '❌ Erreur lors de l\'upload du média.' }, { quoted: mek });
         }
     }
