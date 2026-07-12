@@ -40,7 +40,7 @@ export default {
             const groupId = from.split('@')[0];
             const ownerId = getTeleIdFromJid(mek.sender) || "global"; 
 
-            if (!action) return kaya.sendMessage(from, { text: `⚙️ *WELCOME SETTINGS*\n\n${prefix}welcome on (Current group)\n${prefix}welcome off (Current group)\n${prefix}welcome all (Global for your groups)\n${prefix}welcome status`, contextInfo: getContextInfo() });
+            if (!action) return kaya.sendMessage(from, { text: `⚙️ *WELCOME SETTINGS*\n\n${prefix}welcome on (Current group)\n${prefix}welcome off (Current group)\n${prefix}welcome all (Global)\n${prefix}welcome alloff (Disable global)\n${prefix}welcome status`, contextInfo: getContextInfo() });
 
             if (action === "on") { 
                 setSetting(groupId, 'welcomeEnabled', true); 
@@ -52,7 +52,11 @@ export default {
             }
             if (action === "all") {
                 setSetting(ownerId, 'welcomeAll', true);
-                return kaya.sendMessage(from, { text: `✅ Welcome enabled globally for all your groups (ID: ${ownerId}).`, contextInfo: getContextInfo() });
+                return kaya.sendMessage(from, { text: `✅ Welcome enabled globally for all your groups.`, contextInfo: getContextInfo() });
+            }
+            if (action === "alloff") {
+                setSetting(ownerId, 'welcomeAll', false);
+                return kaya.sendMessage(from, { text: `❌ Welcome disabled globally for all your groups.`, contextInfo: getContextInfo() });
             }
             if (action === "status") {
                 const isEnabled = getSetting(groupId, 'welcomeEnabled', false);
@@ -68,7 +72,6 @@ export default {
             const from = update.id;
             const groupId = from.split('@')[0];
             
-            // Retrieve owner ID to check their specific "All" setting
             const ownerId = getTeleIdFromJid(from) || "global";
             
             const isEnabled = getSetting(groupId, 'welcomeEnabled', false) || getSetting(ownerId, 'welcomeAll', false);
@@ -78,6 +81,14 @@ export default {
             const groupName = metadata.subject || "this group";
             const memberCount = metadata.participants ? metadata.participants.length : 0;
             const creationDate = metadata.creation ? new Date(metadata.creation * 1000).toLocaleDateString() : "Unknown";
+
+            // Get group profile picture
+            let ppUrl;
+            try {
+                ppUrl = await kaya.profilePictureUrl(from, 'image');
+            } catch {
+                ppUrl = 'https://telegra.ph/file/24fa902ead26340f3df2c.png'; // Default image
+            }
 
             for (let user of update.participants) {
                 const userId = typeof user === 'string' ? user : user.id;
@@ -94,7 +105,8 @@ export default {
 ______________________`.trim();
 
                 await kaya.sendMessage(from, { 
-                    text: msg, 
+                    image: { url: ppUrl },
+                    caption: msg, 
                     mentions: [userId],
                     contextInfo: getContextInfo()
                 });
