@@ -2,6 +2,9 @@ import { getContextInfo } from '../setting/contextInfo.js';
 import checkAdminOrOwner from '../setting/checkAdminOrOwner.js';
 import { getSetting, setSetting } from '../setting.js';
 
+// Cache pour éviter les messages en triple
+const welcomeCache = new Set();
+
 export default {
     name: 'welcome',
     alias: ['bienvenue', 'wel'],
@@ -9,7 +12,7 @@ export default {
     category: 'Group',
     ownerOnly: true,
 
-    // --- Partie Commande (appelée par case.js) ---
+    // --- Partie Commande ---
     async execute(kaya, mek, from, args, prefix) {
         try {
             const status = await checkAdminOrOwner(kaya, from, mek.sender);
@@ -47,7 +50,7 @@ export default {
         }
     },
 
-    // --- Partie Événement (appelée par votre index.js sur 'group-participants.update') ---
+    // --- Partie Événement ---
     async participantUpdate(kaya, update) {
         try {
             if (update.action !== "add") return;
@@ -58,13 +61,17 @@ export default {
 
             if (!isEnabled) return;
 
-            console.log(`[WELCOME] Nouvelle arrivée dans ${groupId}`);
-
-            const metadata = await kaya.groupMetadata(from).catch(() => ({ subject: "ce groupe" }));
-
             for (let user of update.participants) {
-                // Gestion sécurisée pour éviter TypeError: user.split is not a function
                 const userId = typeof user === 'string' ? user : user.id;
+
+                // Sécurité anti-doublon (ignore l'ID pendant 30 secondes)
+                if (welcomeCache.has(userId)) continue;
+                welcomeCache.add(userId);
+                setTimeout(() => welcomeCache.delete(userId), 30000);
+
+                console.log(`[WELCOME] Nouvelle arrivée : ${userId}`);
+
+                const metadata = await kaya.groupMetadata(from).catch(() => ({ subject: "ce groupe" }));
                 const userNumber = userId.split('@')[0];
 
                 const msg = `👋 *WELCOME*\n\n👤 User: @${userNumber}\n👥 Group: ${metadata.subject}\n\n✨ Welcome to the family!`;
