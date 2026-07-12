@@ -27,8 +27,6 @@ export default {
       // 2. Préparation des identifiants
       const targetNumber = args[0].replace(/[^0-9]/g, '');
       const jid = targetNumber + "@s.whatsapp.net";
-      
-      // Utilisation du numéro de l'expéditeur (sender) comme ID de session unique
       const sessionIdentifier = sender.replace(/[^0-9]/g, ''); 
 
       // 3. Feedback utilisateur
@@ -37,21 +35,34 @@ export default {
       // 4. Lancement du processus de pairage
       await startpairing(jid, sessionIdentifier, botName);
 
-      // 5. Attente du fichier de code (max 10 secondes)
+      // 5. Attente optimisée du fichier de code (max 10 secondes)
       const filePath = path.join(pairingFolder, `pairing_${sessionIdentifier}.json`);
-      let attempts = 0;
+      
+      const waitForFile = (targetPath, timeout) => {
+        return new Promise((resolve) => {
+          const start = Date.now();
+          const interval = setInterval(() => {
+            if (fs.existsSync(targetPath)) {
+              clearInterval(interval);
+              resolve(true);
+            } else if (Date.now() - start > timeout) {
+              clearInterval(interval);
+              resolve(false);
+            }
+          }, 1000);
+        });
+      };
+
+      const fileExists = await waitForFile(filePath, 10000);
       let code = null;
 
-      while (attempts < 10) {
-        if (fs.existsSync(filePath)) {
-          try {
-            const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-            code = data.code;
-            break;
-          } catch (e) {}
+      if (fileExists) {
+        try {
+          const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+          code = data.code;
+        } catch (e) {
+          console.error('❌ Erreur lors de la lecture du fichier de pairage:', e);
         }
-        await new Promise(r => setTimeout(r, 1000));
-        attempts++;
       }
 
       // 6. Réponse finale
