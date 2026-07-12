@@ -1,3 +1,4 @@
+//setting.js
 import fs from "fs";
 import path from "path";
 
@@ -5,15 +6,14 @@ import path from "path";
 const cache = new Map();
 
 /**
- * Génère le chemin du fichier de configuration :
- * Structure : /home/container/Kaya-MD/userall/ID_UTILISATEUR/user/settings.json
+ * Génère le chemin du fichier de configuration en utilisant un chemin absolu sécurisé.
  */
 function getSettingsPath(jid, createIfMissing = false) {
-    // Nettoyage de l'ID pour ne garder que les chiffres (sécurisé)
-    const id = jid.replace(/[^0-9]/g, '');
+    // Nettoyage de l'ID pour éviter les caractères invalides
+    const id = jid.split('@')[0];
     
-    // Chemin absolu : /home/container/Kaya-MD/userall/ID/user/
-    const baseDir = path.join('/home/container/Kaya-MD', "userall", id, "user");
+    // Utilisation du chemin absolu pour garantir la stabilité sur le serveur
+    const baseDir = path.join('/home/container/Kaya-MD', "userall", "user", id);
     
     if (createIfMissing && !fs.existsSync(baseDir)) {
         fs.mkdirSync(baseDir, { recursive: true });
