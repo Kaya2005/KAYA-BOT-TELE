@@ -14,18 +14,24 @@ export default {
     async execute(kaya, mek, from, args, prefix) {
         try {
             const status = await checkAdminOrOwner(kaya, from, mek.sender);
-            if (!status.isBotOwner) return kaya.sendMessage(from, { text: '❌ Owner Only' });
+            if (!status.isBotOwner) return kaya.sendMessage(from, { text: '❌ Owner Only', contextInfo: getContextInfo() });
             
             const action = args.join(' ').toLowerCase();
             const groupId = from.split('@')[0];
 
-            if (!action) return kaya.sendMessage(from, { text: `⚙️ *WELCOME SETTINGS*\n\n${prefix}welcome on\n${prefix}welcome off\n${prefix}welcome status` });
+            if (!action) return kaya.sendMessage(from, { text: `⚙️ *WELCOME SETTINGS*\n\n${prefix}welcome on\n${prefix}welcome off\n${prefix}welcome status`, contextInfo: getContextInfo() });
 
-            if (action === "on") { setSetting(groupId, 'welcomeEnabled', true); return kaya.sendMessage(from, { text: "✅ Welcome activé pour ce groupe." }); }
-            if (action === "off") { setSetting(groupId, 'welcomeEnabled', false); return kaya.sendMessage(from, { text: "❌ Welcome désactivé pour ce groupe." }); }
+            if (action === "on") { 
+                setSetting(groupId, 'welcomeEnabled', true); 
+                return kaya.sendMessage(from, { text: "✅ Welcome activé pour ce groupe.", contextInfo: getContextInfo() }); 
+            }
+            if (action === "off") { 
+                setSetting(groupId, 'welcomeEnabled', false); 
+                return kaya.sendMessage(from, { text: "❌ Welcome désactivé pour ce groupe.", contextInfo: getContextInfo() }); 
+            }
             if (action === "status") {
                 const isEnabled = getSetting(groupId, 'welcomeEnabled', false);
-                return kaya.sendMessage(from, { text: `📊 *WELCOME STATUS*\n\nÉtat: ${isEnabled ? "ON" : "OFF"}` });
+                return kaya.sendMessage(from, { text: `📊 *WELCOME STATUS*\n\nÉtat: ${isEnabled ? "ON" : "OFF"}`, contextInfo: getContextInfo() });
             }
         } catch (e) { console.error(e); }
     },
@@ -49,15 +55,6 @@ export default {
                 welcomeCache.add(userId);
                 setTimeout(() => welcomeCache.delete(userId), 30000);
 
-                // Récupération de la photo de profil
-                let ppUrl;
-                try {
-                    ppUrl = await kaya.profilePictureUrl(userId, 'image');
-                } catch {
-                    // Image par défaut si aucune photo trouvée
-                    ppUrl = 'https://telegra.ph/file/24fa902ead26340f3df2c.png';
-                }
-
                 const msg = `▉ \`WELCOME\` ▉
 ▰▰▰▰▰▰▰▰▰▰
 ➠ User: @${userId.split("@")[0]}
@@ -66,11 +63,11 @@ export default {
 ➠ Date: ${creationDate}
 ______________________`.trim();
 
-                // Envoi avec l'image et la légende
-                await kaya.sendMessage(from, {
-                    image: { url: ppUrl },
-                    caption: msg,
-                    mentions: [userId]
+                // Envoi du message texte avec contextInfo
+                await kaya.sendMessage(from, { 
+                    text: msg, 
+                    mentions: [userId],
+                    contextInfo: getContextInfo()
                 });
             }
         } catch (e) { console.log("DÉTAIL ERREUR WELCOME :", e); }
