@@ -82,19 +82,19 @@ export default {
             const memberCount = metadata.participants ? metadata.participants.length : 0;
             const creationDate = metadata.creation ? new Date(metadata.creation * 1000).toLocaleDateString() : "Unknown";
 
+            // Get profile picture of the GROUP
+            let ppUrl;
+            try {
+                ppUrl = await kaya.profilePictureUrl(from, 'image');
+            } catch {
+                ppUrl = 'https://telegra.ph/file/24fa902ead26340f3df2c.png'; // Default image
+            }
+
             for (let user of update.participants) {
                 const userId = typeof user === 'string' ? user : user.id;
                 if (goodbyeCache.has(userId)) continue;
                 goodbyeCache.add(userId);
                 setTimeout(() => goodbyeCache.delete(userId), 30000);
-
-                // Get profile picture of the person who left
-                let ppUrl;
-                try {
-                    ppUrl = await kaya.profilePictureUrl(userId, 'image');
-                } catch {
-                    ppUrl = 'https://telegra.ph/file/24fa902ead26340f3df2c.png'; // Default image
-                }
 
                 const msg = `▉ \`GOODBYE\` ▉
 ▰▰▰▰▰▰▰▰▰▰
