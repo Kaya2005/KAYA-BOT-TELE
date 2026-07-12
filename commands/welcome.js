@@ -1,82 +1,83 @@
+import { getContextInfo } from '../setting/contextInfo.js';
 import checkAdminOrOwner from '../setting/checkAdminOrOwner.js';
 import { getSetting, setSetting } from '../setting.js';
-
-const welcomeCache = new Set();
-
-// Context en dur pour assurer la stabilité
-const cInfo = {
-    forwardingScore: 999,
-    isForwarded: true,
-    forwardedNewsletterMessageInfo: {
-        newsletterJid: '120363410993553528@newsletter',
-        newsletterName: '𝐊𝐀𝐘𝐀 𝐁𝐎𝐓'
-    }
-};
 
 export default {
     name: 'welcome',
     alias: ['bienvenue', 'wel'],
-    description: 'Gestion des messages de bienvenue',
+    description: 'Enable/disable welcome messages',
     category: 'Group',
     ownerOnly: true,
 
+    // --- Partie Commande (appelée par case.js) ---
     async execute(kaya, mek, from, args, prefix) {
         try {
             const status = await checkAdminOrOwner(kaya, from, mek.sender);
-            if (!status.isBotOwner) return kaya.sendMessage(from, { text: '❌ Owner Only', contextInfo: cInfo }, { quoted: mek });
-            
-            const action = args[0]?.toLowerCase();
+            if (!status.isBotOwner) {
+                return kaya.sendMessage(from, { text: '❌ Owner Only' });
+            }
+
+            const action = args.join(' ').toLowerCase();
             const groupId = from.split('@')[0];
+
+            if (!action) {
+                return kaya.sendMessage(from, {
+                    text: `⚙️ *WELCOME SETTINGS*\n\n${prefix}welcome on\n${prefix}welcome off\n${prefix}welcome status`
+                });
+            }
 
             if (action === "on") {
                 setSetting(groupId, 'welcomeEnabled', true);
-                return kaya.sendMessage(from, { text: "✅ Welcome activé pour ce groupe.", contextInfo: cInfo }, { quoted: mek });
-            } else if (action === "off") {
-                setSetting(groupId, 'welcomeEnabled', false);
-                return kaya.sendMessage(from, { text: "❌ Welcome désactivé pour ce groupe.", contextInfo: cInfo }, { quoted: mek });
-            } else if (action === "all") {
-                setSetting('global', 'welcomeEnabled', true);
-                return kaya.sendMessage(from, { text: "✅ Welcome activé globalement.", contextInfo: cInfo }, { quoted: mek });
+                return kaya.sendMessage(from, { text: "✅ Welcome activé pour ce groupe." });
             }
-            const isEnabled = getSetting(groupId, 'welcomeEnabled', false);
-            return kaya.sendMessage(from, { text: `📊 *WELCOME STATUS*\n\nÉtat: ${isEnabled ? "ON" : "OFF"}`, contextInfo: cInfo }, { quoted: mek });
-        } catch (e) { console.error(e); }
+
+            if (action === "off") {
+                setSetting(groupId, 'welcomeEnabled', false);
+                return kaya.sendMessage(from, { text: "❌ Welcome désactivé pour ce groupe." });
+            }
+
+            if (action === "status") {
+                const isEnabled = getSetting(groupId, 'welcomeEnabled', false);
+                return kaya.sendMessage(from, {
+                    text: `📊 *WELCOME STATUS*\n\nÉtat: ${isEnabled ? "ON" : "OFF"}`
+                });
+            }
+        } catch (e) {
+            console.error("welcome command error:", e);
+        }
     },
 
+    // --- Partie Événement (appelée par votre index.js sur 'group-participants.update') ---
     async participantUpdate(kaya, update) {
         try {
             if (update.action !== "add") return;
+
             const from = update.id;
             const groupId = from.split('@')[0];
-            
-            const isEnabled = getSetting(groupId, 'welcomeEnabled', false) || getSetting('global', 'welcomeEnabled', false);
+            const isEnabled = getSetting(groupId, 'welcomeEnabled', false);
+
             if (!isEnabled) return;
 
+            console.log(`[WELCOME] Nouvelle arrivée dans ${groupId}`);
+
+            const metadata = await kaya.groupMetadata(from).catch(() => ({ subject: "ce groupe" }));
+
             for (let user of update.participants) {
+                // Gestion sécurisée pour éviter TypeError: user.split is not a function
                 const userId = typeof user === 'string' ? user : user.id;
-                if (welcomeCache.has(userId)) continue;
-                welcomeCache.add(userId);
-                setTimeout(() => welcomeCache.delete(userId), 10000);
+                const userNumber = userId.split('@')[0];
 
-                let ppUrl;
-                try {
-                    ppUrl = await kaya.profilePictureUrl(userId, 'image');
-                } catch {
-                    ppUrl = 'https://telegra.ph/file/24fa902ead26340f3df2c.png';
-                }
-
-                // Message simplifié sans les variables de métadonnées qui causaient l'erreur
-                const msg = `▉ \`WELCOME\` ▉\n\nBienvenue dans le groupe ! ✨`.trim();
+                const msg = `👋 *WELCOME*\n\n👤 User: @${userNumber}\n👥 Group: ${metadata.subject}\n\n✨ Welcome to the family!`;
 
                 await kaya.sendMessage(from, {
-                    image: { url: ppUrl },
-                    caption: msg,
-                    mentions: [userId],
-                    contextInfo: cInfo
+                    text: msg,
+                    mentions: [userId]
+                }).catch(err => {
+                    console.log("DÉTAIL ERREUR SENDMESSAGE WELCOME :", err);
                 });
             }
-        } catch (e) { 
-            console.log("ERREUR CRITIQUE WELCOME :", e); 
+        } catch (e) {
+            console.log("DÉTAIL ERREUR WELCOME PARTICIPANTUPDATE :", e);
         }
     }
 };
