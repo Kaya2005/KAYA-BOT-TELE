@@ -111,6 +111,6 @@ ______________________`.trim();
                     contextInfo: getContextInfo()
                 });
             }
-        } catch (e) { console.log("WELCOME PARTICIPANTUPDATE ERROR :", e); }
+        } catch (e) { /* Log removed */ }
     }
 };
