@@ -1,6 +1,6 @@
 import { getBotName, sendWithBotImage } from '../setting/botAssets.js';
 import { getContextInfo } from '../setting/contextInfo.js';
-import startpairing from '../pair.js'; 
+import startpairing from './pair.js'; 
 import fs from 'fs';
 import path from 'path';
 
