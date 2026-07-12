@@ -9,40 +9,32 @@ export default {
 
   async execute(kaya, mek, from, args, prefix) {
     try {
-      // 1. Gestion sûre du nom du bot
       let botName = 'Kaya';
-      try {
-        botName = getBotName(from) || 'Kaya';
-      } catch (e) {
-        console.warn('⚠️ getBotName failed, using default name.');
-      }
+      try { botName = getBotName(from) || 'Kaya'; } catch (e) {}
       
-      // 2. Identification de la cible
-      const mentioned = mek.message?.extendedTextMessage?.contextInfo?.mentionedJid;
+      // --- LOGIQUE CIBLE CORRIGÉE ---
+      const mentioned = mek.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
       const quotedParticipant = mek.message?.extendedTextMessage?.contextInfo?.participant;
-      const sender = mek.sender;
       
-      let target = mentioned?.[0] || quotedParticipant || (args[0] ? args[0].replace(/[^0-9]/g, '') + '@s.whatsapp.net' : null);
-
-      if (!target) {
-        return await kaya.sendMessage(from, { text: `*⚠️ TARGET ERROR*\nPlease mention a user, reply to their message, or type their number.` }, { quoted: mek });
+      // On extrait le numéro correctement
+      let targetNumber = mentioned || quotedParticipant || (args[0] ? args[0].replace(/[^0-9]/g, '') : null);
+      
+      // Si aucune cible n'est donnée, on utilise l'expéditeur (ou la personne en privé)
+      if (!targetNumber) {
+        targetNumber = mek.sender;
       }
 
-      // 3. Récupération de l'image (Logique corrigée)
+      // S'assurer que le JID se termine par @s.whatsapp.net
+      const target = targetNumber.includes('@') ? targetNumber : targetNumber + '@s.whatsapp.net';
+      // ------------------------------
+
       let pfpUrl;
       try {
-        // 'image' est le type par défaut, parfois il faut être spécifique
-        pfpUrl = await kaya.profilePictureUrl(target, 'image').catch(() => null);
-        
-        if (!pfpUrl) {
-          return await kaya.sendMessage(from, { text: '❌ The user has no profile picture or it is private.' }, { quoted: mek });
-        }
+        pfpUrl = await kaya.profilePictureUrl(target, 'image');
       } catch (err) {
-        console.error('❌ Error fetching PFP:', err);
-        return await kaya.sendMessage(from, { text: '❌ Could not retrieve profile picture.' }, { quoted: mek });
+        return await kaya.sendMessage(from, { text: '❌ No profile picture found for this user.' }, { quoted: mek });
       }
 
-      // 4. Envoi
       const caption = `▉ \`${botName}\` ▉\n▰▰▰▰▰▰▰▰▰▰▰▰▰\n📸 *USER PROFILE PICTURE*\n👤 @${target.split('@')[0]}`;
 
       return await kaya.sendMessage(from, {
@@ -52,8 +44,8 @@ export default {
       }, { quoted: mek });
 
     } catch (err) {
-      console.error('❌ getpp.js global error:', err);
-      return await kaya.sendMessage(from, { text: `❌ An error occurred: ${err.message}` }, { quoted: mek });
+      console.error('❌ getpp.js error:', err);
+      return await kaya.sendMessage(from, { text: `❌ An error occurred.` }, { quoted: mek });
     }
   }
 };
