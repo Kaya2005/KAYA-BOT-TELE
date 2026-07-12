@@ -16,10 +16,19 @@ function getLocalCommit() {
 
 function getRemoteCommit() {
   try {
-    // Vérifie le commit sur la branche main
-    return execSync(`git -C ${REPO_DIR} ls-remote origin main`)
+    return execSync(`git -C ${REPO_DIR} rev-parse origin/main`)
       .toString()
-      .split("\t")[0];
+      .trim();
+  } catch {
+    return null;
+  }
+}
+
+function getCurrentCommit() {
+  try {
+    return execSync(`git -C ${REPO_DIR} rev-parse HEAD`)
+      .toString()
+      .trim();
   } catch {
     return null;
   }
@@ -54,9 +63,9 @@ export default {
   category: "System",
   ownerOnly: true,
 
-  async execute(kaya, mek, from, args) {
+  async execute(kaya, mek, from) {
     try {
-      let msg = await kaya.sendMessage(
+      const msg = await kaya.sendMessage(
         from,
         { text: `🔄 Checking for updates...\n${bar(10)}` },
         { quoted: mek }
@@ -66,48 +75,60 @@ export default {
         await kaya.sendMessage(from, { text, edit: msg.key });
       };
 
-      /* ================= FETCH ================= */
       await sleep(400);
       await edit(`🔍 Verifying repository...\n${bar(25)}`);
 
       execSync(`git -C ${REPO_DIR} fetch origin`, { stdio: "ignore" });
 
+      const local = getCurrentCommit();
       const remote = getRemoteCommit();
-      if (!remote) return edit("❌ Failed to verify remote repository.");
 
-      /* ================= PULL ================= */
+      if (!remote) {
+        return edit("❌ Failed to verify remote repository.");
+      }
+
+      if (local === remote) {
+        return edit(
+          `📦 ALREADY UP TO DATE\n${bar(100)}\n\n✔ No changes detected.\n⚡ The bot is running the latest version.`
+        );
+      }
+
       await sleep(400);
       await edit(`⬇️ Downloading updates...\n${bar(50)}`);
 
-      // Stash, pull main, puis pop
       execSync(`git -C ${REPO_DIR} stash`, { stdio: "ignore" });
       execSync(`git -C ${REPO_DIR} pull origin main`, { stdio: "ignore" });
-      execSync(`git -C ${REPO_DIR} stash pop`, { stdio: "ignore" }).catch(() => {});
 
-      /* ================= ANALYSIS ================= */
+      try {
+        execSync(`git -C ${REPO_DIR} stash pop`, { stdio: "ignore" });
+      } catch {}
+
       await sleep(400);
       await edit(`⚙️ Analyzing changes...\n${bar(80)}`);
 
       const changed = getChangedFiles();
       const localAfter = getLocalCommit();
 
-      if (!changed.length) {
-        return edit(`📦 ALREADY UP TO DATE\n${bar(100)}\n\n✔ No changes detected.\n⚡ The bot is running the latest version.`);
-      }
-
-      /* ================= UPDATE DONE ================= */
       await sleep(400);
       await edit(
-        `🚀 UPDATE COMPLETED\n${bar(100)}\n\n📌 Current commit:\n${localAfter || "N/A"}\n\n📂 Modified files (${changed.length}):\n${changed.slice(0, 6).map(f => `• ${f}`).join("\n")}\n\n♻️ Restarting now...`
+        `🚀 UPDATE COMPLETED\n${bar(100)}\n\n📌 Current commit:\n${localAfter || "N/A"}\n\n📂 Modified files (${changed.length}):\n${
+          changed.length
+            ? changed.slice(0, 6).map(f => `• ${f}`).join("\n")
+            : "• Various files"
+        }\n\n♻️ Restarting now...`
       );
 
       setTimeout(() => {
-        process.exit(0); // Le loader redémarrera le bot automatiquement
+        process.exit(0);
       }, 1500);
 
     } catch (e) {
       console.error("UPDATE ERROR:", e);
-      await kaya.sendMessage(from, { text: "❌ Update failed." }, { quoted: mek });
+      await kaya.sendMessage(
+        from,
+        { text: `❌ Update failed.\n\n${e.message}` },
+        { quoted: mek }
+      );
     }
   },
 };
