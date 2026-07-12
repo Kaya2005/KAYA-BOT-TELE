@@ -1,3 +1,5 @@
+import { downloadContentFromMessage } from '@whiskeysockets/baileys';
+
 export default {
     name: 'sticker',
     alias: ['s', 'stiker', 'stick'],
@@ -6,22 +8,47 @@ export default {
 
     async execute(kaya, mek, from, args, prefix) {
         try {
-            const quoted = mek.msg?.contextInfo?.quotedMessage ? mek.msg : mek;
-            const mime = (quoted.msg || quoted).mimetype || '';
-            
-            if (!/image|video|webp/.test(mime)) {
-                return kaya.sendMessage(from, { text: `❌ Veuillez répondre à une image ou une vidéo pour créer un sticker.` });
+            // Détection du média (image ou vidéo) - soit dans le message, soit dans la citation
+            const quoted = mek.message?.extendedTextMessage?.contextInfo?.quotedMessage;
+            const mediaMsg = mek.message?.imageMessage || mek.message?.videoMessage || 
+                             quoted?.imageMessage || quoted?.videoMessage;
+
+            if (!mediaMsg) {
+                return kaya.sendMessage(
+                    from,
+                    { text: `⚠️ *Usage:* Réponds à une image ou une vidéo avec ${prefix}sticker` },
+                    { quoted: mek }
+                );
             }
 
-            const buffer = await kaya.downloadMediaMessage(quoted);
+            // Indiquer que le bot travaille
+            await kaya.sendPresenceUpdate('composing', from);
 
-            await kaya.sendMessage(from, {
-                sticker: buffer
-            }, { quoted: mek });
+            // Téléchargement du contenu
+            const type = mediaMsg.mimetype?.includes('video') ? 'video' : 'image';
+            const stream = await downloadContentFromMessage(mediaMsg, type);
+            const chunks = [];
 
-        } catch (e) {
-            console.error("STICKER ERROR :", e);
-            kaya.sendMessage(from, { text: "❌ Échec lors de la création du sticker." });
+            for await (const chunk of stream) {
+                chunks.push(chunk);
+            }
+
+            const buffer = Buffer.concat(chunks);
+
+            // Envoi du sticker
+            await kaya.sendMessage(
+                from,
+                { sticker: buffer },
+                { quoted: mek }
+            );
+
+        } catch (error) {
+            console.error('❌ Sticker command error:', error);
+            await kaya.sendMessage(
+                from,
+                { text: '❌ Erreur lors de la création du sticker.' },
+                { quoted: mek }
+            );
         }
     }
 };
