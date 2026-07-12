@@ -1,4 +1,3 @@
-import { getContextInfo } from '../setting/contextInfo.js';
 import checkAdminOrOwner from '../setting/checkAdminOrOwner.js';
 import { getSetting, setSetting } from '../setting.js';
 
@@ -73,7 +72,15 @@ ______________________`.trim();
                     image: { url: ppUrl },
                     caption: msg,
                     mentions: [userId],
-                    contextInfo: getContextInfo()
+                    contextInfo: {
+                        forwardingScore: 999,
+                        isForwarded: true,
+                        forwardedNewsletterMessageInfo: {
+                            newsletterJid: '120363410993553528@newsletter',
+                            newsletterName: '𝐊𝐀𝐘𝐀 𝐁𝐎𝐓',
+                            serverMessageId: 150
+                        }
+                    }
                 });
             }
         } catch (e) { console.log("ERREUR WELCOME :", e); }
