@@ -34,10 +34,11 @@ if (fs.existsSync(botImageFile)) {
 // ===================== HELPERS =====================
 
 /**
- * Retourne le nom configuré pour ce chat spécifique (jid/from)
+ * Retourne le nom configuré pour l'utilisateur (jid)
  */
-export function getBotName(from) {
-  return getSetting(from, 'botName', DEFAULT_BOT_NAME);
+export function getBotName(jid) {
+  const senderId = jid.split('@')[0];
+  return getSetting(senderId, 'botName', DEFAULT_BOT_NAME);
 }
 
 // Définit l'image globale par défaut
@@ -47,15 +48,17 @@ export function setBotImage(value) {
 }
 
 // Définit l'image pour un utilisateur spécifique
-export function setBotImageForUser(jid, url) {
-  setSetting(jid, 'userBotImage', url);
+export function setBotImageForUser(senderId, url) {
+  setSetting(senderId, 'userBotImage', url);
 }
 
 // ===================== PAYLOAD =====================
 
 export function getBotImagePayload(senderJid) {
+  const senderId = senderJid.split('@')[0];
+  
   // 1. Priorité à l'image personnalisée de l'utilisateur
-  const userImage = getSetting(senderJid, 'userBotImage', null);
+  const userImage = getSetting(senderId, 'userBotImage', null);
   const targetImage = userImage || globalBotImagePath;
 
   if (targetImage && targetImage.startsWith('http')) {
