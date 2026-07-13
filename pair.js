@@ -46,6 +46,7 @@ export function watchPairingRequests() {
     }, 5000);
 }
 
+// Fonction optimisée pour restaurer 100 sessions en ~30 secondes
 export async function restoreSessions() {
     if (!fs.existsSync(PAIRING_DIR)) return;
     
@@ -54,19 +55,19 @@ export async function restoreSessions() {
         return fs.lstatSync(path.join(PAIRING_DIR, item)).isDirectory();
     });
 
-    console.log(`🚀 Démarrage de la restauration de ${sessionFolders.length} sessions...`);
+    console.log(`🚀 Démarrage rapide de ${sessionFolders.length} sessions...`);
 
     for (const folder of sessionFolders) {
-        try {
-            console.log(`⏳ Initialisation de la session : ${folder}`);
-            startpairing(folder).catch((err) => {
-                console.error(`❌ Erreur session ${folder}:`, err);
-            });
-            await new Promise(resolve => setTimeout(resolve, 10000));
-        } catch (err) {
-            console.error(`❌ Erreur critique sur le dossier ${folder}:`, err);
-        }
+        // Lancer sans 'await' pour ne pas bloquer la boucle de lancement
+        startpairing(folder).catch((err) => {
+            console.error(`❌ Erreur session ${folder}:`, err);
+        });
+        
+        // Délai de 300ms pour éviter de saturer le CPU au démarrage
+        await new Promise(resolve => setTimeout(resolve, 300)); 
     }
+    
+    console.log(`✅ Toutes les sessions ont été initialisées.`);
 }
 
 const rentbotTracker = new Map();
