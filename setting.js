@@ -2,18 +2,26 @@
 import fs from "fs";
 import path from "path";
 
-// 🚀 CACHE EN MÉMOIRE
+// 🚀 CACHE EN MÉMOIRE (La clé est "ownerId:groupId" ou juste "ownerId")
 const cache = new Map();
 
 /**
- * Génère le chemin du fichier de configuration en utilisant un chemin absolu sécurisé.
+ * Génère le chemin du fichier de configuration.
+ * Supporte la hiérarchie : userall/{ownerId}/{groupId}/settings.json
  */
-function getSettingsPath(jid, createIfMissing = false) {
-    // Nettoyage de l'ID pour éviter les caractères invalides
-    const id = jid.split('@')[0];
+function getSettingsPath(ownerId, groupId = null, createIfMissing = false) {
+    // Nettoyage : les IDs sont nettoyés des caractères non numériques
+    const cleanOwnerId = ownerId.replace(/[^0-9]/g, '');
     
-    // Utilisation du chemin absolu pour garantir la stabilité sur le serveur
-    const baseDir = path.join('/home/container/Kaya-MD', "userall", "user", id);
+    let baseDir;
+    if (groupId) {
+        // Chemin imbriqué pour les réglages de groupe : userall/{ownerId}/{groupId}/
+        const cleanGroupId = groupId.replace(/[^0-9]/g, '');
+        baseDir = path.join('/home/container/Kaya-MD', "userall", cleanOwnerId, cleanGroupId);
+    } else {
+        // Chemin racine pour les réglages personnels : userall/{ownerId}/
+        baseDir = path.join('/home/container/Kaya-MD', "userall", cleanOwnerId);
+    }
     
     if (createIfMissing && !fs.existsSync(baseDir)) {
         fs.mkdirSync(baseDir, { recursive: true });
@@ -25,47 +33,50 @@ function getSettingsPath(jid, createIfMissing = false) {
 /**
  * Récupère un réglage
  */
-export function getSetting(jid, key, defaultValue = false) {
-    // Si pas en cache, on charge depuis le disque
-    if (!cache.has(jid)) {
+export function getSetting(ownerId, key, defaultValue = false, groupId = null) {
+    const cacheKey = groupId ? `${ownerId}:${groupId}` : ownerId;
+    
+    if (!cache.has(cacheKey)) {
         try {
-            const filePath = getSettingsPath(jid, false);
+            const filePath = getSettingsPath(ownerId, groupId, false);
             if (fs.existsSync(filePath)) {
                 const data = JSON.parse(fs.readFileSync(filePath, "utf8") || "{}");
-                cache.set(jid, data);
+                cache.set(cacheKey, data);
             } else {
-                cache.set(jid, {});
+                cache.set(cacheKey, {});
             }
         } catch (e) {
-            console.error(`[SETTING] Erreur lecture ${jid}:`, e);
+            console.error(`[SETTING] Erreur lecture ${cacheKey}:`, e);
             return defaultValue;
         }
     }
 
-    const settings = cache.get(jid);
+    const settings = cache.get(cacheKey);
     return settings && settings.hasOwnProperty(key) ? settings[key] : defaultValue;
 }
 
 /**
  * Enregistre un réglage
  */
-export function setSetting(jid, key, value) {
+export function setSetting(ownerId, key, value, groupId = null) {
     try {
+        const cacheKey = groupId ? `${ownerId}:${groupId}` : ownerId;
+        
         // S'assurer que le cache est initialisé
-        if (!cache.has(jid)) {
-            getSetting(jid, key);
+        if (!cache.has(cacheKey)) {
+            getSetting(ownerId, key, false, groupId);
         }
 
-        const settings = cache.get(jid);
+        const settings = cache.get(cacheKey);
         settings[key] = value;
         
         // Mise à jour du cache
-        cache.set(jid, settings);
+        cache.set(cacheKey, settings);
         
         // Écriture sur le disque
-        const filePath = getSettingsPath(jid, true); 
+        const filePath = getSettingsPath(ownerId, groupId, true); 
         fs.writeFileSync(filePath, JSON.stringify(settings, null, 2));
     } catch (e) {
-        console.error(`[SETTING] Erreur sauvegarde ${jid}:`, e);
+        console.error(`[SETTING] Erreur sauvegarde ${ownerId}:`, e);
     }
 }

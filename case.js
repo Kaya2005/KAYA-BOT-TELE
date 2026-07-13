@@ -1,4 +1,3 @@
-// case.js
 import { getContentType } from "@whiskeysockets/baileys";
 import fs from "fs";
 import path from "path";
@@ -9,7 +8,6 @@ import checkAdminOrOwner from "./setting/checkAdminOrOwner.js";
 import { getSetting } from "./setting.js";
 
 const __dirname = path.resolve();
-// Exportation de la Map pour accès depuis le fichier principal
 export const commands = new Map();
 const commandsPath = path.join(__dirname, "commands");
 
@@ -40,26 +38,28 @@ export default async function caseHandler(kaya, mek, chatUpdate, store) {
         const sender = mek.sender;
         const from = mek.key.remoteJid;
         const isGroup = from.endsWith("@g.us");
-        const botJid = kaya.user.id;
-
-        // 🔹 1. Simulation de présence PRIORITAIRE (Corrigé : utilisation de botJid)
-        if (getSetting(botJid, 'typing', false)) await kaya.sendPresenceUpdate('composing', from).catch(() => {});
-        if (getSetting(botJid, 'recording', false)) await kaya.sendPresenceUpdate('recording', from).catch(() => {});
         
-        // 🔹 2. Auto-Réaction PRIORITAIRE (Corrigé : utilisation de botJid pour le check)
+        // IDs nettoyés pour la hiérarchie userall/
+        const ownerId = kaya.user.id.split(':')[0];
+        const groupId = from.split('@')[0];
+
+        // 🔹 1. Simulation de présence PRIORITAIRE
+        if (getSetting(ownerId, 'typing', false)) await kaya.sendPresenceUpdate('composing', from).catch(() => {});
+        if (getSetting(ownerId, 'recording', false)) await kaya.sendPresenceUpdate('recording', from).catch(() => {});
+        
+        // 🔹 2. Auto-Réaction PRIORITAIRE
         const autoReact = commands.get("autoreact");
-        if (autoReact && getSetting(botJid, 'autoreact', false) && autoReact.listen) {
+        if (autoReact && getSetting(ownerId, 'autoreact', false) && autoReact.listen) {
             await autoReact.listen(kaya, mek, from).catch(() => {});
         }
 
-        // 🚫 Vérification du bannissement
-        if (getSetting(sender, 'isBanned', false)) return;
+        // 🚫 Vérification du bannissement (Stocké à la racine du propriétaire)
+        if (getSetting(ownerId, `banned_${sender}`, false)) return;
 
         // 🔒 Gestion des messages privés du bot
         if (!isGroup && !mek.key.fromMe) {
-
-            const privateMode = getSetting(botJid, 'privateMode', false);
-            const blockInbox = getSetting(botJid, 'blockInbox', false);
+            const privateMode = getSetting(ownerId, 'privateMode', false);
+            const blockInbox = getSetting(ownerId, 'blockInbox', false);
 
             if (privateMode || blockInbox) {
                 const status = await checkAdminOrOwner(kaya, from, sender);
@@ -75,14 +75,14 @@ export default async function caseHandler(kaya, mek, chatUpdate, store) {
                     type === "imageMessage" ? mek.message.imageMessage.caption : 
                     type === "videoMessage" ? mek.message.videoMessage.caption : "");
 
-        // 🔹 Exécution des autres utilitaires
-        await executeUtilities(kaya, mek, from, body);
+        // 🔹 Exécution des utilitaires (avec groupId pour la hiérarchie)
+        await executeUtilities(kaya, mek, from, body, ownerId, groupId);
 
         if (!body) return;
 
         // 🔹 Détection préfixe
-        const userPrefix = getSetting(botJid, 'prefix', '.');
-        const isAllPrefixEnabled = Boolean(getSetting(botJid, 'allPrefix', true));
+        const userPrefix = getSetting(ownerId, 'prefix', '.');
+        const isAllPrefixEnabled = Boolean(getSetting(ownerId, 'allPrefix', true));
         
         let prefix = null;
         if (body.trim().startsWith(userPrefix)) {
@@ -117,7 +117,7 @@ export default async function caseHandler(kaya, mek, chatUpdate, store) {
             const metadata = await kaya.groupMetadata(from).catch(() => null);
             if (!metadata) return kaya.sendMessage(from, { text: "❌ Erreur: Impossible de lire les infos du groupe." });
             
-            const botNumber = decodeJid(botJid).split('@')[0];
+            const botNumber = decodeJid(kaya.user.id).split('@')[0];
             const botData = metadata.participants.find(p => {
                 const pNum = (p.phoneNumber || decodeJid(p.id)).split('@')[0];
                 return pNum === botNumber;
@@ -137,7 +137,7 @@ export default async function caseHandler(kaya, mek, chatUpdate, store) {
     } catch (err) { console.error(chalk.red("[ERROR case.js]:"), err); }
 }
 
-async function executeUtilities(kaya, mek, from, body) {
+async function executeUtilities(kaya, mek, from, body, ownerId, groupId) {
     const utils = [
         { name: "antibot", setting: "antibot", scope: "group" },
         { name: "antilink", setting: "antilink", scope: "group" },
@@ -146,8 +146,10 @@ async function executeUtilities(kaya, mek, from, body) {
     ];
 
     for (const utilConf of utils) {
-        const targetId = utilConf.scope === "user" ? mek.sender : from;
-        if (getSetting(targetId, utilConf.setting, false)) {
+        // Pour les réglages de groupe, on passe l'ownerId et le groupId
+        const isEnabled = getSetting(ownerId, utilConf.setting, false, groupId);
+        
+        if (isEnabled) {
             const util = commands.get(utilConf.name);
             if (util && util.detect) {
                 try {
