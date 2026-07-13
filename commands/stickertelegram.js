@@ -44,7 +44,7 @@ export default {
 
             const packName = url.split('/').pop();
 
-            const botToken = '8904281656:AAE1OIFjb495IWH_oh06K6Vce09GHE0aeKY';
+            const botToken = '8892577598:AAGUQ9uZS2UnBT4nTS20Oawq4N_vjWHAyMo';
 
             const res = await fetch(
                 `https://api.telegram.org/bot${botToken}/getStickerSet?name=${packName}`
