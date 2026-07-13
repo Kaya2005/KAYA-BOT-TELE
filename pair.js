@@ -1,3 +1,4 @@
+//pair.js
 import {
     default as makeWASocket,
     jidDecode,

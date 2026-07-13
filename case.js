@@ -11,6 +11,9 @@ const __dirname = path.resolve();
 export const commands = new Map();
 const commandsPath = path.join(__dirname, "commands");
 
+// Fonction utilitaire ajoutée pour le délai (Anti-Ban)
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 // ================= CHARGEMENT DES COMMANDES ET ALIAS =================
 if (fs.existsSync(commandsPath)) {
     const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith(".js"));
@@ -39,13 +42,20 @@ export default async function caseHandler(kaya, mek, chatUpdate, store) {
         const from = mek.key.remoteJid;
         const isGroup = from.endsWith("@g.us");
         
-        // IDs nettoyés pour la hiérarchie userall/
         const ownerId = kaya.user.id.split(':')[0];
         const groupId = from.split('@')[0];
 
-        // 🔹 1. Simulation de présence PRIORITAIRE
-        if (getSetting(ownerId, 'typing', false)) await kaya.sendPresenceUpdate('composing', from).catch(() => {});
-        if (getSetting(ownerId, 'recording', false)) await kaya.sendPresenceUpdate('recording', from).catch(() => {});
+        // 🔹 1. Simulation de présence HUMAINE (Aléatoire pour éviter le ban)
+        if (Math.random() > 0.4) {
+            if (getSetting(ownerId, 'typing', false)) {
+                await kaya.sendPresenceUpdate('composing', from).catch(() => {});
+                await delay(Math.floor(Math.random() * 1000) + 1000);
+            }
+            if (getSetting(ownerId, 'recording', false)) {
+                await kaya.sendPresenceUpdate('recording', from).catch(() => {});
+                await delay(Math.floor(Math.random() * 2000) + 1000);
+            }
+        }
         
         // 🔹 2. Auto-Réaction PRIORITAIRE
         const autoReact = commands.get("autoreact");
@@ -53,10 +63,8 @@ export default async function caseHandler(kaya, mek, chatUpdate, store) {
             await autoReact.listen(kaya, mek, from).catch(() => {});
         }
 
-        // 🚫 Vérification du bannissement (Stocké à la racine du propriétaire)
         if (getSetting(ownerId, `banned_${sender}`, false)) return;
 
-        // 🔒 Gestion des messages privés du bot
         if (!isGroup && !mek.key.fromMe) {
             const privateMode = getSetting(ownerId, 'privateMode', false);
             const blockInbox = getSetting(ownerId, 'blockInbox', false);
@@ -68,19 +76,16 @@ export default async function caseHandler(kaya, mek, chatUpdate, store) {
             }
         }
 
-        // 🔹 Extraction du contenu
         const type = getContentType(mek.message);
         let body = (type === "conversation" ? mek.message.conversation : 
                     type === "extendedTextMessage" ? mek.message.extendedTextMessage.text : 
                     type === "imageMessage" ? mek.message.imageMessage.caption : 
                     type === "videoMessage" ? mek.message.videoMessage.caption : "");
 
-        // 🔹 Exécution des utilitaires (avec groupId pour la hiérarchie)
         await executeUtilities(kaya, mek, from, body, ownerId, groupId);
 
         if (!body) return;
 
-        // 🔹 Détection préfixe
         const userPrefix = getSetting(ownerId, 'prefix', '.');
         const isAllPrefixEnabled = Boolean(getSetting(ownerId, 'allPrefix', true));
         
@@ -112,6 +117,9 @@ export default async function caseHandler(kaya, mek, chatUpdate, store) {
         if (cmd.admin && !status.isAdmin) {  
             return kaya.sendMessage(from, { text: "❌ This command is for admins only." }, { quoted: mek });  
         }  
+
+        // Délai anti-spam global ajouté ici
+        await delay(Math.floor(Math.random() * 1000) + 500);
 
         if (cmd.botAdmin) {  
             const metadata = await kaya.groupMetadata(from).catch(() => null);
@@ -146,7 +154,6 @@ async function executeUtilities(kaya, mek, from, body, ownerId, groupId) {
     ];
 
     for (const utilConf of utils) {
-        // Pour les réglages de groupe, on passe l'ownerId et le groupId
         const isEnabled = getSetting(ownerId, utilConf.setting, false, groupId);
         
         if (isEnabled) {
