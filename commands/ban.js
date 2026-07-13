@@ -8,6 +8,8 @@ export default {
 
     async execute(kaya, mek, from, args, prefix) {
         try {
+            // ID du propriétaire de l'instance pour stocker la config au bon endroit
+            const ownerId = kaya.user.id.split(':')[0];
             let target;
 
             // Récupération de la cible
@@ -23,14 +25,16 @@ export default {
                 return await kaya.sendMessage(from, { text: `⚠️ Please mention, reply or provide a number.\nUsage: ${prefix}ban @mention` }, { quoted: mek });
             }
 
-            // Utilisation du système de setting pour bannir l'utilisateur spécifiquement
-            const isBanned = getSetting(target, 'isBanned', false);
+            // Vérification du bannissement via le système de setting (stocké dans le dossier du propriétaire)
+            // On utilise une clé spécifique 'banned_user' pour éviter les conflits
+            const isBanned = getSetting(ownerId, `banned_${target}`, false);
             
             if (isBanned) {
                 return await kaya.sendMessage(from, { text: '⚠️ User is already banned.' }, { quoted: mek });
             }
 
-            setSetting(target, 'isBanned', true);
+            // Enregistrement du bannissement
+            setSetting(ownerId, `banned_${target}`, true);
 
             await kaya.sendMessage(from, { text: `✅ User ${target.split('@')[0]} has been banned.` }, { quoted: mek });
         } catch (err) {

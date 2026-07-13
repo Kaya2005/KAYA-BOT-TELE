@@ -12,27 +12,29 @@ export default {
   async execute(kaya, mek, from, args, prefix) {
     try {
       const action = args[0]?.toLowerCase();
+      const groupId = from.split('@')[0];
+      const ownerId = kaya.user.id.split(':')[0];
       
       if (!["on", "off", "delete", "kick", "status"].includes(action)) {
         return await kaya.sendMessage(from, { text: `🚫 *ANTITAG CONFIG*\n\n• \`${prefix}antitag on\` (delete)\n• \`${prefix}antitag kick\`\n• \`${prefix}antitag off\`\n• \`${prefix}antitag status\`` });
       }
 
       if (action === "status") {
-        const isEnabled = getSetting(from, "antitag", false);
-        const mode = getSetting(from, "antitagMode", "delete");
+        const isEnabled = getSetting(ownerId, "antitag", false, groupId);
+        const mode = getSetting(ownerId, "antitagMode", "delete", groupId);
         return await kaya.sendMessage(from, { text: `📊 *ANTITAG STATUS*: ${isEnabled ? mode.toUpperCase() : "OFF"}` });
       }
 
       if (action === "off") {
-        setSetting(from, "antitag", false); // Désactive pour case.js
-        setSetting(from, "antitagMode", "off");
+        setSetting(ownerId, "antitag", false, groupId);
+        setSetting(ownerId, "antitagMode", "off", groupId);
         return await kaya.sendMessage(from, { text: "❌ Anti-tag disabled." });
       }
 
       // Mode: delete ou kick
       const mode = action === "on" ? "delete" : action;
-      setSetting(from, "antitag", true); // Active pour case.js
-      setSetting(from, "antitagMode", mode);
+      setSetting(ownerId, "antitag", true, groupId);
+      setSetting(ownerId, "antitagMode", mode, groupId);
       return await kaya.sendMessage(from, { text: `✅ Anti-tag set to: ${mode.toUpperCase()}` });
 
     } catch (err) {
@@ -42,9 +44,13 @@ export default {
 
   async detect(kaya, mek, from, body) {
     try {
-      // Le mode est géré par la logique du mode défini
-      const mode = getSetting(from, "antitagMode", "delete");
-      if (mek.key.fromMe) return;
+      const groupId = from.split('@')[0];
+      const ownerId = kaya.user.id.split(':')[0];
+
+      const isEnabled = getSetting(ownerId, "antitag", false, groupId);
+      if (!isEnabled || mek.key.fromMe) return;
+
+      const mode = getSetting(ownerId, "antitagMode", "delete", groupId);
 
       // Vérifier les mentions ou @all
       const isTagAll = /@all/i.test(body) || (mek.message?.extendedTextMessage?.contextInfo?.mentionedJid?.length > 0);

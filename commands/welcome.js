@@ -1,3 +1,4 @@
+//welcome.js
 import fs from 'fs';
 import path from 'path';
 import { getContextInfo } from '../setting/contextInfo.js';
@@ -38,30 +39,30 @@ export default {
             
             const action = args[0]?.toLowerCase();
             const groupId = from.split('@')[0];
-            const ownerId = getTeleIdFromJid(mek.sender) || "global"; 
+            const ownerId = getTeleIdFromJid(mek.sender) || kaya.user.id.split(':')[0]; 
 
             if (!action) return kaya.sendMessage(from, { text: `⚙️ *WELCOME SETTINGS*\n\n${prefix}welcome on (Current group)\n${prefix}welcome off (Current group)\n${prefix}welcome all (Global)\n${prefix}welcome alloff (Disable global)\n${prefix}welcome status`, contextInfo: getContextInfo() });
 
             if (action === "on") { 
-                setSetting(groupId, 'welcomeEnabled', true); 
+                setSetting(ownerId, 'welcomeEnabled', true, groupId); 
                 return kaya.sendMessage(from, { text: "✅ Welcome enabled for this group.", contextInfo: getContextInfo() }); 
             }
             if (action === "off") { 
-                setSetting(groupId, 'welcomeEnabled', false); 
+                setSetting(ownerId, 'welcomeEnabled', false, groupId); 
                 return kaya.sendMessage(from, { text: "❌ Welcome disabled for this group.", contextInfo: getContextInfo() }); 
             }
             if (action === "all") {
-                setSetting("global", 'welcomeAll', true);
+                setSetting(ownerId, 'welcomeAll', true);
                 return kaya.sendMessage(from, { text: `✅ Welcome enabled globally for all your groups.`, contextInfo: getContextInfo() });
             }
             if (action === "alloff") {
-                setSetting("global", 'welcomeAll', false);
+                setSetting(ownerId, 'welcomeAll', false);
                 return kaya.sendMessage(from, { text: `❌ Welcome disabled globally for all your groups.`, contextInfo: getContextInfo() });
             }
             if (action === "status") {
-                const isEnabled = getSetting(groupId, 'welcomeEnabled', false);
-                const isAll = getSetting("global", 'welcomeAll', false);
-                return kaya.sendMessage(from, { text: `📊 *WELCOME STATUS*\n\nLocal: ${isEnabled ? "ON" : "OFF"}\nGlobal (All): ${isAll ? "ON" : "OFF"}`, contextInfo: getContextInfo() });
+                const isEnabled = getSetting(ownerId, 'welcomeEnabled', false, groupId);
+                const isAll = getSetting(ownerId, 'welcomeAll', false);
+                return kaya.sendMessage(from, { text: `📊 *WELCOME STATUS*\n\nLocal: ${isEnabled ? "ON" : "OFF"}\nGlobal: ${isAll ? "ON" : "OFF"}`, contextInfo: getContextInfo() });
             }
         } catch (e) { console.error(e); }
     },
@@ -71,9 +72,10 @@ export default {
             if (update.action !== "add") return;
             const from = update.id;
             const groupId = from.split('@')[0];
+            const ownerId = kaya.user.id.split(':')[0];
             
-            // On vérifie toujours sur la clé "global" pour le réglage all
-            const isEnabled = getSetting(groupId, 'welcomeEnabled', false) || getSetting("global", 'welcomeAll', false);
+            // Vérification avec l'ownerId actuel
+            const isEnabled = getSetting(ownerId, 'welcomeEnabled', false, groupId) || getSetting(ownerId, 'welcomeAll', false);
             if (!isEnabled) return;
 
             const metadata = await kaya.groupMetadata(from).catch(() => ({}));
@@ -81,12 +83,11 @@ export default {
             const memberCount = metadata.participants ? metadata.participants.length : 0;
             const creationDate = metadata.creation ? new Date(metadata.creation * 1000).toLocaleDateString() : "Unknown";
 
-            // Get group profile picture
             let ppUrl;
             try {
                 ppUrl = await kaya.profilePictureUrl(from, 'image');
             } catch {
-                ppUrl = 'https://telegra.ph/file/24fa902ead26340f3df2c.png'; // Default image
+                ppUrl = 'https://telegra.ph/file/24fa902ead26340f3df2c.png';
             }
 
             for (let user of update.participants) {

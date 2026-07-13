@@ -8,9 +8,11 @@ export default {
 
     async execute(kaya, mek, from, args, prefix) {
         try {
+            // ID du propriétaire pour accéder au bon fichier settings.json
+            const ownerId = kaya.user.id.split(':')[0];
             let target;
 
-            // 1️⃣ Récupération de la cible (identique à ban.js)
+            // 1️⃣ Récupération de la cible
             if (mek.message?.extendedTextMessage?.contextInfo?.mentionedJid?.length > 0) {
                 target = mek.message.extendedTextMessage.contextInfo.mentionedJid[0];
             } else if (mek.message?.extendedTextMessage?.contextInfo?.participant) {
@@ -23,15 +25,15 @@ export default {
                 return await kaya.sendMessage(from, { text: `⚠️ Please mention, reply or provide a number to unban.\nUsage: ${prefix}unban @mention` }, { quoted: mek });
             }
 
-            // 2️⃣ Vérification si l'utilisateur est bien banni
-            const isBanned = getSetting(target, 'isBanned', false);
+            // 2️⃣ Vérification du bannissement via la clé spécifique 'banned_{target}'
+            const isBanned = getSetting(ownerId, `banned_${target}`, false);
             
             if (!isBanned) {
                 return await kaya.sendMessage(from, { text: '⚠️ User is not currently banned.' }, { quoted: mek });
             }
 
             // 3️⃣ Mise à jour du setting (débannissement)
-            setSetting(target, 'isBanned', false);
+            setSetting(ownerId, `banned_${target}`, false);
 
             await kaya.sendMessage(from, { text: `✅ User ${target.split('@')[0]} has been unbanned.` }, { quoted: mek });
         } catch (err) {

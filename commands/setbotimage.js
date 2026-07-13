@@ -10,7 +10,9 @@ export default {
 
     async execute(kaya, mek, from, args, prefix) {
         const url = args[0];
-        const senderJid = mek.sender;
+        // Nettoyage du JID pour ne garder que les chiffres (ex: 243...)
+        // Cela permet à vos fonctions de réglage de cibler le bon dossier userall/{senderId}/
+        const senderId = mek.sender.split('@')[0];
 
         // Validation de l'URL
         if (!url || !url.startsWith('http')) {
@@ -32,8 +34,8 @@ export default {
                 }, { quoted: mek });
             }
 
-            // Enregistrement spécifique à l'utilisateur
-            setBotImageForUser(senderJid, url);
+            // Enregistrement spécifique à l'ID de l'utilisateur
+            setBotImageForUser(senderId, url);
 
             await kaya.sendMessage(from, { 
                 text: '✅ Your custom bot image has been updated successfully!',

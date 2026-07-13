@@ -1,3 +1,4 @@
+// recording.js
 import { getBotName } from '../setting/botAssets.js';
 import { getSetting, setSetting } from '../setting.js';
 
@@ -9,8 +10,9 @@ export default {
 
   async execute(kaya, mek, from, args, prefix) {
     try {
-      const botJid = kaya.user.id;
-      const botName = getBotName(botJid);
+      // Nettoyage de l'ID pour la compatibilité avec la hiérarchie userall/
+      const ownerId = kaya.user.id.split(':')[0];
+      const botName = getBotName(kaya.user.id);
       const action = args[0]?.toLowerCase();
 
       if (!['on', 'off', 'status'].includes(action)) {
@@ -25,24 +27,21 @@ Usage:
       }
 
       if (action === 'on') {
-        setSetting(botJid, 'recording', true);
-
+        setSetting(ownerId, 'recording', true);
         return await kaya.sendMessage(from, {
           text: `✅ *Recording* mode enabled.`
         }, { quoted: mek });
       }
 
       if (action === 'off') {
-        setSetting(botJid, 'recording', false);
-
+        setSetting(ownerId, 'recording', false);
         return await kaya.sendMessage(from, {
           text: `❌ *Recording* mode disabled.`
         }, { quoted: mek });
       }
 
       if (action === 'status') {
-        const status = getSetting(botJid, 'recording', false);
-
+        const status = getSetting(ownerId, 'recording', false);
         return await kaya.sendMessage(from, {
           text: `📊 *Recording mode:* ${status ? '✅ ENABLED' : '❌ DISABLED'}`
         }, { quoted: mek });
@@ -50,7 +49,6 @@ Usage:
 
     } catch (err) {
       console.error('❌ recording.js error:', err);
-
       return await kaya.sendMessage(from, {
         text: '❌ An error occurred.'
       }, { quoted: mek });

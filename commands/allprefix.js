@@ -11,9 +11,11 @@ export default {
 
   async execute(kaya, mek, from, args, prefix) {
     try {
-      const botJid = kaya.user.id; // Clé unique pour ce bot
-      // On récupère l'état actuel en fonction du bot
-      const currentState = Boolean(getSetting(botJid, 'allPrefix', true));
+      // Nettoyage de l'ID du bot pour obtenir uniquement la partie numérique (ex: 243...)
+      const botId = kaya.user.id.split(':')[0];
+      
+      // On récupère l'état actuel en fonction de cet ID
+      const currentState = Boolean(getSetting(botId, 'allPrefix', true));
       const botName = getBotName(mek.sender);
 
       // ================= SHOW STATUS =================
@@ -35,8 +37,8 @@ export default {
         return await kaya.sendMessage(from, { text: '❌ Use `on` to enable or `off` to disable.' }, { quoted: mek });
       }
 
-      // Enregistrement sur le JID du bot pour que cela soit global à cette instance
-      setSetting(botJid, 'allPrefix', newState); 
+      // Enregistrement sur l'ID numérique du bot (à la racine de son dossier)
+      setSetting(botId, 'allPrefix', newState); 
 
       const caption = `▉ \`${botName}\` ▉\n▰▰▰▰▰▰▰▰▰▰▰▰▰\n*✅ MODE UPDATED*\n*➡️ New mode:* ${newState ? '✅ Enabled (Multi-prefix)' : '❌ Disabled (Strict prefix only)'}`;
 

@@ -14,8 +14,10 @@ export default {
   botAdmin: true,
 
   async execute(kaya, mek, from, args, prefix) {
-    const action = args[0]?.toLowerCase(); // on, off, status
-    const mode = args[1]?.toLowerCase(); // delete, warn, kick
+    const action = args[0]?.toLowerCase();
+    const mode = args[1]?.toLowerCase();
+    const groupId = from.split('@')[0];
+    const ownerId = kaya.user.id.split(':')[0]; // ID du propriétaire de l'instance
 
     if (!action || !["on", "off", "status"].includes(action)) {
       return await kaya.sendMessage(from, { 
@@ -24,20 +26,19 @@ export default {
     }
 
     if (action === "status") {
-      const config = getSetting(from, "antispam", { enabled: false, mode: "delete" });
+      const config = getSetting(ownerId, "antispam", { enabled: false, mode: "delete" }, groupId);
       return await kaya.sendMessage(from, { 
         text: `📊 *Anti-Spam Status*\nStatus: ${config.enabled ? "✅" : "❌"}\nMode: *${config.mode}*` 
       }, { quoted: mek });
     }
 
     if (action === "off") {
-      setSetting(from, "antispam", { enabled: false, mode: "delete" });
+      setSetting(ownerId, "antispam", { enabled: false, mode: "delete" }, groupId);
       return await kaya.sendMessage(from, { text: "✅ Anti-spam disabled." }, { quoted: mek });
     }
 
-    // Si "on", on vérifie le mode
     const selectedMode = ["delete", "warn", "kick"].includes(mode) ? mode : "delete";
-    setSetting(from, "antispam", { enabled: true, mode: selectedMode });
+    setSetting(ownerId, "antispam", { enabled: true, mode: selectedMode }, groupId);
     
     await kaya.sendMessage(from, { text: `✅ Anti-spam enabled!\nMode: *${selectedMode}*` }, { quoted: mek });
   },
@@ -45,7 +46,10 @@ export default {
   async detect(kaya, mek, from) {
     try {
       if (mek.key.fromMe) return;
-      const config = getSetting(from, "antispam", { enabled: false, mode: "delete" });
+      const groupId = from.split('@')[0];
+      const ownerId = kaya.user.id.split(':')[0];
+      
+      const config = getSetting(ownerId, "antispam", { enabled: false, mode: "delete" }, groupId);
       if (!config.enabled) return;
 
       const sender = mek.sender;
@@ -62,10 +66,8 @@ export default {
 
       if (global.spamTracker[from][sender].length >= MESSAGE_LIMIT) {
         
-        // Action toujours effectuée : Supprimer le message
         await kaya.sendMessage(from, { delete: mek.key }).catch(() => {});
 
-        // Actions conditionnelles
         if (config.mode === "warn") {
           await kaya.sendMessage(from, { 
             text: `⚠️ @${sender.split("@")[0]} Stop spamming!`, 
@@ -80,7 +82,6 @@ export default {
           }).catch(() => {});
         }
 
-        // Reset compteur
         global.spamTracker[from][sender] = [];
       }
     } catch (err) {

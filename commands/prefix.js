@@ -11,10 +11,9 @@ export default {
 
   async execute(kaya, mek, from, args, prefix) {
     try {
-      // On utilise l'ID du bot (kaya.user.id) pour que chaque instance 
-      // de bot ait sa propre configuration indépendante.
-      const botJid = kaya.user.id;
-      const currentPrefix = getSetting(botJid, 'prefix', '.');
+      // Nettoyage de l'ID pour ne garder que la partie numérique (ex: 243...)
+      const botId = kaya.user.id.split(':')[0];
+      const currentPrefix = getSetting(botId, 'prefix', '.');
       
       const now = new Date();
       const time = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
@@ -43,8 +42,8 @@ ______________________
         return await kaya.sendMessage(from, { text: '❌ *Error:* Prefix is too long (max 3 characters).' }, { quoted: mek });
       }
 
-      // Enregistre dans le fichier spécifique à ce bot (botJid.json)
-      setSetting(botJid, 'prefix', newPrefix);
+      // Enregistre dans le dossier spécifique à ce bot : userall/{botId}/settings.json
+      setSetting(botId, 'prefix', newPrefix);
 
       const caption = `
 ▉ \`${getBotName(mek.sender)}\` ▉

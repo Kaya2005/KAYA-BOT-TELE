@@ -8,7 +8,8 @@ export default {
 
     async execute(kaya, mek, from, args, prefix) {
         try {
-            const botJid = kaya.user.id;
+            // Nettoyage de l'ID du bot pour obtenir uniquement la partie numérique
+            const ownerId = kaya.user.id.split(':')[0];
             const action = args[0]?.toLowerCase();
 
             if (!['on', 'off', 'status'].includes(action)) {
@@ -18,21 +19,21 @@ export default {
             }
 
             if (action === 'on') {
-                setSetting(botJid, 'blockInbox', true);
+                setSetting(ownerId, 'blockInbox', true);
                 return kaya.sendMessage(from, {
                     text: '🚫 The bot is now blocking all private messages.'
                 }, { quoted: mek });
             }
 
             if (action === 'off') {
-                setSetting(botJid, 'blockInbox', false);
+                setSetting(ownerId, 'blockInbox', false);
                 return kaya.sendMessage(from, {
                     text: '✅ The bot is now accepting private messages.'
                 }, { quoted: mek });
             }
 
             if (action === 'status') {
-                const isBlocked = getSetting(botJid, 'blockInbox', false);
+                const isBlocked = getSetting(ownerId, 'blockInbox', false);
                 return kaya.sendMessage(from, {
                     text: `🔒 *Private Inbox:* ${isBlocked ? '🚫 BLOCKED' : '✅ ALLOWED'}`
                 }, { quoted: mek });
@@ -40,6 +41,7 @@ export default {
 
         } catch (err) {
             console.error('❌ blockinbox error:', err);
+            await kaya.sendMessage(from, { text: '❌ An error occurred.' }, { quoted: mek });
         }
     }
 };

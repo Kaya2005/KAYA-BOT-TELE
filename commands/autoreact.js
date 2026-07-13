@@ -11,7 +11,8 @@ export default {
 
     async execute(kaya, mek, from, args, prefix) {
         try {
-            const sender = mek.sender;
+            // On utilise l'ID du bot pour que le réglage soit global à l'instance
+            const ownerId = kaya.user.id.split(':')[0];
             const action = args[0]?.toLowerCase();
 
             if (!['on', 'off', 'mode', 'status'].includes(action)) {
@@ -19,12 +20,12 @@ export default {
             }
 
             if (action === 'on') {
-                setSetting(sender, 'autoreact', true);
+                setSetting(ownerId, 'autoreact', true);
                 return kaya.sendMessage(from, { text: '✅ *Auto-react enabled.*' }, { quoted: mek });
             }
 
             if (action === 'off') {
-                setSetting(sender, 'autoreact', false);
+                setSetting(ownerId, 'autoreact', false);
                 return kaya.sendMessage(from, { text: '❌ *Auto-react disabled.*' }, { quoted: mek });
             }
 
@@ -33,13 +34,13 @@ export default {
                 if (!['private', 'group', 'all'].includes(mode)) {
                     return kaya.sendMessage(from, { text: '❌ *Invalid mode!* Use: private, group, or all.' }, { quoted: mek });
                 }
-                setSetting(sender, 'autoreactMode', mode);
+                setSetting(ownerId, 'autoreactMode', mode);
                 return kaya.sendMessage(from, { text: `✅ *Mode set to: ${mode.toUpperCase()}*` }, { quoted: mek });
             }
 
             if (action === 'status') {
-                const isEnabled = getSetting(sender, 'autoreact', false);
-                const mode = getSetting(sender, 'autoreactMode', 'all');
+                const isEnabled = getSetting(ownerId, 'autoreact', false);
+                const mode = getSetting(ownerId, 'autoreactMode', 'all');
                 return kaya.sendMessage(from, { text: `🎭 *Status:* ${isEnabled ? '✅' : '❌'}\n📍 *Mode:* ${mode.toUpperCase()}` }, { quoted: mek });
             }
         } catch (err) {
@@ -51,11 +52,13 @@ export default {
         try {
             if (mek.key?.fromMe) return;
             
-            // On vérifie le réglage de l'expéditeur
-            const isEnabled = getSetting(mek.sender, 'autoreact', false);
+            const ownerId = kaya.user.id.split(':')[0];
+            
+            // On vérifie le réglage global du bot
+            const isEnabled = getSetting(ownerId, 'autoreact', false);
             if (!isEnabled) return;
 
-            const mode = getSetting(mek.sender, 'autoreactMode', 'all');
+            const mode = getSetting(ownerId, 'autoreactMode', 'all');
             const isGroup = from.endsWith('@g.us');
 
             // Filtrage selon le mode choisi

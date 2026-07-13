@@ -6,24 +6,6 @@ import { getSetting, setSetting } from '../setting.js';
 
 const goodbyeCache = new Set();
 
-// Utility function to find the owner's ID via their phone number
-function getTeleIdFromJid(jid) {
-    const pairingFolder = './richstore/pairing';
-    if (!fs.existsSync(pairingFolder)) return null;
-    const files = fs.readdirSync(pairingFolder);
-    for (const file of files) {
-        if (file.startsWith('pairing_')) {
-            try {
-                const data = JSON.parse(fs.readFileSync(path.join(pairingFolder, file), 'utf-8'));
-                if (data.number && data.number.includes(jid.split('@')[0])) {
-                    return file.replace('pairing_', '').replace('.json', '');
-                }
-            } catch (e) {}
-        }
-    }
-    return null;
-}
-
 export default {
     name: 'goodbye',
     alias: ['au-revoir', 'bye'],
@@ -34,47 +16,48 @@ export default {
     async execute(kaya, mek, from, args, prefix) {
         try {
             const status = await checkAdminOrOwner(kaya, from, mek.sender);
-            if (!status.isBotOwner) return kaya.sendMessage(from, { text: '❌ Owner Only', contextInfo: getContextInfo() });
+            if (!status.isBotOwner) return kaya.sendMessage(from, { text: '❌ Owner Only', contextInfo: getContextInfo() }, { quoted: mek });
             
             const action = args[0]?.toLowerCase();
+            const ownerId = kaya.user.id.split(':')[0];
             const groupId = from.split('@')[0];
-            const ownerId = getTeleIdFromJid(mek.sender) || "global";
 
-            if (!action) return kaya.sendMessage(from, { text: `⚙️ *GOODBYE SETTINGS*\n\n${prefix}bye on (Current group)\n${prefix}bye off (Current group)\n${prefix}bye all (Global)\n${prefix}bye alloff (Disable global)\n${prefix}bye status`, contextInfo: getContextInfo() });
+            if (!action) return kaya.sendMessage(from, { text: `⚙️ *GOODBYE SETTINGS*\n\n${prefix}bye on (Current group)\n${prefix}bye off (Current group)\n${prefix}bye all (Global)\n${prefix}bye alloff (Disable global)\n${prefix}bye status`, contextInfo: getContextInfo() }, { quoted: mek });
 
             if (action === "on") { 
-                setSetting(groupId, 'goodbyeEnabled', true); 
-                return kaya.sendMessage(from, { text: "✅ Goodbye enabled for this group.", contextInfo: getContextInfo() }); 
+                setSetting(ownerId, 'goodbyeEnabled', true, groupId); 
+                return kaya.sendMessage(from, { text: "✅ Goodbye enabled for this group.", contextInfo: getContextInfo() }, { quoted: mek }); 
             }
             if (action === "off") { 
-                setSetting(groupId, 'goodbyeEnabled', false); 
-                return kaya.sendMessage(from, { text: "❌ Goodbye disabled for this group.", contextInfo: getContextInfo() }); 
+                setSetting(ownerId, 'goodbyeEnabled', false, groupId); 
+                return kaya.sendMessage(from, { text: "❌ Goodbye disabled for this group.", contextInfo: getContextInfo() }, { quoted: mek }); 
             }
             if (action === "all") {
                 setSetting(ownerId, 'goodbyeAll', true);
-                return kaya.sendMessage(from, { text: `✅ Goodbye enabled globally for all your groups.`, contextInfo: getContextInfo() });
+                return kaya.sendMessage(from, { text: `✅ Goodbye enabled globally for all your groups.`, contextInfo: getContextInfo() }, { quoted: mek });
             }
             if (action === "alloff") {
                 setSetting(ownerId, 'goodbyeAll', false);
-                return kaya.sendMessage(from, { text: `❌ Goodbye disabled globally for all your groups.`, contextInfo: getContextInfo() });
+                return kaya.sendMessage(from, { text: `❌ Goodbye disabled globally for all your groups.`, contextInfo: getContextInfo() }, { quoted: mek });
             }
             if (action === "status") {
-                const isEnabled = getSetting(groupId, 'goodbyeEnabled', false);
+                const isEnabled = getSetting(ownerId, 'goodbyeEnabled', false, groupId);
                 const isAll = getSetting(ownerId, 'goodbyeAll', false);
-                return kaya.sendMessage(from, { text: `📊 *GOODBYE STATUS*\n\nLocal: ${isEnabled ? "ON" : "OFF"}\nGlobal (All): ${isAll ? "ON" : "OFF"}`, contextInfo: getContextInfo() });
+                return kaya.sendMessage(from, { text: `📊 *GOODBYE STATUS*\n\nLocal: ${isEnabled ? "ON" : "OFF"}\nGlobal (All): ${isAll ? "ON" : "OFF"}`, contextInfo: getContextInfo() }, { quoted: mek });
             }
-        } catch (e) { console.error(e); }
+        } catch (e) { console.error('❌ goodbye.js error:', e); }
     },
 
     async participantUpdate(kaya, update) {
         try {
             if (update.action !== "remove" && update.action !== "leave") return;
+            
             const from = update.id;
             const groupId = from.split('@')[0];
+            const ownerId = kaya.user.id.split(':')[0];
             
-            const ownerId = getTeleIdFromJid(from) || "global";
-            
-            const isEnabled = getSetting(groupId, 'goodbyeEnabled', false) || getSetting(ownerId, 'goodbyeAll', false);
+            // Vérification via structure hiérarchique : ownerId + groupId
+            const isEnabled = getSetting(ownerId, 'goodbyeEnabled', false, groupId) || getSetting(ownerId, 'goodbyeAll', false);
             if (!isEnabled) return;
 
             const metadata = await kaya.groupMetadata(from).catch(() => ({}));
@@ -82,12 +65,11 @@ export default {
             const memberCount = metadata.participants ? metadata.participants.length : 0;
             const creationDate = metadata.creation ? new Date(metadata.creation * 1000).toLocaleDateString() : "Unknown";
 
-            // Get profile picture of the GROUP
             let ppUrl;
             try {
                 ppUrl = await kaya.profilePictureUrl(from, 'image');
             } catch {
-                ppUrl = 'https://telegra.ph/file/24fa902ead26340f3df2c.png'; // Default image
+                ppUrl = 'https://telegra.ph/file/24fa902ead26340f3df2c.png';
             }
 
             for (let user of update.participants) {
@@ -111,6 +93,6 @@ ______________________`.trim();
                     contextInfo: getContextInfo() 
                 });
             }
-        } catch (e) { /* Log removed */ }
+        } catch (e) { /* silent */ }
     }
 };

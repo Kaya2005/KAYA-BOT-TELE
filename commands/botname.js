@@ -1,4 +1,4 @@
-import { setSetting } from '../setting.js';
+import { setSetting, getSetting } from '../setting.js';
 import { getBotName, sendWithBotImage } from '../setting/botAssets.js';
 import { getContextInfo } from '../setting/contextInfo.js';
 
@@ -11,11 +11,11 @@ export default {
     async execute(kaya, mek, from, args, prefix) {
         const newName = args.join(' ');
         
-        // On utilise mek.sender pour que le nom soit lié à l'utilisateur
-        const senderJid = mek.sender;
+        // Nettoyage du JID pour ne garder que les chiffres (ex: 243...)
+        const senderId = mek.sender.split('@')[0];
         
         // On récupère le nom actuel configuré pour cet utilisateur
-        const currentName = getBotName(senderJid);
+        const currentName = getBotName(mek.sender);
         
         if (!newName) {
             return await kaya.sendMessage(from, { 
@@ -24,8 +24,8 @@ export default {
         }
 
         try {
-            // Sauvegarde le nom spécifiquement pour le JID de l'utilisateur
-            setSetting(senderJid, 'botName', newName);
+            // Sauvegarde le nom spécifiquement pour l'ID de cet utilisateur
+            setSetting(senderId, 'botName', newName);
 
             const now = new Date();
             const time = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
@@ -42,8 +42,8 @@ ______________________
 Bot name successfully updated for your profile!
 `.trim();
 
-            // Envoi avec l'image dynamique (Mise à jour : ajout de senderJid comme 3ème argument)
-            await sendWithBotImage(kaya, from, senderJid, {
+            // Envoi avec l'image dynamique
+            await sendWithBotImage(kaya, from, mek.sender, {
                 caption: caption,
                 contextInfo: getContextInfo()
             });

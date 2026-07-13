@@ -9,7 +9,8 @@ export default {
 
   async execute(kaya, mek, from, args, prefix) {
     try {
-      const botJid = kaya.user.id; // Identifiant unique de cette instance
+      // Nettoyage de l'ID du bot pour obtenir uniquement la partie numérique
+      const botId = kaya.user.id.split(':')[0];
       const action = args[0]?.toLowerCase();
 
       if (!action || !['on', 'off'].includes(action)) {
@@ -19,8 +20,8 @@ export default {
       }
 
       const isPrivate = action === 'on';
-      // Le réglage est sauvegardé spécifiquement pour cet ID de bot
-      setSetting(botJid, 'privateMode', isPrivate);
+      // Le réglage est sauvegardé spécifiquement pour cet ID de bot dans son dossier racine
+      setSetting(botId, 'privateMode', isPrivate);
 
       await kaya.sendMessage(from, { 
         text: `✅ Private mode for this bot is now: *${isPrivate ? 'ON' : 'OFF'}*` 
