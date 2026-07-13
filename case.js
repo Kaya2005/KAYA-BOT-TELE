@@ -42,40 +42,31 @@ export default async function caseHandler(kaya, mek, chatUpdate, store) {
         const isGroup = from.endsWith("@g.us");
         const botJid = kaya.user.id;
 
-        // 🔹 1. Simulation de présence PRIORITAIRE
-        if (getSetting(sender, 'typing', false)) await kaya.sendPresenceUpdate('composing', from).catch(() => {});
-        if (getSetting(sender, 'recording', false)) await kaya.sendPresenceUpdate('recording', from).catch(() => {});
+        // 🔹 1. Simulation de présence PRIORITAIRE (Corrigé : utilisation de botJid)
+        if (getSetting(botJid, 'typing', false)) await kaya.sendPresenceUpdate('composing', from).catch(() => {});
+        if (getSetting(botJid, 'recording', false)) await kaya.sendPresenceUpdate('recording', from).catch(() => {});
         
-        // 🔹 2. Auto-Réaction PRIORITAIRE
+        // 🔹 2. Auto-Réaction PRIORITAIRE (Corrigé : utilisation de botJid pour le check)
         const autoReact = commands.get("autoreact");
-        if (autoReact && getSetting(sender, 'autoreact', false) && autoReact.listen) {
+        if (autoReact && getSetting(botJid, 'autoreact', false) && autoReact.listen) {
             await autoReact.listen(kaya, mek, from).catch(() => {});
         }
 
         // 🚫 Vérification du bannissement
         if (getSetting(sender, 'isBanned', false)) return;
 
-    // 🔒 Gestion des messages privés du bot
-if (!isGroup && !mek.key.fromMe) {
+        // 🔒 Gestion des messages privés du bot
+        if (!isGroup && !mek.key.fromMe) {
 
-    const privateMode = getSetting(botJid, 'privateMode', false);
-    const blockInbox = getSetting(botJid, 'blockInbox', false);
+            const privateMode = getSetting(botJid, 'privateMode', false);
+            const blockInbox = getSetting(botJid, 'blockInbox', false);
 
-    // Vérification propriétaire seulement si nécessaire
-    if (privateMode || blockInbox) {
-        const status = await checkAdminOrOwner(kaya, from, sender);
-
-        // Mode privé : seul le propriétaire peut utiliser le bot
-        if (privateMode && !status.isBotOwner) {
-            return;
+            if (privateMode || blockInbox) {
+                const status = await checkAdminOrOwner(kaya, from, sender);
+                if (privateMode && !status.isBotOwner) return;
+                if (blockInbox && !status.isBotOwner) return;
+            }
         }
-
-        // Block Inbox : bloque les privés sauf propriétaire
-        if (blockInbox && !status.isBotOwner) {
-            return;
-        }
-    }
-}
 
         // 🔹 Extraction du contenu
         const type = getContentType(mek.message);
