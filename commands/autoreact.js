@@ -1,8 +1,11 @@
-// autoreact.js
 import { getSetting, setSetting } from '../setting.js';
 
-const RANDOM_EMOJIS = ['❤️','😂','🎉','👍','🔥','😮','😢','🤔','👏','🎊','🤯','😍','🥰','😎','🤩','😭','💯','✨','🌟','💔','💖','💕','💙','💚','💛','💜','🖤','🤍','🧡','💘','💝','💞','😊','😇','🥳','😋','😜','🤪','😝','🤑','🤗','🤭','🤫','😴','🤖','👻','💀'];
+const RANDOM_EMOJIS = ['❤️','😂','🎉','👍','🔥','😮','👏','🎊','🤯','😍','🥰','😎','🤩','💯','✨','🌟','💖','💕','💙','💚','💛','💜','🖤','🤍','🧡','😊','😇','🥳','😋','😜','🤪','🤗','🤭'];
 const getRandomEmoji = () => RANDOM_EMOJIS[Math.floor(Math.random() * RANDOM_EMOJIS.length)];
+
+// AJOUT : Cache pour éviter de réagir 10 fois à la même seconde et limiter la fréquence
+const lastReaction = new Map();
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 export default {
     name: 'autoreact',
@@ -11,7 +14,6 @@ export default {
 
     async execute(kaya, mek, from, args, prefix) {
         try {
-            // On utilise l'ID du bot pour que le réglage soit global à l'instance
             const ownerId = kaya.user.id.split(':')[0];
             const action = args[0]?.toLowerCase();
 
@@ -31,9 +33,7 @@ export default {
 
             if (action === 'mode') {
                 const mode = args[1]?.toLowerCase();
-                if (!['private', 'group', 'all'].includes(mode)) {
-                    return kaya.sendMessage(from, { text: '❌ *Invalid mode!* Use: private, group, or all.' }, { quoted: mek });
-                }
+                if (!['private', 'group', 'all'].includes(mode)) return kaya.sendMessage(from, { text: '❌ Invalid mode!' });
                 setSetting(ownerId, 'autoreactMode', mode);
                 return kaya.sendMessage(from, { text: `✅ *Mode set to: ${mode.toUpperCase()}*` }, { quoted: mek });
             }
@@ -43,9 +43,7 @@ export default {
                 const mode = getSetting(ownerId, 'autoreactMode', 'all');
                 return kaya.sendMessage(from, { text: `🎭 *Status:* ${isEnabled ? '✅' : '❌'}\n📍 *Mode:* ${mode.toUpperCase()}` }, { quoted: mek });
             }
-        } catch (err) {
-            console.error('❌ autoreact error:', err);
-        }
+        } catch (err) { console.error('❌ autoreact error:', err); }
     },
 
     async listen(kaya, mek, from) {
@@ -53,18 +51,23 @@ export default {
             if (mek.key?.fromMe) return;
             
             const ownerId = kaya.user.id.split(':')[0];
-            
-            // On vérifie le réglage global du bot
             const isEnabled = getSetting(ownerId, 'autoreact', false);
             if (!isEnabled) return;
+
+            // SÉCURITÉ : Cooldown de 10 secondes par chat pour éviter le flood
+            const now = Date.now();
+            if (lastReaction.has(from) && now - lastReaction.get(from) < 10000) return;
+            lastReaction.set(from, now);
 
             const mode = getSetting(ownerId, 'autoreactMode', 'all');
             const isGroup = from.endsWith('@g.us');
 
-            // Filtrage selon le mode choisi
             if (mode === 'private' && isGroup) return;
             if (mode === 'group' && !isGroup) return;
 
+            // SÉCURITÉ : Petit délai aléatoire pour simuler une lecture humaine
+            await delay(Math.floor(Math.random() * 2000) + 1000); 
+            
             await kaya.sendMessage(from, { react: { text: getRandomEmoji(), key: mek.key } });
         } catch (err) {
             console.error('❌ Auto-react listen error:', err);

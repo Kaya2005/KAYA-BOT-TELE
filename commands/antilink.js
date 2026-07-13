@@ -1,5 +1,8 @@
 import { getSetting, setSetting } from "../setting.js";
 
+// Fonction pour simuler un délai humain (Anti-Ban)
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 export default {
   name: "antilink",
   description: "Anti-link system",
@@ -57,11 +60,13 @@ export default {
       const participant = metadata?.participants.find(p => p.id === mek.sender);
       if (participant?.admin || participant?.isSuperAdmin) return;
 
-      // 1. Suppression du lien
+      // 1. Suppression du lien (Avec délai pour ne pas paraître robotique)
+      await delay(500);
       await kaya.sendMessage(from, { delete: mek.key }).catch(() => {});
 
-      // 2. Gestion des modes
+      // 2. Gestion des modes avec délais de sécurité
       if (mode === "kick") {
+        await delay(1000); // Pause humaine avant de kicker
         await kaya.groupParticipantsUpdate(from, [mek.sender], "remove");
         await kaya.sendMessage(from, { text: `🚫 @${mek.sender.split("@")[0]} removed for sending a link.`, mentions: [mek.sender] });
       } 
@@ -72,6 +77,7 @@ export default {
         setSetting(ownerId, `warn_${mek.sender}`, newWarns, groupId);
 
         if (newWarns >= 4) {
+          await delay(1000); // Pause avant le kick après 4 avertissements
           await kaya.groupParticipantsUpdate(from, [mek.sender], "remove");
           await kaya.sendMessage(from, { text: `🚫 @${mek.sender.split("@")[0]} reached 4/4 warns and was kicked.`, mentions: [mek.sender] });
           setSetting(ownerId, `warn_${mek.sender}`, 0, groupId); // Reset après kick

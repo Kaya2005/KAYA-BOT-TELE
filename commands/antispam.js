@@ -1,6 +1,9 @@
 import { getSetting, setSetting } from "../setting.js";
 import checkAdminOrOwner from "../setting/checkAdminOrOwner.js";
 
+// Fonction de délai pour éviter le spam par le bot
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 // Configuration
 const MESSAGE_LIMIT = 8;      
 const TIME_WINDOW = 5000;
@@ -17,7 +20,7 @@ export default {
     const action = args[0]?.toLowerCase();
     const mode = args[1]?.toLowerCase();
     const groupId = from.split('@')[0];
-    const ownerId = kaya.user.id.split(':')[0]; // ID du propriétaire de l'instance
+    const ownerId = kaya.user.id.split(':')[0];
 
     if (!action || !["on", "off", "status"].includes(action)) {
       return await kaya.sendMessage(from, { 
@@ -66,15 +69,19 @@ export default {
 
       if (global.spamTracker[from][sender].length >= MESSAGE_LIMIT) {
         
+        // Suppression du message déclencheur avec un délai
+        await delay(300);
         await kaya.sendMessage(from, { delete: mek.key }).catch(() => {});
 
         if (config.mode === "warn") {
+          await delay(500); // Pause avant l'avertissement
           await kaya.sendMessage(from, { 
             text: `⚠️ @${sender.split("@")[0]} Stop spamming!`, 
             mentions: [sender] 
           }).catch(() => {});
         } 
         else if (config.mode === "kick") {
+          await delay(1000); // Pause humaine avant le kick
           await kaya.groupParticipantsUpdate(from, [sender], "remove").catch(() => {});
           await kaya.sendMessage(from, { 
             text: `🚫 @${sender.split("@")[0]} removed for spamming.`, 

@@ -1,6 +1,9 @@
 import { getSetting, setSetting } from "../setting.js";
 import checkAdminOrOwner from "../setting/checkAdminOrOwner.js";
 
+// Fonction de délai pour éviter le comportement robotique
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 export default {
   name: "antitag",
   description: "🚫 Anti tagall / mentions",
@@ -31,7 +34,6 @@ export default {
         return await kaya.sendMessage(from, { text: "❌ Anti-tag disabled." });
       }
 
-      // Mode: delete ou kick
       const mode = action === "on" ? "delete" : action;
       setSetting(ownerId, "antitag", true, groupId);
       setSetting(ownerId, "antitagMode", mode, groupId);
@@ -52,20 +54,20 @@ export default {
 
       const mode = getSetting(ownerId, "antitagMode", "delete", groupId);
 
-      // Vérifier les mentions ou @all
       const isTagAll = /@all/i.test(body) || (mek.message?.extendedTextMessage?.contextInfo?.mentionedJid?.length > 0);
       if (!isTagAll) return;
 
-      // Ne pas agir sur les admins
       const status = await checkAdminOrOwner(kaya, from, mek.sender);
       if (status.isAdmin || status.isBotOwner) return;
 
-      // 1. Supprimer le message
+      // 1. Suppression du message avec léger délai
+      await delay(500); 
       await kaya.sendMessage(from, { delete: mek.key }).catch(() => {});
 
-      // 2. Kicker si mode "kick"
+      // 2. Kicker si mode "kick" avec délai de sécurité
       if (mode === "kick") {
-        await kaya.groupParticipantsUpdate(from, [mek.sender], "remove");
+        await delay(1000); // Pause avant l'action destructive
+        await kaya.groupParticipantsUpdate(from, [mek.sender], "remove").catch(() => {});
         await kaya.sendMessage(from, { text: `🚫 @${mek.sender.split('@')[0]} removed for tagging.`, mentions: [mek.sender] });
       }
     } catch (err) {

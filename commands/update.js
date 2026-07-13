@@ -1,6 +1,6 @@
 import { execSync } from "child_process";
 
-// Chemin absolu vers ton dossier Kaya-MD
+// Chemin absolu vers votre dossier
 const REPO_DIR = "/home/container/Kaya-MD";
 
 /* ================= GIT HELPERS ================= */
@@ -65,6 +65,7 @@ export default {
 
   async execute(kaya, mek, from) {
     try {
+      // 1. Initialisation de la mise à jour
       const msg = await kaya.sendMessage(
         from,
         { text: `🔄 Checking for updates...\n${bar(10)}` },
@@ -78,6 +79,7 @@ export default {
       await sleep(400);
       await edit(`🔍 Verifying repository...\n${bar(25)}`);
 
+      // 2. Fetch du dépôt
       execSync(`git -C ${REPO_DIR} fetch origin`, { stdio: "ignore" });
 
       const local = getCurrentCommit();
@@ -93,15 +95,17 @@ export default {
         );
       }
 
+      // 3. Application des changements
       await sleep(400);
       await edit(`⬇️ Downloading updates...\n${bar(50)}`);
 
-      execSync(`git -C ${REPO_DIR} stash`, { stdio: "ignore" });
-      execSync(`git -C ${REPO_DIR} pull origin main`, { stdio: "ignore" });
-
       try {
-        execSync(`git -C ${REPO_DIR} stash pop`, { stdio: "ignore" });
-      } catch {}
+        execSync(`git -C ${REPO_DIR} stash`, { stdio: "ignore" });
+        execSync(`git -C ${REPO_DIR} pull origin main`, { stdio: "ignore" });
+        try { execSync(`git -C ${REPO_DIR} stash pop`, { stdio: "ignore" }); } catch {}
+      } catch (err) {
+        return edit(`❌ Update failed during git pull: ${err.message}`);
+      }
 
       await sleep(400);
       await edit(`⚙️ Analyzing changes...\n${bar(80)}`);
@@ -109,6 +113,7 @@ export default {
       const changed = getChangedFiles();
       const localAfter = getLocalCommit();
 
+      // 4. Finalisation
       await sleep(400);
       await edit(
         `🚀 UPDATE COMPLETED\n${bar(100)}\n\n📌 Current commit:\n${localAfter || "N/A"}\n\n📂 Modified files (${changed.length}):\n${
@@ -118,9 +123,10 @@ export default {
         }\n\n♻️ Restarting now...`
       );
 
+      // Redémarrage sécurisé
       setTimeout(() => {
         process.exit(0);
-      }, 1500);
+      }, 2000);
 
     } catch (e) {
       console.error("UPDATE ERROR:", e);

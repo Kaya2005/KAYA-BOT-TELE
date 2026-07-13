@@ -1,4 +1,3 @@
-//welcome.js
 import fs from 'fs';
 import path from 'path';
 import { getContextInfo } from '../setting/contextInfo.js';
@@ -6,6 +5,8 @@ import checkAdminOrOwner from '../setting/checkAdminOrOwner.js';
 import { getSetting, setSetting } from '../setting.js';
 
 const welcomeCache = new Set();
+// Fonction de délai pour éviter le spam
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Utility function to find the owner's ID via their phone number
 function getTeleIdFromJid(jid) {
@@ -74,7 +75,6 @@ export default {
             const groupId = from.split('@')[0];
             const ownerId = kaya.user.id.split(':')[0];
             
-            // Vérification avec l'ownerId actuel
             const isEnabled = getSetting(ownerId, 'welcomeEnabled', false, groupId) || getSetting(ownerId, 'welcomeAll', false);
             if (!isEnabled) return;
 
@@ -95,6 +95,9 @@ export default {
                 if (welcomeCache.has(userId)) continue;
                 welcomeCache.add(userId);
                 setTimeout(() => welcomeCache.delete(userId), 30000);
+
+                // AJOUT DU DÉLAI DE SÉCURITÉ ICI
+                await delay(2000); 
 
                 const msg = `▉ \`WELCOME\` ▉
 ▰▰▰▰▰▰▰▰▰▰

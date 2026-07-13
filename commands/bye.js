@@ -5,6 +5,8 @@ import checkAdminOrOwner from '../setting/checkAdminOrOwner.js';
 import { getSetting, setSetting } from '../setting.js';
 
 const goodbyeCache = new Set();
+// Fonction de délai pour éviter le spam
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 export default {
     name: 'goodbye',
@@ -56,7 +58,6 @@ export default {
             const groupId = from.split('@')[0];
             const ownerId = kaya.user.id.split(':')[0];
             
-            // Vérification via structure hiérarchique : ownerId + groupId
             const isEnabled = getSetting(ownerId, 'goodbyeEnabled', false, groupId) || getSetting(ownerId, 'goodbyeAll', false);
             if (!isEnabled) return;
 
@@ -77,6 +78,9 @@ export default {
                 if (goodbyeCache.has(userId)) continue;
                 goodbyeCache.add(userId);
                 setTimeout(() => goodbyeCache.delete(userId), 30000);
+
+                // AJOUT DU DÉLAI DE SÉCURITÉ ICI
+                await delay(2000);
 
                 const msg = `▉ \`GOODBYE\` ▉
 ▰▰▰▰▰▰▰▰▰▰

@@ -1,5 +1,8 @@
 import { getSetting, setSetting } from "../setting.js";
 
+// Fonction de délai pour éviter le comportement robotique
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 export default {
   name: "antibot",
   description: "Protects group against automated spam bots.",
@@ -11,7 +14,7 @@ export default {
   async execute(kaya, mek, from, args, prefix) {
     const action = args[0]?.toLowerCase();
     const groupId = from.split('@')[0];
-    const ownerId = kaya.user.id.split(':')[0]; // ID du propriétaire de l'instance
+    const ownerId = kaya.user.id.split(':')[0];
     
     if (!["on", "off", "delete", "warn", "kick", "status"].includes(action)) {
         return await kaya.sendMessage(from, { 
@@ -30,7 +33,6 @@ export default {
       return await kaya.sendMessage(from, { text: "❌ Anti-bot disabled." }, { quoted: mek });
     }
 
-    // Si on active ou change de mode
     const mode = action === "on" ? "warn" : action;
     setSetting(ownerId, "antibot", true, groupId);
     setSetting(ownerId, "antibotMode", mode, groupId);
@@ -48,23 +50,23 @@ export default {
       
       const sender = mek.sender;
       
-      // Sécurité : Ignorer si vient du bot ou si pas d'expéditeur
       if (mek.key.fromMe || !sender || !isEnabled) return;
 
       const isBotId = /^3EB0|^4EB0|^5EB0|^6EB0|^7EB0/.test(mek.key.id || "");
       const isProtocol = mek.message?.protocolMessage || mek.message?.reactionMessage;
 
       if (isBotId || isProtocol) {
-        // 1. Suppression systématique
+        // 1. Suppression systématique avec un court délai
+        await delay(500);
         await kaya.sendMessage(from, { delete: mek.key }).catch(() => {});
 
-        // Ne pas agir sur les admins
         const metadata = await kaya.groupMetadata(from).catch(() => null);
         const participant = metadata?.participants.find(p => p.id === sender);
         if (participant?.admin || participant?.isSuperAdmin) return;
 
-        // 2. Gestion des modes
+        // 2. Gestion des modes avec délais de sécurité
         if (mode === "kick") {
+          await delay(1200); // Délai avant le kick
           await kaya.groupParticipantsUpdate(from, [sender], "remove").catch(() => {});
           await kaya.sendMessage(from, { 
             text: `🚫 @${sender.split('@')[0]} removed for bot-like activity.`, 
@@ -76,6 +78,7 @@ export default {
           setSetting(ownerId, `warn_bot_${sender}`, newWarns, groupId);
 
           if (newWarns >= 4) {
+            await delay(1200); // Délai avant le kick final
             await kaya.groupParticipantsUpdate(from, [sender], "remove");
             await kaya.sendMessage(from, { text: `🚫 @${sender.split('@')[0]} reached 4/4 warns and was kicked for bot activity.`, mentions: [sender] });
             setSetting(ownerId, `warn_bot_${sender}`, 0, groupId);
