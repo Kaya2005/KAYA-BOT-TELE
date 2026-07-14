@@ -65,14 +65,17 @@ export default async function caseHandler(kaya, mek, chatUpdate, store) {
 
         if (getSetting(ownerId, `banned_${sender}`, false)) return;
 
-        if (!isGroup && !mek.key.fromMe) {
+        // 🔹 MODIFICATION : Mode privé global (Bloque partout si actif, sauf propriétaire)
+        if (!mek.key.fromMe) {
             const privateMode = getSetting(ownerId, 'privateMode', false);
             const blockInbox = getSetting(ownerId, 'blockInbox', false);
 
-            if (privateMode || blockInbox) {
+            if (privateMode) {
                 const status = await checkAdminOrOwner(kaya, from, sender);
-                if (privateMode && !status.isBotOwner) return;
-                if (blockInbox && !status.isBotOwner) return;
+                if (!status.isBotOwner) return;
+            } else if (blockInbox && !isGroup) {
+                const status = await checkAdminOrOwner(kaya, from, sender);
+                if (!status.isBotOwner) return;
             }
         }
 
