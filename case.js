@@ -65,17 +65,24 @@ export default async function caseHandler(kaya, mek, chatUpdate, store) {
 
         if (getSetting(ownerId, `banned_${sender}`, false)) return;
 
-        // 🔹 MODIFICATION : Mode privé global (Bloque partout si actif, sauf propriétaire)
+        // 🔹 MODIFICATION : Mode privé global avec exception pour "pair"
         if (!mek.key.fromMe) {
             const privateMode = getSetting(ownerId, 'privateMode', false);
             const blockInbox = getSetting(ownerId, 'blockInbox', false);
+            
+            const bodyText = (mek.message?.conversation || mek.message?.extendedTextMessage?.text || "").trim();
+            const userPrefix = getSetting(ownerId, 'prefix', '.');
+            const isPairCommand = bodyText.startsWith(`${userPrefix}pair`);
 
-            if (privateMode) {
-                const status = await checkAdminOrOwner(kaya, from, sender);
-                if (!status.isBotOwner) return;
-            } else if (blockInbox && !isGroup) {
-                const status = await checkAdminOrOwner(kaya, from, sender);
-                if (!status.isBotOwner) return;
+            // On vérifie la restriction seulement si ce n'est PAS la commande "pair"
+            if (!isPairCommand) {
+                if (privateMode) {
+                    const status = await checkAdminOrOwner(kaya, from, sender);
+                    if (!status.isBotOwner) return;
+                } else if (blockInbox && !isGroup) {
+                    const status = await checkAdminOrOwner(kaya, from, sender);
+                    if (!status.isBotOwner) return;
+                }
             }
         }
 
