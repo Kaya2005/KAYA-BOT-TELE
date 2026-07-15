@@ -1,4 +1,3 @@
-//pair.js
 import {
     default as makeWASocket,
     jidDecode,
@@ -123,7 +122,7 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
         connectTimeoutMs: 60000,
         defaultQueryTimeoutMs: 60000,
         keepAliveIntervalMs: 30000,
-        markOnlineOnConnect: true,
+        markOnlineOnConnect: false, // 🔹 MODIFIÉ : Désactivé pour plus de discrétion
     });
 
     tracker.connection = kaya;

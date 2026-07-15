@@ -1,3 +1,4 @@
+//case.js
 import { getContentType } from "@whiskeysockets/baileys";
 import fs from "fs";
 import path from "path";
