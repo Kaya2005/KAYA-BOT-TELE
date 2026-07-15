@@ -6,31 +6,30 @@ import path from 'path';
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 const PAIRING_FOLDER = './richstore/pairing';
 const COOLDOWN_FILE = path.join(PAIRING_FOLDER, 'cooldown.json');
-const COOLDOWN_MS = 30000; // 30 secondes
+const COOLDOWN_MS = 30000; 
 
 export default {
   name: 'pair',
   description: '🔗 Link your WhatsApp account to the bot',
   category: 'General',
-  usage: '.pair <number>',
+  usage: '.pair [number]',
 
   async execute(kaya, mek, from, args, prefix) {
     try {
       const sender = mek.sender;
       
-      if (!fs.existsSync(PAIRING_FOLDER)) fs.mkdirSync(PAIRING_FOLDER, { recursive: true });
+      // 1. EXTRACTION AUTOMATIQUE DU NUMÉRO
+      let targetNumber = args[0] ? args[0].replace(/[^0-9]/g, '') : sender.split('@')[0].replace(/[^0-9]/g, '');
 
-      if (!args[0]) {
-        return await sendWithBotImage(kaya, from, sender, { 
-            caption: `*PAIRING HELP* 🔗\n\nUsage: \`${prefix}pair 243xxxxxxxxx\``,
-            contextInfo: getContextInfo() 
-        });
+      if (!targetNumber) {
+        return await kaya.sendMessage(from, { text: '❌ *Erreur:* Impossible de détecter votre numéro. Utilisez `.pair 243xxxxxxxxx`' }, { quoted: mek });
       }
 
-      const targetNumber = args[0].replace(/[^0-9]/g, '');
+      if (!fs.existsSync(PAIRING_FOLDER)) fs.mkdirSync(PAIRING_FOLDER, { recursive: true });
+
       const lockFile = path.join(PAIRING_FOLDER, `lock_${targetNumber}.json`);
 
-      // 1. VÉRIFICATION DU COOLDOWN GLOBAL (30 secondes)
+      // 2. VÉRIFICATION DU COOLDOWN GLOBAL
       if (fs.existsSync(COOLDOWN_FILE)) {
         const lastTime = JSON.parse(fs.readFileSync(COOLDOWN_FILE, 'utf-8')).timestamp;
         if (Date.now() - lastTime < COOLDOWN_MS) {
@@ -39,14 +38,13 @@ export default {
         }
       }
 
-      // 2. VÉRIFICATION DU VERROUILLAGE (Si un autre bot travaille déjà sur ce numéro)
+      // 3. VÉRIFICATION DU VERROUILLAGE
       if (fs.existsSync(lockFile)) {
-        return await kaya.sendMessage(from, { text: '⚠️ *Info:* Un autre bot génère déjà le code pour ce numéro. Veuillez patienter.' }, { quoted: mek });
+        return await kaya.sendMessage(from, { text: '⚠️ *Info:* Une génération est déjà en cours pour ce numéro.' }, { quoted: mek });
       }
 
-      // 3. CRÉATION DU VERROU
+      // 4. CRÉATION DES FICHIERS DE CONTRÔLE
       fs.writeFileSync(lockFile, JSON.stringify({ bot: kaya.user.id, timestamp: Date.now() }));
-      // Mise à jour du cooldown global
       fs.writeFileSync(COOLDOWN_FILE, JSON.stringify({ timestamp: Date.now() }));
 
       const requestFile = path.join(PAIRING_FOLDER, `request_${targetNumber}.json`);
@@ -54,13 +52,14 @@ export default {
 
       if (fs.existsSync(codeFilePath)) fs.unlinkSync(codeFilePath);
 
-      // 4. Création de la requête
+      // 5. CRÉATION DE LA REQUÊTE
       fs.writeFileSync(requestFile, JSON.stringify({ jid: targetNumber + "@s.whatsapp.net", name: getBotName(sender) }));
 
-      await kaya.sendMessage(from, { text: '⏳ *Generating pairing code...*' }, { quoted: mek });
+      await kaya.sendMessage(from, { text: `⏳ *Génération du code pour :* ${targetNumber}...\n(Vous avez 30 secondes)` }, { quoted: mek });
 
+      // 6. BOUCLE D'ATTENTE (30 SECONDES)
       let code = null;
-      for (let i = 0; i < 12; i++) {
+      for (let i = 0; i < 30; i++) {
         await delay(1000); 
         if (fs.existsSync(codeFilePath)) {
           try {
@@ -74,24 +73,27 @@ export default {
         }
       }
 
-      // 5. NETTOYAGE
+      // 7. NETTOYAGE SI ÉCHEC (TIMEOUT)
+      if (!code) {
+        if (fs.existsSync(requestFile)) fs.unlinkSync(requestFile);
+        if (fs.existsSync(lockFile)) fs.unlinkSync(lockFile);
+        return await kaya.sendMessage(from, { text: '❌ *Erreur:* Délai dépassé. La demande a été annulée. Veuillez réessayer.' }, { quoted: mek });
+      }
+
+      // 8. SUCCÈS : NETTOYAGE ET ENVOI DU CODE
       if (fs.existsSync(requestFile)) fs.unlinkSync(requestFile);
       if (fs.existsSync(lockFile)) fs.unlinkSync(lockFile);
 
-      if (code) {
-        await kaya.sendMessage(from, { text: `✅ *Pairing code generated!*\n\n🔑 Code: \`${code}\`\n\n1. Go to Linked Devices\n2. Link a device\n3. Enter this code` }, { quoted: mek });
-      } else {
-        await kaya.sendMessage(from, { text: '❌ *Error:* Pairing code generation timed out.' }, { quoted: mek });
-      }
+      await kaya.sendMessage(from, { text: `✅ *Code généré avec succès !*\n\n🔑 Code: \`${code}\`\n\n📌 *Attention :* Vous avez 30 secondes pour l'utiliser.\n\n1. Allez dans "Appareils liés"\n2. Choisissez "Connecter un appareil"\n3. Entrez ce code` }, { quoted: mek });
 
     } catch (err) {
       console.error('❌ Pairing Error:', err);
-      // Nettoyage en cas d'erreur
-      const targetNumber = args[0]?.replace(/[^0-9]/g, '');
+      // Nettoyage en cas d'erreur critique
+      const targetNumber = args[0]?.replace(/[^0-9]/g, '') || mek.sender.split('@')[0];
       const lockFile = path.join(PAIRING_FOLDER, `lock_${targetNumber}.json`);
       if (fs.existsSync(lockFile)) fs.unlinkSync(lockFile);
       
-      await kaya.sendMessage(from, { text: '❌ An error occurred during pairing.' }, { quoted: mek });
+      await kaya.sendMessage(from, { text: '❌ Une erreur est survenue lors de la génération.' }, { quoted: mek });
     }
   }
 };
