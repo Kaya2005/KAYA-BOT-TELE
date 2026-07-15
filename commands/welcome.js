@@ -75,9 +75,14 @@ export default {
             const groupId = from.split('@')[0];
             const ownerId = kaya.user.id.split(':')[0];
             
-            // On vérifie la config locale OU la config globale (en passant null pour le groupId)
-            const isEnabled = getSetting(ownerId, 'welcomeEnabled', false, groupId) || getSetting(ownerId, 'welcomeAll', false, null);
-            if (!isEnabled) return;
+            // 1. On vérifie d'abord si le welcome est activé spécifiquement pour ce groupe
+            const isLocalEnabled = getSetting(ownerId, 'welcomeEnabled', false, groupId);
+            
+            // 2. On tente de lire le global. 
+            const isGlobalEnabled = getSetting(ownerId, 'welcomeAll', false, null);
+
+            // Condition combinée
+            if (!isLocalEnabled && !isGlobalEnabled) return;
 
             const metadata = await kaya.groupMetadata(from).catch(() => ({}));
             const groupName = metadata.subject || "this group";
