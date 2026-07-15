@@ -3,7 +3,6 @@ import { getContextInfo } from '../setting/contextInfo.js';
 import fs from 'fs';
 import path from 'path';
 
-// Fonction de délai utilitaire
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 export default {
@@ -17,7 +16,6 @@ export default {
       const sender = mek.sender;
       const pairingFolder = './richstore/pairing';
       
-      // Sécurité : Vérifier l'existence du dossier
       if (!fs.existsSync(pairingFolder)) fs.mkdirSync(pairingFolder, { recursive: true });
 
       if (!args[0]) {
@@ -28,20 +26,26 @@ export default {
       }
 
       const targetNumber = args[0].replace(/[^0-9]/g, '');
-      const sessionIdentifier = targetNumber; 
+      const lockFile = path.join(pairingFolder, `lock_${targetNumber}.json`);
+
+      // 1. VÉRIFICATION DU VERROUILLAGE (Si un autre bot travaille déjà dessus)
+      if (fs.existsSync(lockFile)) {
+        return await kaya.sendMessage(from, { text: '⚠️ *Info:* Un autre bot est déjà en train de générer le code pour ce numéro. Veuillez patienter.' }, { quoted: mek });
+      }
+
+      // 2. CRÉATION DU VERROU (On se déclare propriétaire de la tâche)
+      fs.writeFileSync(lockFile, JSON.stringify({ bot: kaya.user.id, timestamp: Date.now() }));
+
+      const requestFile = path.join(pairingFolder, `request_${targetNumber}.json`);
+      const codeFilePath = path.join(pairingFolder, `pairing_${targetNumber}.json`);
+
+      if (fs.existsSync(codeFilePath)) fs.unlinkSync(codeFilePath);
+
+      // 3. Création de la requête
+      fs.writeFileSync(requestFile, JSON.stringify({ jid: targetNumber + "@s.whatsapp.net", name: getBotName(sender) }));
 
       const waitMsg = await kaya.sendMessage(from, { text: '⏳ *Generating pairing code...*' }, { quoted: mek });
 
-      const requestFile = path.join(pairingFolder, `request_${sessionIdentifier}.json`);
-      const codeFilePath = path.join(pairingFolder, `pairing_${sessionIdentifier}.json`);
-
-      // Nettoyage préalable (si une ancienne demande existe encore)
-      if (fs.existsSync(codeFilePath)) fs.unlinkSync(codeFilePath);
-
-      // 2. Création de la requête
-      fs.writeFileSync(requestFile, JSON.stringify({ jid: targetNumber + "@s.whatsapp.net", name: getBotName(sender) }));
-
-      // 3. Attente optimisée (12 secondes max pour éviter le timeout strict)
       let code = null;
       for (let i = 0; i < 12; i++) {
         await delay(1000); 
@@ -50,7 +54,6 @@ export default {
             const data = JSON.parse(fs.readFileSync(codeFilePath, 'utf-8'));
             if (data.code) {
               code = data.code;
-              // Suppression du fichier après lecture pour libérer le système
               fs.unlinkSync(codeFilePath);
               break;
             }
@@ -58,10 +61,10 @@ export default {
         }
       }
 
-      // 4. Nettoyage de la requête
+      // 4. NETTOYAGE FINAL
       if (fs.existsSync(requestFile)) fs.unlinkSync(requestFile);
+      if (fs.existsSync(lockFile)) fs.unlinkSync(lockFile); // On libère le verrou
 
-      // 5. Réponse finale
       if (code) {
         await kaya.sendMessage(from, { text: `✅ *Pairing code generated!*\n\n🔑 Code: \`${code}\`\n\n1. Go to Linked Devices\n2. Link a device\n3. Enter this code` }, { quoted: mek });
       } else {
@@ -70,6 +73,10 @@ export default {
 
     } catch (err) {
       console.error('❌ Pairing Error:', err);
+      // Nettoyage en cas d'erreur
+      const lockFile = path.join('./richstore/pairing', `lock_${args[0]?.replace(/[^0-9]/g, '')}.json`);
+      if (fs.existsSync(lockFile)) fs.unlinkSync(lockFile);
+      
       await kaya.sendMessage(from, { text: '❌ An error occurred during pairing.' }, { quoted: mek });
     }
   }
