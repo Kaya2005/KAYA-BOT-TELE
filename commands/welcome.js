@@ -53,16 +53,16 @@ export default {
                 return kaya.sendMessage(from, { text: "❌ Welcome disabled for this group.", contextInfo: getContextInfo() }); 
             }
             if (action === "all") {
-                setSetting(ownerId, 'welcomeAll', true);
+                setSetting(ownerId, 'welcomeAll', true, null); // null pour forcer le niveau global
                 return kaya.sendMessage(from, { text: `✅ Welcome enabled globally for all your groups.`, contextInfo: getContextInfo() });
             }
             if (action === "alloff") {
-                setSetting(ownerId, 'welcomeAll', false);
+                setSetting(ownerId, 'welcomeAll', false, null); // null pour forcer le niveau global
                 return kaya.sendMessage(from, { text: `❌ Welcome disabled globally for all your groups.`, contextInfo: getContextInfo() });
             }
             if (action === "status") {
                 const isEnabled = getSetting(ownerId, 'welcomeEnabled', false, groupId);
-                const isAll = getSetting(ownerId, 'welcomeAll', false);
+                const isAll = getSetting(ownerId, 'welcomeAll', false, null); // null pour le niveau global
                 return kaya.sendMessage(from, { text: `📊 *WELCOME STATUS*\n\nLocal: ${isEnabled ? "ON" : "OFF"}\nGlobal: ${isAll ? "ON" : "OFF"}`, contextInfo: getContextInfo() });
             }
         } catch (e) { console.error(e); }
@@ -75,7 +75,8 @@ export default {
             const groupId = from.split('@')[0];
             const ownerId = kaya.user.id.split(':')[0];
             
-            const isEnabled = getSetting(ownerId, 'welcomeEnabled', false, groupId) || getSetting(ownerId, 'welcomeAll', false);
+            // On vérifie la config locale OU la config globale (en passant null pour le groupId)
+            const isEnabled = getSetting(ownerId, 'welcomeEnabled', false, groupId) || getSetting(ownerId, 'welcomeAll', false, null);
             if (!isEnabled) return;
 
             const metadata = await kaya.groupMetadata(from).catch(() => ({}));
@@ -96,7 +97,6 @@ export default {
                 welcomeCache.add(userId);
                 setTimeout(() => welcomeCache.delete(userId), 30000);
 
-                // AJOUT DU DÉLAI DE SÉCURITÉ ICI
                 await delay(2000); 
 
                 const msg = `▉ \`WELCOME\` ▉
@@ -114,6 +114,6 @@ ______________________`.trim();
                     contextInfo: getContextInfo()
                 });
             }
-        } catch (e) { /* Log removed */ }
+        } catch (e) { console.error(e); }
     }
 };
