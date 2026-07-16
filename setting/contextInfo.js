@@ -1,10 +1,10 @@
 const newsletters = [
   {
-    jid: '120363410993553528@newsletter',
+    jid: '120363425946070598@newsletter',
     name: '𝐊𝐀𝐘𝐀 𝐁𝐎𝐓'
   },
   {
-    jid: '120363407597019818@newsletter',
+    jid: '120363425946070598@newsletter',
     name: '𝐊𝐀𝐘𝐀 𝐁𝐎𝐓'
   }
 ];
