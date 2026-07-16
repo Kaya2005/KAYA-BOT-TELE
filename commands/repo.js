@@ -21,7 +21,7 @@ export default {
 https://t.me/kayav1_bot
 
 *💬 WhatsApp Community:*
-https://chat.whatsapp.com/Jgo9YQG04Y8JEMejFeHLeL
+https://whatsapp.com/channel/0029Vb94qLj9cDDjRoYph40M
 
 *🚀 Status:* Online & Optimized
 `.trim();
