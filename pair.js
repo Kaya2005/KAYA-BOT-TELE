@@ -23,7 +23,6 @@ if (!fs.existsSync(PAIRING_DIR)) {
     fs.mkdirSync(PAIRING_DIR, { recursive: true });
 }
 
-// Fonction pour surveiller les demandes créées par la commande pair
 export function watchPairingRequests() {
     setInterval(async () => {
         if (!fs.existsSync(PAIRING_DIR)) return;
@@ -46,7 +45,6 @@ export function watchPairingRequests() {
     }, 5000);
 }
 
-// Fonction optimisée pour restaurer 100 sessions en ~30 secondes
 export async function restoreSessions() {
     if (!fs.existsSync(PAIRING_DIR)) return;
     
@@ -58,15 +56,11 @@ export async function restoreSessions() {
     console.log(`🚀 Démarrage rapide de ${sessionFolders.length} sessions...`);
 
     for (const folder of sessionFolders) {
-        // Lancer sans 'await' pour ne pas bloquer la boucle de lancement
         startpairing(folder).catch((err) => {
             console.error(`❌ Erreur session ${folder}:`, err);
         });
-        
-        // Délai de 300ms pour éviter de saturer le CPU au démarrage
         await new Promise(resolve => setTimeout(resolve, 300)); 
     }
-    
     console.log(`✅ Toutes les sessions ont été initialisées.`);
 }
 
@@ -100,6 +94,12 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
     const number = nexusDevNumber.replace(/[^0-9]/g, "");
     if (!number) return;
 
+    // --- CORRECTION : Nettoyage avant de démarrer ---
+    const pairingFilePath = path.join(PAIRING_DIR, `pairing_${teleId}.json`);
+    if (fs.existsSync(pairingFilePath)) {
+        fs.unlinkSync(pairingFilePath);
+    }
+
     if (rentbotTracker.has(number)) {
         const tracker = rentbotTracker.get(number);
         if (tracker.connection) {
@@ -122,7 +122,7 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
         connectTimeoutMs: 60000,
         defaultQueryTimeoutMs: 60000,
         keepAliveIntervalMs: 30000,
-        markOnlineOnConnect: false, // 🔹 MODIFIÉ : Désactivé pour plus de discrétion
+        markOnlineOnConnect: false,
     });
 
     tracker.connection = kaya;
@@ -142,7 +142,7 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
             try {
                 let code = await kaya.requestPairingCode(number);
                 code = code?.match(/.{1,4}/g)?.join("-") || code;
-                fs.writeFileSync(path.join(PAIRING_DIR, `pairing_${teleId}.json`), JSON.stringify({ number: nexusDevNumber, code, userName, timestamp: new Date().toISOString() }, null, 2));
+                fs.writeFileSync(pairingFilePath, JSON.stringify({ number: nexusDevNumber, code, userName, timestamp: new Date().toISOString() }, null, 2));
             } catch (err) {}
         }, 5000);
     }
