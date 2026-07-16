@@ -89,7 +89,9 @@ export default {
 ➠ Welcome to: ${groupName}
 ➠ Total Members: ${memberCount}
 ➠ Group Created: ${creationDate}
-______________________`.trim();
+______________________
+𝐁𝐎𝐓➠https://t.me/kayav1_bot
+▰▰▰▰▰▰▰▰▰▰`.trim();
 
                 await kaya.sendMessage(from, { 
                     image: { url: ppUrl },
