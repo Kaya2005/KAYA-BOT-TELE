@@ -1,7 +1,8 @@
+// menu.js (version modifiée)
 import fs from 'fs';
 import path from 'path';
 import { getContextInfo } from '../setting/contextInfo.js';
-import { getBotName } from '../setting/botAssets.js'; // getBotName gère maintenant le 'from'
+import { getBotName } from '../setting/botAssets.js';
 
 function pad(n) { return String(n).padStart(2, '0'); }
 
@@ -50,7 +51,6 @@ export default {
             const userNumber = userId.split('@')[0];
             const userMention = `@${userNumber}`;
             
-            // Récupération du nom dynamique pour ce groupe
             const botName = getBotName(from);
 
             const commandsDir = path.join(process.cwd(), 'commands');
@@ -95,24 +95,9 @@ ${buildHeader({ user: userMention, prefix, totalCmds, botName })}
 ${menuList.trim()}
 `.trim();
 
-            let thumbnailBuffer = null;
-            const localImagePath = path.join(process.cwd(), 'setting', 'bot.jpg');
-            if (fs.existsSync(localImagePath)) {
-                thumbnailBuffer = fs.readFileSync(localImagePath);
-            }
-
-            const externalAdReply = {
-                title: `WELCOME TO ${botName.toUpperCase()}`, 
-                body: `${totalCmds} COMMANDS AVAILABLE`,
-                mediaType: 1,
-                renderLargerThumbnail: true,
-                showAdAttribution: true,
-                thumbnail: thumbnailBuffer
-            };
-
+            // On simplifie le contextInfo car externalAdReply a été retiré
             const contextInfo = {
                 ...getContextInfo(),
-                externalAdReply,
                 mentionedJid: [userId]
             };
 
