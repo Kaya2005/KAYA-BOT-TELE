@@ -1,8 +1,8 @@
-// menu.js (version modifiée)
+// menu.js
 import fs from 'fs';
 import path from 'path';
 import { getContextInfo } from '../setting/contextInfo.js';
-import { getBotName } from '../setting/botAssets.js';
+import { getBotName, sendWithBotImage } from '../setting/botAssets.js'; // Import de sendWithBotImage
 
 function pad(n) { return String(n).padStart(2, '0'); }
 
@@ -95,13 +95,11 @@ ${buildHeader({ user: userMention, prefix, totalCmds, botName })}
 ${menuList.trim()}
 `.trim();
 
-            // On simplifie le contextInfo car externalAdReply a été retiré
-            const contextInfo = {
-                ...getContextInfo(),
-                mentionedJid: [userId]
-            };
-
-            await kaya.sendMessage(from, { text: finalMenuText, contextInfo }, { quoted: mek });
+            // Utilisation de sendWithBotImage au lieu de kaya.sendMessage
+            await sendWithBotImage(kaya, from, mek.sender, { 
+                caption: finalMenuText, 
+                contextInfo: { ...getContextInfo(), mentionedJid: [userId] } 
+            });
 
         } catch (err) {
             console.error('❌ Erreur dans menu.js :', err);
