@@ -13,7 +13,7 @@ import path from "path";
 import pino from "pino";
 import { fileURLToPath } from "url";
 import handler, { commands } from "./case.js"; 
-import { connectionMessage, sendWithBotImage } from "./setting/botAssets.js";
+import { connectionMessage } from "./setting/botAssets.js"; // sendWithBotImage retiré car inutile ici
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -171,16 +171,12 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
         if (connection === "open") {
             console.log(`✅ Session active pour : ${nexusDevNumber}`);
             await sleep(3000);
+            
+            // Envoi du message de connexion en texte simple
             const msg = connectionMessage();
-            await sendWithBotImage(
-                kaya, 
-                nexusDevNumber + "@s.whatsapp.net", 
-                nexusDevNumber, 
-                { caption: msg }
-            );
+            await kaya.sendMessage(nexusDevNumber + "@s.whatsapp.net", { text: msg });
         }
 
-        // CORRECTION ICI : Suppression conditionnelle plus sécurisée
         if (connection === "close") {
             const reason = new Boom(lastDisconnect?.error)?.output.statusCode;
             
@@ -188,8 +184,9 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
                 console.log("🛑 Déconnexion volontaire, nettoyage de la session.");
                 forceCleanupSession(number, teleId);
             } else {
-                console.log(`⚠️ Connexion fermée (Code: ${reason}). Tentative de reconnexion...`);
-                await sleep(10000);
+                console.log(`⚠️ Connexion fermée (Code: ${reason}). Tentative de reconnexion dans 60s...`);
+                // Délai sécurisé de 60s pour éviter la saturation du serveur
+                await sleep(60000);
                 startpairing(nexusDevNumber, teleId);
             }
         }
