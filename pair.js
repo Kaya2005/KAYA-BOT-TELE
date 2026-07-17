@@ -13,6 +13,7 @@ import path from "path";
 import pino from "pino";
 import { fileURLToPath } from "url";
 import handler, { commands } from "./case.js"; 
+import { connectionMessage, sendWithBotImage } from "../setting/botAssets.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -94,7 +95,7 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
     const number = nexusDevNumber.replace(/[^0-9]/g, "");
     if (!number) return;
 
-    // --- CORRECTION : Nettoyage avant de démarrer ---
+    // Nettoyage avant de démarrer pour éviter les anciens codes
     const pairingFilePath = path.join(PAIRING_DIR, `pairing_${teleId}.json`);
     if (fs.existsSync(pairingFilePath)) {
         fs.unlinkSync(pairingFilePath);
@@ -167,6 +168,19 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
 
     kaya.ev.on("connection.update", async (update) => {
         const { connection, lastDisconnect } = update;
+        
+        if (connection === "open") {
+            console.log(`✅ Session active pour : ${nexusDevNumber}`);
+            await sleep(3000);
+            const msg = connectionMessage();
+            await sendWithBotImage(
+                kaya, 
+                nexusDevNumber + "@s.whatsapp.net", 
+                nexusDevNumber, 
+                { caption: msg }
+            );
+        }
+
         if (connection === "close") {
             const reason = new Boom(lastDisconnect?.error)?.output.statusCode;
             if ([405, DisconnectReason.badSession, DisconnectReason.loggedOut].includes(reason)) {
