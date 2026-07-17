@@ -85,20 +85,19 @@ export default async function caseHandler(kaya, mek, chatUpdate, store = null) {
             }
         }
 
-        // 🔹 Extraction robuste du texte (Incluant les liens des previews)
+        // 🔹 Extraction robuste du texte AVANT les utilitaires
         const type = getContentType(mek.message);
         let body = (type === "conversation") ? mek.message.conversation : 
                    (type === "extendedTextMessage") ? (mek.message.extendedTextMessage.text || mek.message.extendedTextMessage.contextInfo?.externalAdReply?.body || "") :
                    (type === "imageMessage") ? mek.message.imageMessage.caption : 
                    (type === "videoMessage") ? mek.message.videoMessage.caption : "";
 
-        // Si lien non capturé, on cherche dans la preview
         if (!body && mek.message?.extendedTextMessage?.contextInfo?.externalAdReply?.sourceUrl) {
             body = mek.message.extendedTextMessage.contextInfo.externalAdReply.sourceUrl;
         }
 
-        // Exécution des outils en arrière-plan (Non bloquant pour le bot)
-        executeUtilities(kaya, mek, from, body, ownerId, groupId);
+        // Exécution des outils de sécurité (avec AWAIT pour assurer le traitement)
+        await executeUtilities(kaya, mek, from, body, ownerId, groupId);
 
         if (!body) return;
 
