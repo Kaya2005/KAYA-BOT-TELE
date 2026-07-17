@@ -9,37 +9,31 @@ export default {
 
     async execute(kaya, mek, from, args, prefix) {
         try {
-            const quoted = mek.message?.extendedTextMessage?.contextInfo?.quotedMessage;
-            const mediaMsg = mek.message?.imageMessage || mek.message?.videoMessage || 
-                             quoted?.imageMessage || quoted?.videoMessage;
-
-            if (!mediaMsg) {
-                return kaya.sendMessage(from, { text: `⚠️ *Usage:* Réponds à une image ou une vidéo avec ${prefix}sticker` }, { quoted: mek });
+            const quoted = mek.quoted ? mek.quoted : mek;
+            const mediaMsg = quoted.msg || quoted;
+            
+            if (!/image|video/.test(mediaMsg.mimetype)) {
+                return kaya.sendMessage(from, { text: '⚠️ Réponds à une image ou vidéo.' }, { quoted: mek });
             }
 
-            await kaya.sendPresenceUpdate('composing', from);
+            // SÉCURITÉ : Bloque les gros fichiers pour éviter le crash
+            if (mediaMsg.fileLength > 1500000) { // 1.5 Mo max
+                return kaya.sendMessage(from, { text: '❌ Fichier trop lourd (> 1.5 Mo).' }, { quoted: mek });
+            }
 
-            const type = mediaMsg.mimetype?.includes('video') ? 'video' : 'image';
-            const stream = await downloadContentFromMessage(mediaMsg, type);
-            const chunks = [];
-            for await (const chunk of stream) chunks.push(chunk);
-            const buffer = Buffer.concat(chunks);
+            const buffer = await kaya.downloadMediaMessage(quoted);
 
-            // Utilisation de wa-sticker-formatter pour créer un sticker valide
             const sticker = new Sticker(buffer, {
-                pack: 'Kaya Bot', // Nom du pack
-                author: 'Kaya',    // Nom de l'auteur
-                type: StickerTypes.FULL, // FULL remplit le cadre, CROPPED le centre
-                quality: 50
+                pack: 'Kaya Bot',
+                author: 'Kaya',
+                type: StickerTypes.CROPPED, // MOINS GOURMAND
+                quality: 20 // OPTIMISÉ
             });
 
-            const stickerBuffer = await sticker.toBuffer();
-
-            await kaya.sendMessage(from, { sticker: stickerBuffer }, { quoted: mek });
-
+            await kaya.sendMessage(from, { sticker: await sticker.toBuffer() }, { quoted: mek });
         } catch (error) {
             console.error('❌ Sticker error:', error);
-            await kaya.sendMessage(from, { text: '❌ Erreur lors de la création du sticker.' }, { quoted: mek });
+            await kaya.sendMessage(from, { text: '❌ Erreur de traitement.' }, { quoted: mek });
         }
     }
 };
