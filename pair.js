@@ -13,7 +13,7 @@ import path from "path";
 import pino from "pino";
 import { fileURLToPath } from "url";
 import handler, { commands } from "./case.js"; 
-import { connectionMessage, sendWithBotImage } from "../setting/botAssets.js";
+import { connectionMessage, sendWithBotImage } from "./setting/botAssets.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
