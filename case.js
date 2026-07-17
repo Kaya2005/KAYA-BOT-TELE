@@ -1,4 +1,3 @@
-//case.js
 import { getContentType } from "@whiskeysockets/baileys";
 import fs from "fs";
 import path from "path";
@@ -12,7 +11,7 @@ const __dirname = path.resolve();
 export const commands = new Map();
 const commandsPath = path.join(__dirname, "commands");
 
-// Fonction utilitaire ajoutée pour le délai (Anti-Ban)
+// Fonction utilitaire pour le délai (Anti-Ban)
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // ================= CHARGEMENT DES COMMANDES ET ALIAS =================
@@ -34,7 +33,7 @@ if (fs.existsSync(commandsPath)) {
     }
 }
 
-export default async function caseHandler(kaya, mek, chatUpdate, store) {
+export default async function caseHandler(kaya, mek, chatUpdate, store = null) {
     try {
         if (!mek.message) return;
         if (mek.key.id.startsWith("BAE5")) return;
@@ -46,7 +45,7 @@ export default async function caseHandler(kaya, mek, chatUpdate, store) {
         const ownerId = kaya.user.id.split(':')[0];
         const groupId = from.split('@')[0];
 
-        // 🔹 1. Simulation de présence HUMAINE (Aléatoire pour éviter le ban)
+        // 🔹 1. Simulation de présence HUMAINE
         if (Math.random() > 0.4) {
             if (getSetting(ownerId, 'typing', false)) {
                 await kaya.sendPresenceUpdate('composing', from).catch(() => {});
@@ -66,7 +65,7 @@ export default async function caseHandler(kaya, mek, chatUpdate, store) {
 
         if (getSetting(ownerId, `banned_${sender}`, false)) return;
 
-        // 🔹 MODIFICATION : Mode privé global avec exception pour "pair"
+        // 🔹 Mode privé global avec exception pour "pair"
         if (!mek.key.fromMe) {
             const privateMode = getSetting(ownerId, 'privateMode', false);
             const blockInbox = getSetting(ownerId, 'blockInbox', false);
@@ -75,7 +74,6 @@ export default async function caseHandler(kaya, mek, chatUpdate, store) {
             const userPrefix = getSetting(ownerId, 'prefix', '.');
             const isPairCommand = bodyText.startsWith(`${userPrefix}pair`);
 
-            // On vérifie la restriction seulement si ce n'est PAS la commande "pair"
             if (!isPairCommand) {
                 if (privateMode) {
                     const status = await checkAdminOrOwner(kaya, from, sender);
@@ -87,13 +85,20 @@ export default async function caseHandler(kaya, mek, chatUpdate, store) {
             }
         }
 
+        // 🔹 Extraction robuste du texte (Incluant les liens des previews)
         const type = getContentType(mek.message);
-        let body = (type === "conversation" ? mek.message.conversation : 
-                    type === "extendedTextMessage" ? mek.message.extendedTextMessage.text : 
-                    type === "imageMessage" ? mek.message.imageMessage.caption : 
-                    type === "videoMessage" ? mek.message.videoMessage.caption : "");
+        let body = (type === "conversation") ? mek.message.conversation : 
+                   (type === "extendedTextMessage") ? (mek.message.extendedTextMessage.text || mek.message.extendedTextMessage.contextInfo?.externalAdReply?.body || "") :
+                   (type === "imageMessage") ? mek.message.imageMessage.caption : 
+                   (type === "videoMessage") ? mek.message.videoMessage.caption : "";
 
-        await executeUtilities(kaya, mek, from, body, ownerId, groupId);
+        // Si lien non capturé, on cherche dans la preview
+        if (!body && mek.message?.extendedTextMessage?.contextInfo?.externalAdReply?.sourceUrl) {
+            body = mek.message.extendedTextMessage.contextInfo.externalAdReply.sourceUrl;
+        }
+
+        // Exécution des outils en arrière-plan (Non bloquant pour le bot)
+        executeUtilities(kaya, mek, from, body, ownerId, groupId);
 
         if (!body) return;
 
@@ -129,7 +134,6 @@ export default async function caseHandler(kaya, mek, chatUpdate, store) {
             return kaya.sendMessage(from, { text: "❌ This command is for admins only." }, { quoted: mek });  
         }  
 
-        // Délai anti-spam global ajouté ici
         await delay(Math.floor(Math.random() * 1000) + 500);
 
         if (cmd.botAdmin) {  
@@ -149,7 +153,6 @@ export default async function caseHandler(kaya, mek, chatUpdate, store) {
 
         console.log(chalk.black(chalk.bgWhite("[ CMD ]")), chalk.green(command), "from", chalk.blue(mek.pushName || from));  
 
-        // 🔹 Exécution
         if (typeof cmd.execute === "function") await cmd.execute(kaya, mek, from, args, prefix);
         else if (typeof cmd.run === "function") await cmd.run(kaya, mek, args, prefix);
 
@@ -158,10 +161,10 @@ export default async function caseHandler(kaya, mek, chatUpdate, store) {
 
 async function executeUtilities(kaya, mek, from, body, ownerId, groupId) {
     const utils = [
-        { name: "antibot", setting: "antibot", scope: "group" },
-        { name: "antilink", setting: "antilink", scope: "group" },
-        { name: "antitag", setting: "antitag", scope: "group" },
-        { name: "antispam", setting: "antispam", scope: "group" }
+        { name: "antibot", setting: "antibot" },
+        { name: "antilink", setting: "antilink" },
+        { name: "antitag", setting: "antitag" },
+        { name: "antispam", setting: "antispam" }
     ];
 
     for (const utilConf of utils) {
