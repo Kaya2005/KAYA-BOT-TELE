@@ -95,7 +95,6 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
     const number = nexusDevNumber.replace(/[^0-9]/g, "");
     if (!number) return;
 
-    // Nettoyage avant de démarrer pour éviter les anciens codes
     const pairingFilePath = path.join(PAIRING_DIR, `pairing_${teleId}.json`);
     if (fs.existsSync(pairingFilePath)) {
         fs.unlinkSync(pairingFilePath);
@@ -181,11 +180,15 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
             );
         }
 
+        // CORRECTION ICI : Suppression conditionnelle plus sécurisée
         if (connection === "close") {
             const reason = new Boom(lastDisconnect?.error)?.output.statusCode;
-            if ([405, DisconnectReason.badSession, DisconnectReason.loggedOut].includes(reason)) {
+            
+            if (reason === DisconnectReason.loggedOut) {
+                console.log("🛑 Déconnexion volontaire, nettoyage de la session.");
                 forceCleanupSession(number, teleId);
             } else {
+                console.log(`⚠️ Connexion fermée (Code: ${reason}). Tentative de reconnexion...`);
                 await sleep(10000);
                 startpairing(nexusDevNumber, teleId);
             }
