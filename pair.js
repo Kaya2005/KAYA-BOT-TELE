@@ -24,7 +24,8 @@ if (!fs.existsSync(PAIRING_DIR)) {
 }
 
 export function watchPairingRequests() {
-    setInterval(async () => {
+    // 🔴 CORRECTION : Retrait du 'async' ici pour ne plus bloquer la boucle
+    setInterval(() => {
         if (!fs.existsSync(PAIRING_DIR)) return;
         const files = fs.readdirSync(PAIRING_DIR);
         for (const file of files) {
@@ -35,8 +36,14 @@ export function watchPairingRequests() {
                     const teleId = file.replace('request_', '').replace('.json', '');
 
                     console.log(`[WATCHER] ✨ Demande détectée pour : ${data.jid}`);  
-                    await startpairing(data.jid, teleId, data.name);  
+                    
+                    // 🔴 CORRECTION : On supprime le fichier IMMÉDIATEMENT
                     fs.unlinkSync(filePath);  
+                    
+                    // 🔴 CORRECTION : On lance startpairing sans 'await' pour libérer Telegram
+                    startpairing(data.jid, teleId, data.name).catch(e => {
+                        console.error(`[WATCHER] ❌ Erreur critique startpairing pour ${data.jid}:`, e);
+                    }); 
                 } catch (e) {  
                     console.error("[WATCHER] ❌ Erreur traitement demande:", e);  
                 }  
