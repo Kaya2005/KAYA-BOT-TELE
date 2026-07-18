@@ -236,7 +236,9 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
                 tracker.isConnected = true;  
                 const msg = connectionMessage();  
                 await sleep(2000);  
-                await kaya.sendMessage(nexusDevNumber + "@s.whatsapp.net", { text: msg }).catch(e => console.error(`${logPrefix} ❌ Erreur message de bienvenue:`, e));  
+                
+                // 🔴 CORRECTION ICI : Remplacement de nexusDevNumber par number
+                await kaya.sendMessage(number + "@s.whatsapp.net", { text: msg }).catch(e => console.error(`${logPrefix} ❌ Erreur message de bienvenue:`, e));  
             }  
         }  
           
