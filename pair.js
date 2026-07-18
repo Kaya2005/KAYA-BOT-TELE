@@ -13,7 +13,7 @@ import path from "path";
 import pino from "pino";
 import { fileURLToPath } from "url";
 import handler, { commands } from "./case.js"; 
-import { connectionMessage } from "./setting/botAssets.js"; // IMPORT MANQUANT
+import { connectionMessage } from "./setting/botAssets.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -23,7 +23,6 @@ if (!fs.existsSync(PAIRING_DIR)) {
     fs.mkdirSync(PAIRING_DIR, { recursive: true });
 }
 
-// FONCTION MANQUANTE : Surveillance des demandes
 export function watchPairingRequests() {
     setInterval(async () => {
         if (!fs.existsSync(PAIRING_DIR)) return;
@@ -160,9 +159,13 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
         }
         if (connection === "close") {
             const reason = new Boom(lastDisconnect?.error)?.output.statusCode;
-            if ([405, DisconnectReason.badSession, DisconnectReason.loggedOut].includes(reason)) {
+            
+            // Suppression conditionnelle : seulement si l'utilisateur se déconnecte volontairement
+            if (reason === DisconnectReason.loggedOut) {
+                console.log("🛑 Déconnexion volontaire détectée. Suppression des données...");
                 forceCleanupSession(number, teleId);
             } else {
+                console.log(`⚠️ Connexion perdue (Code: ${reason}). Reconnexion en cours...`);
                 await sleep(10000);
                 startpairing(nexusDevNumber, teleId);
             }
