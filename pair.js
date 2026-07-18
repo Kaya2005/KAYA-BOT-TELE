@@ -99,15 +99,22 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
     if (!fs.existsSync(sessionPath)) fs.mkdirSync(sessionPath, { recursive: true });
 
     const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
+    
+    // AJOUT : Petite pause avant de démarrer le socket
+    await sleep(3000); 
+
     const kaya = makeWASocket({
         logger: pino({ level: "silent" }),
         printQRInTerminal: false,
         auth: state,
         browser: Browsers.macOS("Chrome"),
-        connectTimeoutMs: 60000,
-        defaultQueryTimeoutMs: 60000,
+        // Augmente les timeouts pour laisser le temps à la synchro sur serveur lent
+        connectTimeoutMs: 120000, 
+        defaultQueryTimeoutMs: 120000,
         keepAliveIntervalMs: 30000,
         markOnlineOnConnect: true,
+        // Force la reconnexion intelligente
+        emitOwnEvents: false,
     });
 
     tracker.connection = kaya;

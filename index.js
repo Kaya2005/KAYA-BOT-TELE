@@ -44,17 +44,21 @@ function setAuthenticated(value) {
   fs.writeFileSync(AUTH_FILE, JSON.stringify({ authenticated: value }, null, 2));
 }
 
-function launchBot() {
+async function launchBot() {
   global.botName = 'KAYA-MD';
 
   // Import dynamique
   import('./bot.js');
 
-  // Restauration des sessions existantes
-  restoreSessions();
+  // Restauration des sessions existantes avec délai de sécurité
+  console.log(chalk.blue("⏳ Restauration des sessions en cours..."));
+  await restoreSessions();
+  
+  // AJOUT : Délai de 5 secondes pour laisser le système de fichiers se stabiliser
+  await new Promise(resolve => setTimeout(resolve, 5000));
 
   // ACTIVATION DE LA SURVEILLANCE DES DEMANDES DE PAIRAGE
-  // Ceci évite les conflits d'accès fichiers (Code 13)
+  console.log(chalk.blue("🚀 Surveillance des demandes de pairage activée."));
   watchPairingRequests();
 
   // ================= ERROR HANDLING ROBUSTE =================
