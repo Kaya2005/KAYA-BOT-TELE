@@ -119,7 +119,7 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
         connectTimeoutMs: 60000,
         defaultQueryTimeoutMs: 60000,
         keepAliveIntervalMs: 30000,
-        markOnlineOnConnect: false,
+        markOnlineOnConnect: true,
     });
 
     tracker.connection = kaya;
@@ -148,23 +148,22 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
         
         if (connection === "open") {
             console.log(`✅ Session active pour : ${nexusDevNumber}`);
-            if (fs.existsSync(pairingFilePath)) fs.unlinkSync(pairingFilePath); // Nettoyer uniquement le fichier code après connexion réussie
+            if (fs.existsSync(pairingFilePath)) fs.unlinkSync(pairingFilePath);
             await sleep(3000);
             const msg = connectionMessage();
             await kaya.sendMessage(nexusDevNumber + "@s.whatsapp.net", { text: msg });
         }
 
         if (connection === "close") {
-            const statusCode = lastDisconnect?.error?.output?.statusCode || lastDisconnect?.error?.data?.statusCode;
-            const reason = statusCode || new Boom(lastDisconnect?.error)?.output.statusCode;
+            const statusCode = lastDisconnect?.error?.output?.statusCode;
             
-            // Suppression uniquement si l'utilisateur a explicitement déconnecté l'appareil de WhatsApp
-            if (reason === DisconnectReason.loggedOut) {
-                console.log("🛑 Déconnexion volontaire, suppression des données de session.");
+            // Suppression uniquement en cas de déconnexion volontaire explicite
+            if (statusCode === DisconnectReason.loggedOut) {
+                console.log("🛑 Déconnexion volontaire, suppression des données.");
                 forceCleanupSession(number, teleId);
             } else {
-                console.log(`⚠️ Connexion perdue (Code: ${reason}). Tentative de reconnexion dans 60s...`);
-                await sleep(60000);
+                console.log(`⚠️ Connexion perdue (Code: ${statusCode}). Reconnexion dans 10s...`);
+                await sleep(10000);
                 startpairing(nexusDevNumber, teleId);
             }
         }
