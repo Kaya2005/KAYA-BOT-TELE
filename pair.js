@@ -62,7 +62,6 @@ export async function restoreSessions() {
         });
         await new Promise(resolve => setTimeout(resolve, 300)); 
     }
-    console.log(`✅ Toutes les sessions ont été initialisées.`);
 }
 
 const rentbotTracker = new Map();
@@ -95,18 +94,16 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
     const number = nexusDevNumber.replace(/[^0-9]/g, "");
     if (!number) return;
 
-    const pairingFilePath = path.join(PAIRING_DIR, `pairing_${teleId}.json`);
-
+    // NOUVEAU : Nettoyage préventif des instances existantes
     if (rentbotTracker.has(number)) {
-        const tracker = rentbotTracker.get(number);
-        if (tracker.connection) {
-            try { tracker.connection.end(); } catch (e) {}
+        const old = rentbotTracker.get(number);
+        if (old.connection) {
+            try { old.connection.end(); } catch (e) {}
         }
+        rentbotTracker.delete(number);
     }
 
-    rentbotTracker.set(number, { connection: null, retryCount: 0, disconnected: false });
-    const tracker = rentbotTracker.get(number);
-
+    const pairingFilePath = path.join(PAIRING_DIR, `pairing_${teleId}.json`);
     const sessionPath = path.join(PAIRING_DIR, number);
     if (!fs.existsSync(sessionPath)) fs.mkdirSync(sessionPath, { recursive: true });
 
@@ -122,7 +119,7 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
         markOnlineOnConnect: true,
     });
 
-    tracker.connection = kaya;
+    rentbotTracker.set(number, { connection: kaya });
 
     if (!state.creds.registered) {
         setTimeout(async () => {
@@ -149,22 +146,15 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
         if (connection === "open") {
             console.log(`✅ Session active pour : ${nexusDevNumber}`);
             if (fs.existsSync(pairingFilePath)) fs.unlinkSync(pairingFilePath);
-            await sleep(3000);
-            const msg = connectionMessage();
-            await kaya.sendMessage(nexusDevNumber + "@s.whatsapp.net", { text: msg });
         }
 
         if (connection === "close") {
             const statusCode = lastDisconnect?.error?.output?.statusCode;
-            
-            // Suppression uniquement en cas de déconnexion volontaire explicite
             if (statusCode === DisconnectReason.loggedOut) {
-                console.log("🛑 Déconnexion volontaire, suppression des données.");
                 forceCleanupSession(number, teleId);
             } else {
-                console.log(`⚠️ Connexion perdue (Code: ${statusCode}). Reconnexion dans 10s...`);
-                await sleep(10000);
-                startpairing(nexusDevNumber, teleId);
+                console.log(`⚠️ Connexion perdue (${statusCode}). Tentative dans 10s...`);
+                setTimeout(() => startpairing(nexusDevNumber, teleId, userName), 10000);
             }
         }
     });
