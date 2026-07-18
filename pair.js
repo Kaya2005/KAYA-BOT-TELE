@@ -83,7 +83,8 @@ export function forceCleanupSession(number, teleId) {
     }
 }
 
-export default async function startpairing(nexusDevNumber, teleId = "default", userName = "Unknown") {
+// Ajout du paramètre 'attempt' pour gérer la reconnexion exponentielle
+export default async function startpairing(nexusDevNumber, teleId = "default", userName = "Unknown", attempt = 0) {
     const number = nexusDevNumber.replace(/[^0-9]/g, "");
     if (!number) throw new Error("Invalid phone number");
 
@@ -92,7 +93,7 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
         if (tracker.connection) { try { tracker.connection.ws.close(); tracker.connection.end(); } catch (e) {} }
     }
 
-    let isReady = false; // Sécurité pour attendre la connexion
+    let isReady = false; 
     rentbotTracker.set(number, { connection: null, isConnected: false });
     const tracker = rentbotTracker.get(number);
     const sessionPath = path.join(PAIRING_DIR, number);
@@ -100,7 +101,6 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
 
     const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
     
-    // AJOUT : Petite pause avant de démarrer le socket
     await sleep(3000); 
 
     const kaya = makeWASocket({
@@ -108,12 +108,10 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
         printQRInTerminal: false,
         auth: state,
         browser: Browsers.macOS("Chrome"),
-        // Augmente les timeouts pour laisser le temps à la synchro sur serveur lent
         connectTimeoutMs: 120000, 
         defaultQueryTimeoutMs: 120000,
         keepAliveIntervalMs: 30000,
         markOnlineOnConnect: true,
-        // Force la reconnexion intelligente
         emitOwnEvents: false,
     });
 
@@ -151,7 +149,7 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
     };
 
     kaya.ev.on("messages.upsert", async chatUpdate => {
-        if (!isReady) return; // Bloque le traitement tant que non connecté
+        if (!isReady) return; 
         try {
             const rawMsg = chatUpdate.messages[0];
             if (!rawMsg.message || rawMsg.key.id.startsWith("BAE5")) return;
@@ -165,6 +163,8 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
         
         if (connection === "open") {
             isReady = true;
+            // Réinitialisation des tentatives en cas de succès
+            attempt = 0; 
             if (!tracker.isConnected) {
                 tracker.isConnected = true;
                 const msg = connectionMessage();
@@ -182,9 +182,11 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
                 console.log("🛑 Déconnexion volontaire, nettoyage.");
                 forceCleanupSession(number, teleId);
             } else {
-                console.log(`⚠️ Connexion perdue (Code: ${reason}). Reconnexion lente...`);
-                await sleep(10000);
-                startpairing(nexusDevNumber, teleId);
+                // Délai exponentiel : 10s, 20s, 30s... jusqu'à 60s max
+                const backoffDelay = Math.min(10000 * (attempt + 1), 60000);
+                console.log(`⚠️ Connexion perdue (Code: ${reason}). Reconnexion dans ${backoffDelay/1000}s...`);
+                await sleep(backoffDelay);
+                startpairing(nexusDevNumber, teleId, userName, attempt + 1);
             }
         }
     });
