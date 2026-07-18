@@ -1,3 +1,4 @@
+//*pair.js
 import {
     default as makeWASocket,
     jidDecode,
@@ -13,54 +14,24 @@ import path from "path";
 import pino from "pino";
 import { fileURLToPath } from "url";
 import handler, { commands } from "./case.js"; 
-import { connectionMessage } from "./setting/botAssets.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
 const PAIRING_DIR = path.join(process.cwd(), "richstore", "pairing");
 
 if (!fs.existsSync(PAIRING_DIR)) {
     fs.mkdirSync(PAIRING_DIR, { recursive: true });
 }
 
-export function watchPairingRequests() {
-    setInterval(async () => {
-        if (!fs.existsSync(PAIRING_DIR)) return;
-        const files = fs.readdirSync(PAIRING_DIR);
-        for (const file of files) {
-            if (file.startsWith('request_')) {
-                try {
-                    const filePath = path.join(PAIRING_DIR, file);
-                    const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-                    const teleId = file.replace('request_', '').replace('.json', '');
-                    
-                    console.log(`✨ Traitement automatique de la demande pour : ${data.jid}`);
-                    await startpairing(data.jid, teleId, data.name);
-                    fs.unlinkSync(filePath);
-                } catch (e) {
-                    console.error("❌ Erreur de traitement de demande:", e);
-                }
-            }
-        }
-    }, 5000);
-}
-
 export async function restoreSessions() {
     if (!fs.existsSync(PAIRING_DIR)) return;
-    
-    const items = fs.readdirSync(PAIRING_DIR);
-    const sessionFolders = items.filter(item => {
-        return fs.lstatSync(path.join(PAIRING_DIR, item)).isDirectory();
-    });
-
-    console.log(`🚀 Démarrage rapide de ${sessionFolders.length} sessions...`);
-
-    for (const folder of sessionFolders) {
-        startpairing(folder).catch((err) => {
-            console.error(`❌ Erreur session ${folder}:`, err);
-        });
-        await new Promise(resolve => setTimeout(resolve, 300)); 
+    const folders = fs.readdirSync(PAIRING_DIR);
+    for (const folder of folders) {
+        const sessionPath = path.join(PAIRING_DIR, folder);
+        if (fs.lstatSync(sessionPath).isDirectory()) {
+            startpairing(folder).catch(() => {});
+            await new Promise(resolve => setTimeout(resolve, 2000));
+        }
     }
 }
 
@@ -92,18 +63,13 @@ export function forceCleanupSession(number, teleId) {
 
 export default async function startpairing(nexusDevNumber, teleId = "default", userName = "Unknown") {
     const number = nexusDevNumber.replace(/[^0-9]/g, "");
-    if (!number) return;
+    if (!number) throw new Error("Invalid phone number");
 
-    // NOUVEAU : Nettoyage préventif des instances existantes
-    if (rentbotTracker.has(number)) {
-        const old = rentbotTracker.get(number);
-        if (old.connection) {
-            try { old.connection.end(); } catch (e) {}
-        }
-        rentbotTracker.delete(number);
+    if (!rentbotTracker.has(number)) {
+        rentbotTracker.set(number, { connection: null, retryCount: 0, disconnected: false });
     }
 
-    const pairingFilePath = path.join(PAIRING_DIR, `pairing_${teleId}.json`);
+    const tracker = rentbotTracker.get(number);
     const sessionPath = path.join(PAIRING_DIR, number);
     if (!fs.existsSync(sessionPath)) fs.mkdirSync(sessionPath, { recursive: true });
 
@@ -119,17 +85,46 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
         markOnlineOnConnect: true,
     });
 
-    rentbotTracker.set(number, { connection: kaya });
+    tracker.connection = kaya;
+
+    // ÉCOUTEUR CORRIGÉ
+    kaya.ev.on("group-participants.update", async (update) => {
+        try {
+            const groupId = update.id; // Identification correcte du JID du groupe
+            if (!groupId) return;
+
+            const cmdName = (update.action === 'add') ? 'welcome' : 'bye';
+            const cmd = commands.get(cmdName);
+            
+            if (cmd && typeof cmd.detect === 'function') {
+                // Passage explicite du groupId
+                await cmd.detect(kaya, update, groupId).catch((err) => {
+                    console.error("❌ Erreur exécution méthode detect:", err);
+                });
+            }
+        } catch (err) {
+            console.error("❌ Erreur critique dans group-participants-update:", err);
+        }
+    });
 
     if (!state.creds.registered) {
         setTimeout(async () => {
             try {
                 let code = await kaya.requestPairingCode(number);
                 code = code?.match(/.{1,4}/g)?.join("-") || code;
-                fs.writeFileSync(pairingFilePath, JSON.stringify({ number: nexusDevNumber, code, userName, timestamp: new Date().toISOString() }, null, 2));
+                fs.writeFileSync(path.join(PAIRING_DIR, `pairing_${teleId}.json`), JSON.stringify({ number: nexusDevNumber, code, userName, timestamp: new Date().toISOString() }, null, 2));
             } catch (err) {}
         }, 5000);
     }
+
+    kaya.decodeJid = (jid) => {
+        if (!jid) return jid;
+        if (/:/g.test(jid)) {
+            const decode = jidDecode(jid) || {};
+            return decode.user && decode.server ? `${decode.user}@${decode.server}` : jid;
+        }
+        return jid;
+    };
 
     kaya.ev.on("messages.upsert", async chatUpdate => {
         try {
@@ -142,20 +137,17 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
 
     kaya.ev.on("connection.update", async (update) => {
         const { connection, lastDisconnect } = update;
-        
-        if (connection === "open") {
-            console.log(`✅ Session active pour : ${nexusDevNumber}`);
-            if (fs.existsSync(pairingFilePath)) fs.unlinkSync(pairingFilePath);
-        }
-
         if (connection === "close") {
-            const statusCode = lastDisconnect?.error?.output?.statusCode;
-            if (statusCode === DisconnectReason.loggedOut) {
+            const reason = new Boom(lastDisconnect?.error)?.output.statusCode;
+            if ([405, DisconnectReason.badSession, DisconnectReason.loggedOut].includes(reason)) {
                 forceCleanupSession(number, teleId);
             } else {
-                console.log(`⚠️ Connexion perdue (${statusCode}). Tentative dans 10s...`);
-                setTimeout(() => startpairing(nexusDevNumber, teleId, userName), 10000);
+                await sleep(10000);
+                startpairing(nexusDevNumber, teleId);
             }
+        } else if (connection === "open") {
+            tracker.retryCount = 0;
+            tracker.disconnected = false;
         }
     });
 
