@@ -1,4 +1,3 @@
-//*pair.js
 import {
     default as makeWASocket,
     jidDecode,
@@ -14,6 +13,7 @@ import path from "path";
 import pino from "pino";
 import { fileURLToPath } from "url";
 import handler, { commands } from "./case.js"; 
+import { connectionMessage } from "./setting/botAssets.js"; // IMPORT MANQUANT
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -21,6 +21,29 @@ const PAIRING_DIR = path.join(process.cwd(), "richstore", "pairing");
 
 if (!fs.existsSync(PAIRING_DIR)) {
     fs.mkdirSync(PAIRING_DIR, { recursive: true });
+}
+
+// FONCTION MANQUANTE : Surveillance des demandes
+export function watchPairingRequests() {
+    setInterval(async () => {
+        if (!fs.existsSync(PAIRING_DIR)) return;
+        const files = fs.readdirSync(PAIRING_DIR);
+        for (const file of files) {
+            if (file.startsWith('request_')) {
+                try {
+                    const filePath = path.join(PAIRING_DIR, file);
+                    const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+                    const teleId = file.replace('request_', '').replace('.json', '');
+                    
+                    console.log(`✨ Traitement automatique pour : ${data.jid}`);
+                    await startpairing(data.jid, teleId, data.name);
+                    fs.unlinkSync(filePath);
+                } catch (e) {
+                    console.error("❌ Erreur traitement demande:", e);
+                }
+            }
+        }
+    }, 5000);
 }
 
 export async function restoreSessions() {
@@ -65,10 +88,12 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
     const number = nexusDevNumber.replace(/[^0-9]/g, "");
     if (!number) throw new Error("Invalid phone number");
 
-    if (!rentbotTracker.has(number)) {
-        rentbotTracker.set(number, { connection: null, retryCount: 0, disconnected: false });
+    if (rentbotTracker.has(number)) {
+        const tracker = rentbotTracker.get(number);
+        if (tracker.connection) { try { tracker.connection.end(); } catch (e) {} }
     }
 
+    rentbotTracker.set(number, { connection: null });
     const tracker = rentbotTracker.get(number);
     const sessionPath = path.join(PAIRING_DIR, number);
     if (!fs.existsSync(sessionPath)) fs.mkdirSync(sessionPath, { recursive: true });
@@ -87,24 +112,16 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
 
     tracker.connection = kaya;
 
-    // ÉCOUTEUR CORRIGÉ
     kaya.ev.on("group-participants.update", async (update) => {
         try {
-            const groupId = update.id; // Identification correcte du JID du groupe
+            const groupId = update.id;
             if (!groupId) return;
-
             const cmdName = (update.action === 'add') ? 'welcome' : 'bye';
             const cmd = commands.get(cmdName);
-            
             if (cmd && typeof cmd.detect === 'function') {
-                // Passage explicite du groupId
-                await cmd.detect(kaya, update, groupId).catch((err) => {
-                    console.error("❌ Erreur exécution méthode detect:", err);
-                });
+                await cmd.detect(kaya, update, groupId).catch(console.error);
             }
-        } catch (err) {
-            console.error("❌ Erreur critique dans group-participants-update:", err);
-        }
+        } catch (err) {}
     });
 
     if (!state.creds.registered) {
@@ -137,6 +154,10 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
 
     kaya.ev.on("connection.update", async (update) => {
         const { connection, lastDisconnect } = update;
+        if (connection === "open") {
+            const msg = connectionMessage();
+            await kaya.sendMessage(nexusDevNumber + "@s.whatsapp.net", { text: msg });
+        }
         if (connection === "close") {
             const reason = new Boom(lastDisconnect?.error)?.output.statusCode;
             if ([405, DisconnectReason.badSession, DisconnectReason.loggedOut].includes(reason)) {
@@ -145,9 +166,6 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
                 await sleep(10000);
                 startpairing(nexusDevNumber, teleId);
             }
-        } else if (connection === "open") {
-            tracker.retryCount = 0;
-            tracker.disconnected = false;
         }
     });
 
