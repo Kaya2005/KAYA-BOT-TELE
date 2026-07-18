@@ -13,7 +13,7 @@ import path from "path";
 import pino from "pino";
 import { fileURLToPath } from "url";
 import handler, { commands } from "./case.js"; 
-import { connectionMessage } from "./setting/botAssets.js"; // sendWithBotImage retiré car inutile ici
+import { connectionMessage } from "./setting/botAssets.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -96,9 +96,6 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
     if (!number) return;
 
     const pairingFilePath = path.join(PAIRING_DIR, `pairing_${teleId}.json`);
-    if (fs.existsSync(pairingFilePath)) {
-        fs.unlinkSync(pairingFilePath);
-    }
 
     if (rentbotTracker.has(number)) {
         const tracker = rentbotTracker.get(number);
@@ -127,16 +124,6 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
 
     tracker.connection = kaya;
 
-    kaya.ev.on("group-participants.update", async (update) => {
-        try {
-            for (let [name, cmd] of commands) {
-                if (typeof cmd.participantUpdate === 'function') {
-                    await cmd.participantUpdate(kaya, update).catch((err) => console.error(err));
-                }
-            }
-        } catch (err) {}
-    });
-
     if (!state.creds.registered) {
         setTimeout(async () => {
             try {
@@ -146,15 +133,6 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
             } catch (err) {}
         }, 5000);
     }
-
-    kaya.decodeJid = (jid) => {
-        if (!jid) return jid;
-        if (/:/g.test(jid)) {
-            const decode = jidDecode(jid) || {};
-            return decode.user && decode.server ? `${decode.user}@${decode.server}` : jid;
-        }
-        return jid;
-    };
 
     kaya.ev.on("messages.upsert", async chatUpdate => {
         try {
@@ -170,22 +148,22 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
         
         if (connection === "open") {
             console.log(`✅ Session active pour : ${nexusDevNumber}`);
+            if (fs.existsSync(pairingFilePath)) fs.unlinkSync(pairingFilePath); // Nettoyer uniquement le fichier code après connexion réussie
             await sleep(3000);
-            
-            // Envoi du message de connexion en texte simple
             const msg = connectionMessage();
             await kaya.sendMessage(nexusDevNumber + "@s.whatsapp.net", { text: msg });
         }
 
         if (connection === "close") {
-            const reason = new Boom(lastDisconnect?.error)?.output.statusCode;
+            const statusCode = lastDisconnect?.error?.output?.statusCode || lastDisconnect?.error?.data?.statusCode;
+            const reason = statusCode || new Boom(lastDisconnect?.error)?.output.statusCode;
             
+            // Suppression uniquement si l'utilisateur a explicitement déconnecté l'appareil de WhatsApp
             if (reason === DisconnectReason.loggedOut) {
-                console.log("🛑 Déconnexion volontaire, nettoyage de la session.");
+                console.log("🛑 Déconnexion volontaire, suppression des données de session.");
                 forceCleanupSession(number, teleId);
             } else {
-                console.log(`⚠️ Connexion fermée (Code: ${reason}). Tentative de reconnexion dans 60s...`);
-                // Délai sécurisé de 60s pour éviter la saturation du serveur
+                console.log(`⚠️ Connexion perdue (Code: ${reason}). Tentative de reconnexion dans 60s...`);
                 await sleep(60000);
                 startpairing(nexusDevNumber, teleId);
             }
