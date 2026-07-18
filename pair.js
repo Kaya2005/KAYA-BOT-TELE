@@ -1,4 +1,5 @@
-import makeWASocket, {
+import {
+    default as makeWASocket,
     jidDecode,
     DisconnectReason,
     useMultiFileAuthState,
@@ -82,6 +83,7 @@ export function forceCleanupSession(number, teleId) {
     }
 }
 
+// Ajout du paramètre 'attempt' pour gérer la reconnexion exponentielle
 export default async function startpairing(nexusDevNumber, teleId = "default", userName = "Unknown", attempt = 0) {
     const number = nexusDevNumber.replace(/[^0-9]/g, "");
     if (!number) throw new Error("Invalid phone number");
@@ -161,6 +163,7 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
         
         if (connection === "open") {
             isReady = true;
+            // Réinitialisation des tentatives en cas de succès
             attempt = 0; 
             if (!tracker.isConnected) {
                 tracker.isConnected = true;
@@ -179,6 +182,7 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
                 console.log("🛑 Déconnexion volontaire, nettoyage.");
                 forceCleanupSession(number, teleId);
             } else {
+                // Délai exponentiel : 10s, 20s, 30s... jusqu'à 60s max
                 const backoffDelay = Math.min(10000 * (attempt + 1), 60000);
                 console.log(`⚠️ Connexion perdue (Code: ${reason}). Reconnexion dans ${backoffDelay/1000}s...`);
                 await sleep(backoffDelay);
