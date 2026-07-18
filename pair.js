@@ -19,6 +19,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PAIRING_DIR = path.join(process.cwd(), "richstore", "pairing");
 
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 if (!fs.existsSync(PAIRING_DIR)) {
     fs.mkdirSync(PAIRING_DIR, { recursive: true });
 }
@@ -34,19 +36,45 @@ export function watchPairingRequests() {
                     const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
                     const teleId = file.replace('request_', '').replace('.json', '');
 
-                    console.log(`✨ Traitement automatique pour : ${data.jid}`);  
-                    await startpairing(data.jid, teleId, data.name);  
-                    fs.unlinkSync(filePath);  
-                } catch (e) {  
-                    console.error("❌ Erreur traitement demande:", e);  
-                }  
-            }  
-        }  
+                    console.log(`✨ Traitement automatique pour : ${data.jid}`);
+                    await startpairing(data.jid, teleId, data.name);
+                    fs.unlinkSync(filePath);
+                } catch (e) {
+                    console.error("❌ Erreur traitement demande:", e);
+                }
+            }
+        }
     }, 5000);
 }
 
+
+// AJOUTE ICI
+export async function restoreSessions() {
+    if (!fs.existsSync(PAIRING_DIR)) return;
+
+    const folders = fs.readdirSync(PAIRING_DIR);
+
+    for (const folder of folders) {
+        const sessionPath = path.join(PAIRING_DIR, folder);
+
+        if (
+            fs.existsSync(sessionPath) &&
+            fs.lstatSync(sessionPath).isDirectory() &&
+            /^[0-9]+$/.test(folder)
+        ) {
+            try {
+                console.log(`🔄 Restauration session : ${folder}`);
+                await startpairing(folder);
+                await sleep(2000);
+            } catch (err) {
+                console.error(`❌ Erreur restauration ${folder}:`, err);
+            }
+        }
+    }
+}
+
+
 const rentbotTracker = new Map();
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 export async function forceCleanupSession(number, teleId) {
     const sessionPath = path.join(PAIRING_DIR, number);
