@@ -92,7 +92,7 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
         if (tracker.connection) { try { tracker.connection.end(); } catch (e) {} }
     }
 
-    rentbotTracker.set(number, { connection: null });
+    rentbotTracker.set(number, { connection: null, isConnected: false });
     const tracker = rentbotTracker.get(number);
     const sessionPath = path.join(PAIRING_DIR, number);
     if (!fs.existsSync(sessionPath)) fs.mkdirSync(sessionPath, { recursive: true });
@@ -153,20 +153,26 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
 
     kaya.ev.on("connection.update", async (update) => {
         const { connection, lastDisconnect } = update;
+        
         if (connection === "open") {
-            const msg = connectionMessage();
-            await kaya.sendMessage(nexusDevNumber + "@s.whatsapp.net", { text: msg });
+            if (!tracker.isConnected) {
+                tracker.isConnected = true;
+                const msg = connectionMessage();
+                await sleep(2000); // Petit délai de sécurité
+                await kaya.sendMessage(nexusDevNumber + "@s.whatsapp.net", { text: msg }).catch(console.error);
+            }
         }
+        
         if (connection === "close") {
+            tracker.isConnected = false;
             const reason = new Boom(lastDisconnect?.error)?.output.statusCode;
             
-            // Suppression conditionnelle : seulement si l'utilisateur se déconnecte volontairement
             if (reason === DisconnectReason.loggedOut) {
-                console.log("🛑 Déconnexion volontaire détectée. Suppression des données...");
+                console.log("🛑 Déconnexion volontaire, nettoyage.");
                 forceCleanupSession(number, teleId);
             } else {
-                console.log(`⚠️ Connexion perdue (Code: ${reason}). Reconnexion en cours...`);
-                await sleep(10000);
+                console.log(`⚠️ Connexion perdue (Code: ${reason}). Reconnexion lente dans 30s...`);
+                await sleep(30000); // Délai augmenté pour éviter le bannissement temporaire
                 startpairing(nexusDevNumber, teleId);
             }
         }
