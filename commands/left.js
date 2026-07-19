@@ -6,12 +6,16 @@ export default {
     category: 'Group',
 
     group: true,
-    owner: true,
+    ownerOnly: true, // ✅ Corrigé ici pour correspondre au check de case.js
 
-    run: async (kaya, m, args) => {
+    run: async (kaya, mek, args) => {
         try {
-            // 🚪 Quit group
-            await kaya.groupLeave(m.chat);
+            // mek.key.remoteJid contient l'ID du groupe (le "from")
+            const from = mek.key.remoteJid;
+            
+            // 🚪 Quitter le groupe
+            await kaya.sendMessage(from, { text: "👋 Bye bye, leaving this group." });
+            await kaya.groupLeave(from);
 
         } catch (err) {
             console.error('❌ Left command error:', err);
