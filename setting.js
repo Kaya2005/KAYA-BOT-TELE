@@ -1,6 +1,7 @@
-//setting.js
+// setting.js
 import fs from "fs";
 import path from "path";
+import { writeFile } from "fs/promises"; // ✅ Importation pour l'écriture asynchrone
 
 // 🚀 CACHE EN MÉMOIRE (La clé est "ownerId:groupId" ou juste "ownerId")
 const cache = new Map();
@@ -56,9 +57,9 @@ export function getSetting(ownerId, key, defaultValue = false, groupId = null) {
 }
 
 /**
- * Enregistre un réglage
+ * Enregistre un réglage (Asynchrone pour ne pas ralentir le bot)
  */
-export function setSetting(ownerId, key, value, groupId = null) {
+export async function setSetting(ownerId, key, value, groupId = null) {
     try {
         const cacheKey = groupId ? `${ownerId}:${groupId}` : ownerId;
         
@@ -70,12 +71,13 @@ export function setSetting(ownerId, key, value, groupId = null) {
         const settings = cache.get(cacheKey);
         settings[key] = value;
         
-        // Mise à jour du cache
+        // Mise à jour du cache en mémoire
         cache.set(cacheKey, settings);
         
-        // Écriture sur le disque
+        // Écriture sur le disque de manière ASYNCHRONE
         const filePath = getSettingsPath(ownerId, groupId, true); 
-        fs.writeFileSync(filePath, JSON.stringify(settings, null, 2));
+        await writeFile(filePath, JSON.stringify(settings, null, 2));
+        
     } catch (e) {
         console.error(`[SETTING] Erreur sauvegarde ${ownerId}:`, e);
     }
