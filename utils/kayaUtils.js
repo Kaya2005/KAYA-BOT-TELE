@@ -2,9 +2,9 @@
 
 const messageCounter = new Map();
 
-// Délai humain (4 à 8 secondes)
-// On met 4000 et 8000 par défaut ici pour plus de cohérence
-export const randomDelay = (min = 4000, max = 8000) => 
+// Délai humain (5 à 8 secondes)
+// On met 5000 et 8000 par défaut ici pour plus de cohérence
+export const randomDelay = (min = 5000, max = 8000) => 
     new Promise((resolve) => setTimeout(resolve, Math.floor(Math.random() * (max - min + 1)) + min));
 
 // Gestionnaire de limite (100 messages/heure)
@@ -30,9 +30,9 @@ export async function sendLimited(kaya, originalSendMessage, jid, content, optio
     stats.count++;
     messageCounter.set(number, stats);
     
-    // Appliquer un délai aléatoire de 4 à 8 secondes avant chaque envoi
+    // Appliquer un délai aléatoire de 5 à 8 secondes avant chaque envoi
     // C'est ta sécurité majeure
-    await randomDelay(4000, 8000); 
+    await randomDelay(5000, 8000); 
     
     // Envoyer le message avec la fonction originale de Baileys
     return await originalSendMessage.call(kaya, jid, content, options);
