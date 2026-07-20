@@ -19,11 +19,13 @@ export default {
 
 _Type ${prefix}menu to see available commands._`;
 
-            await kaya.sendMessage(from, { text: message }, { quoted: mek });
+            // ✅ Mise à jour : Utilisation de sendMessageLimited pour respecter la sécurité
+            await kaya.sendMessageLimited(from, { text: message }, { quoted: mek });
 
         } catch (err) {
             console.error('❌ Erreur dans alive.js :', err);
-            await kaya.sendMessage(from, { text: '⚠️ Le bot est en ligne mais a rencontré une erreur lors de la réponse.' }, { quoted: mek });
+            // ✅ Mise à jour : Utilisation de sendMessageLimited ici aussi
+            await kaya.sendMessageLimited(from, { text: '⚠️ Le bot est en ligne mais a rencontré une erreur lors de la réponse.' }, { quoted: mek });
         }
     }
 };

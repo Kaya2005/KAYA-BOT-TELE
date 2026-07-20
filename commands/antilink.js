@@ -1,3 +1,4 @@
+//antilink.js
 import { getSetting, setSetting } from "../setting.js";
 
 // Fonction pour simuler un délai humain (Anti-Ban)

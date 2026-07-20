@@ -1,3 +1,4 @@
+//bye.js
 import fs from 'fs';
 import path from 'path';
 import { getContextInfo } from '../setting/contextInfo.js';

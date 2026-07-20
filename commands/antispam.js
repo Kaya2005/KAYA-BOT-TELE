@@ -1,3 +1,5 @@
+
+//antispam.js
 import { getSetting, setSetting } from "../setting.js";
 import checkAdminOrOwner from "../setting/checkAdminOrOwner.js";
 

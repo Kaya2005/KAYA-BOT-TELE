@@ -9,31 +9,44 @@ export default {
 
     async execute(kaya, mek, from, args, prefix) {
         try {
-            const quoted = mek.quoted ? mek.quoted : mek;
-            const stickerMsg = quoted.msg || quoted;
+            // 1. Vérifier si l'utilisateur répond à un sticker
+            const quoted = mek.message?.extendedTextMessage?.contextInfo?.quotedMessage;
+            const stickerMsg = mek.message?.stickerMessage || quoted?.stickerMessage;
 
-            if (!stickerMsg.mimetype || !stickerMsg.mimetype.includes('sticker')) {
-                return kaya.sendMessage(from, { text: `⚠️ Réponds à un sticker.` }, { quoted: mek });
+            if (!stickerMsg) {
+                return kaya.sendMessage(from, { text: `⚠️ *Usage:* Réponds à un sticker avec ${prefix}take [nom du pack] | [auteur]` }, { quoted: mek });
             }
 
+            // 2. Définir le nom et l'auteur
+            // Si args est vide, on prend le nom du pushName (pseudo WhatsApp)
+            // Sinon, on divise par "|" pour séparer PackName et Author
             const input = args.join(' ');
             const [packName, authorName] = input.includes('|') 
                 ? input.split('|').map(s => s.trim()) 
-                : [input || "Kaya Bot", "Kaya"];
+                : [input || mek.pushName, "Kaya Bot"];
 
-            const buffer = await kaya.downloadMediaMessage(stickerMsg);
+            // 3. Télécharger le sticker
+            const stream = await downloadContentFromMessage(stickerMsg, 'sticker');
+            const chunks = [];
+            for await (const chunk of stream) chunks.push(chunk);
+            const buffer = Buffer.concat(chunks);
 
+            // 4. Reformater le sticker avec les nouvelles métadonnées
             const sticker = new Sticker(buffer, {
                 pack: packName,
                 author: authorName,
-                type: StickerTypes.CROPPED,
-                quality: 20 // OPTIMISÉ
+                type: StickerTypes.FULL,
+                quality: 50
             });
 
-            await kaya.sendMessage(from, { sticker: await sticker.toBuffer() }, { quoted: mek });
+            const stickerBuffer = await sticker.toBuffer();
+
+            // 5. Envoyer
+            await kaya.sendMessage(from, { sticker: stickerBuffer }, { quoted: mek });
+
         } catch (error) {
             console.error('❌ Take error:', error);
-            await kaya.sendMessage(from, { text: '❌ Erreur (mémoire saturée). Réessayez.' }, { quoted: mek });
+            await kaya.sendMessage(from, { text: '❌ Erreur lors de la récupération du sticker.' }, { quoted: mek });
         }
     }
 };

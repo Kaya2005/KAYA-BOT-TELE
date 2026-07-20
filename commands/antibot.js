@@ -1,3 +1,4 @@
+//antibot.js
 import { getSetting, setSetting } from "../setting.js";
 
 // Fonction de délai pour éviter le comportement robotique
