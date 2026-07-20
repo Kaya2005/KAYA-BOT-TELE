@@ -72,7 +72,7 @@ async function downloadYoutube(url) {
 }
 
 export default {
-  name: 'yt',
+  name: 'video',
   aliases: ['youtube', 'ytdl'],
   category: 'media',
   description: '🎬 Download YouTube videos (supports URL or search query)',
