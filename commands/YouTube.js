@@ -84,7 +84,7 @@ export default {
 
     if (!input) {
       return await kaya.sendMessage(from, { 
-        text: `❌ Please provide a YouTube URL or search query.\nExample: \`${prefix}yt <url or query>\`` 
+        text: `❌ Please provide a YouTube URL or search query.\nExample: \`${prefix}video <url or query>\`` 
       }, { quoted: mek });
     }
 
