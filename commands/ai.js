@@ -1,26 +1,73 @@
 import axios from 'axios';
+import { getContextInfo } from '../setting/contextInfo.js';
+// Si tu as un fichier config, importe-le ici
+// import config from '../config.js'; 
 
 export default {
-  name: 'ai',
-  description: 'Pose une question à l’IA via API publique',
-  run: async (kaya, m, args) => {
-    const chatId = m.chat;
-    if (!args.length) return kaya.sendMessage(chatId, { text: '❌ Pose une question à l’IA !' }, { quoted: m });
+    name: 'ai',
+    aliases: ['gpt', 'ask', 'chatgpt'],
+    category: 'ai',
+    description: 'Ask the AI anything',
+    usage: '.ai <your question>',
 
-    const question = args.join(' ');
+    async execute(kaya, mek, from, args, prefix) {
+        try {
+            const question = args.join(' ');
+            
+            // 1. Vérification de l'argument
+            if (!question) {
+                return await kaya.sendMessage(from, { 
+                    text: `❌ Please provide a question.\nExample: \`${prefix}ai How to code in Node.js?\`` 
+                }, { quoted: mek });
+            }
 
-    try {
-      const res = await axios.post('https://api.luan.tools/api/tasks', {
-        prompt: question,
-        model: 'text-davinci-003',
-      });
+            // 2. Réaction "en cours"
+            // Note: Si extra.react n'est pas dispo, utilise: kaya.sendMessage(from, { react: { text: '⏳', key: mek.key }})
+            if (typeof extra !== 'undefined' && extra.react) {
+                await extra.react('⏳');
+            } else {
+                await kaya.sendMessage(from, { text: '⏳ *Thinking...*' }, { quoted: mek });
+            }
 
-      const answer = res.data?.output?.[0]?.content || '❌ Pas de réponse de l’IA';
-      await kaya.sendMessage(chatId, { text: `💬 Question : ${question}\n\n🤖 Réponse : ${answer}` }, { quoted: m });
+            // 3. Appel API
+            const apiUrl = 'https://api.giftedtech.co.ke/api/ai/gpt4o';
+            const params = {
+                apikey: 'gifted', // Remplace par ta clé API si besoin
+                q: question
+            };
 
-    } catch (err) {
-      console.error('❌ AI error:', err);
-      await kaya.sendMessage(chatId, { text: '❌ L’IA publique ne répond pas pour le moment.' }, { quoted: m });
+            const response = await axios.get(apiUrl, { params, timeout: 30000 });
+
+            // 4. Traitement de la réponse
+            if (response.data && response.data.success && response.data.result) {
+                const answer = response.data.result;
+                
+                await kaya.sendMessage(from, { 
+                    text: answer,
+                    contextInfo: getContextInfo() // Ajout de ton contexte personnalisé
+                }, { quoted: mek });
+            } else {
+                await kaya.sendMessage(from, { text: '❌ AI service returned an unexpected response.' }, { quoted: mek });
+            }
+
+            // 5. Réaction de fin
+            if (typeof extra !== 'undefined' && extra.react) {
+                await extra.react('✅');
+            }
+            
+        } catch (error) {
+            console.error('AI command error:', error.message);
+            
+            let errorMsg = '❌ Failed to get a response from AI.';
+            if (error.code === 'ECONNABORTED') errorMsg = '❌ Request timed out. Please try again later.';
+            else if (error.response) errorMsg = `❌ API error: ${error.response.status}`;
+            
+            await kaya.sendMessage(from, { text: errorMsg }, { quoted: mek });
+            
+            // Réaction d'erreur
+            if (typeof extra !== 'undefined' && extra.react) {
+                await extra.react('❌').catch(() => {});
+            }
+        }
     }
-  }
 };
