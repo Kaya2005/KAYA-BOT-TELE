@@ -1,10 +1,9 @@
-//bot.js
 import './config.js'; 
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { Telegraf } from 'telegraf';
-import startpairing, { forceCleanupSession } from './pair.js';
+import { forceCleanupSession } from './pair.js'; // startpairing n'est plus appelé directement
 import { BOT_TOKEN } from './token.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -99,21 +98,29 @@ bot.command('connect', async (ctx) => {
     const text = ctx.message.text.split(' ')[1];
     if (!text) return ctx.reply('⚠️ Usage: `/connect 243xxxxxx`', { parse_mode: 'Markdown' });
     
+    // 3. Validation du numéro (minimum 9 chiffres)
     const number = text.replace(/\D/g, '');
+    if (number.length < 9) return ctx.reply('❌ Invalid number. Minimum 9 digits required.');
+    
     const jid = number + "@s.whatsapp.net";
     const teleId = ctx.from.id;
     const userName = ctx.from.first_name || "Unknown";
     
-    await startpairing(jid, teleId, userName);
+    // 4. Écriture de la requête pour que pair.js la traite
+    const requestPath = path.join(pairingFolder, `request_${teleId}.json`);
+    fs.writeFileSync(requestPath, JSON.stringify({ jid, name: userName }));
     
+    ctx.reply('⏳ Initialization... please wait.');
+    
+    // 5. Attente de la réponse
     let attempts = 0;
     let cuObj = null;
-    const filePath = path.join(pairingFolder, `pairing_${teleId}.json`);
+    const pairingFile = path.join(pairingFolder, `pairing_${teleId}.json`);
 
     while (attempts < 20) {
-        if (fs.existsSync(filePath)) {
+        if (fs.existsSync(pairingFile)) {
             try {
-                cuObj = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+                cuObj = JSON.parse(fs.readFileSync(pairingFile, 'utf-8'));
                 break;
             } catch (e) { }
         }

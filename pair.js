@@ -112,8 +112,14 @@ export function forceCleanupSession(number, teleId) {
 }
 
 export default async function startpairing(nexusDevNumber, teleId = "default", userName = "Unknown", attempt = 0) {
+    // Nettoyage du numéro
     const number = nexusDevNumber.replace(/[^0-9]/g, "");
-    if (!number) throw new Error("Invalid phone number");
+
+    // 🛡️ CORRECTION : Vérification de la longueur (min 9 chiffres requis)
+    if (!number || number.length < 9) {
+        console.log(`[PAIRING] ❌ Tentative de connexion avec un numéro invalide/court : ${nexusDevNumber}`);
+        throw new Error("Numéro invalide (minimum 9 chiffres requis)");
+    }
 
     const instanceId = Math.random().toString(36).substring(2, 6).toUpperCase();
     const logPrefix = `[${number} | ID:${instanceId}]`;
