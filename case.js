@@ -156,12 +156,26 @@ export default async function caseHandler(kaya, mek, chatUpdate, store = null) {
 }
 
 async function executeUtilities(kaya, mek, from, body, ownerId, groupId) {
-    const utils = [{ name: "antibot", setting: "antibot" }, { name: "antilink", setting: "antilink" }, { name: "antitag", setting: "antitag" }, { name: "antispam", setting: "antispam" }];
+    const utils = [
+        { name: "antibot", setting: "antibot" }, 
+        { name: "antilink", setting: "antilink" }, 
+        { name: "antitag", setting: "antitag" }, 
+        { name: "antispam", setting: "antispam" },
+        { name: "antistatus", setting: "antistatus" },     // 👈 Ajouté ici pour exécuter la détection antistatus
+        { name: "antimention", setting: "antimention" }   // 👈 Optionnel si tu utilises aussi antimention
+    ];
+    
     for (const utilConf of utils) {
         const isEnabled = getSetting(ownerId, utilConf.setting, false, groupId);
         if (isEnabled) {
             const util = commands.get(utilConf.name);
-            if (util && util.detect) try { await util.detect(kaya, mek, from, body); } catch (e) { console.error(`❌ Error in ${utilConf.name}:`, e); }
+            if (util && util.detect) {
+                try { 
+                    await util.detect(kaya, mek, from, body); 
+                } catch (e) { 
+                    console.error(`❌ Error in ${utilConf.name}:`, e); 
+                }
+            }
         }
     }
 }
