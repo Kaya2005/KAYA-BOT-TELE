@@ -1,3 +1,4 @@
+
 //antilink.js
 import { getSetting, setSetting } from "../setting.js";
 
@@ -91,3 +92,4 @@ export default {
     }
   }
 };
+
