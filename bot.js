@@ -3,8 +3,8 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { Telegraf } from 'telegraf';
-import { forceCleanupSession } from './pair.js'; // startpairing n'est plus appelé directement
-import { BOT_TOKEN } from './token.js';
+import { forceCleanupSession } from './pair.js'; 
+import { getActiveToken } from './token.js'; // 👈 Modifié ici pour importer la fonction
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -55,7 +55,8 @@ ______________________
     return menu;
 };
 
-const bot = new Telegraf(BOT_TOKEN);
+// 🚀 Utilisation de getActiveToken() pour récupérer dynamiquement le premier token non utilisé (active: false)
+const bot = new Telegraf(getActiveToken());
 
 // ================= COMMANDS =================
 bot.start(async (ctx) => {
@@ -179,4 +180,4 @@ bot.command('delpair', async (ctx) => {
     } else { ctx.reply('❌ Session not found.'); }
 });
 
-bot.launch().then(() => console.log('▉ KAYA BOT is online.'));
+bot.launch().then(() => console.log('▉ KAYA BOT is online with active token.'));
