@@ -94,7 +94,7 @@ function deleteFolderRecursive(folderPath) {
     }
 }
 
-export function forceCleanupSession(number, teleId) {
+export function forceCleanupSession(number, teleId = "default") {
     console.log(`[CLEANUP] 🧹 Nettoyage forcé pour ${number}`);
     const sessionPath = path.join(PAIRING_DIR, number);
     const pairingFile = path.join(PAIRING_DIR, `pairing_${teleId}.json`);
@@ -155,7 +155,7 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
     await sleep(2000);   
 
     const kaya = makeWASocket({  
-        logger: pino({ level: "silent" }), // 👈 Mis en "silent" pour éviter de saturer les logs avec les erreurs de décryptage de signal
+        logger: pino({ level: "silent" }), 
         printQRInTerminal: false,  
         auth: state,  
         browser: Browsers.macOS("Chrome"),  
@@ -210,7 +210,7 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
             const mek = smsg(kaya, rawMsg);  
             await handler(kaya, mek, chatUpdate);   
         } catch (err) { 
-            // Ignorer les erreurs mineures de décryptage pour stopper les crashs en chaîne
+            // Ignorer les erreurs pour éviter tout plantage global
         }  
     });  
 
@@ -234,18 +234,22 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
             tracker.isConnected = false;  
             if (rentbotTracker.get(number)?.connection !== kaya) return;
             
-            const reason = new Boom(lastDisconnect?.error)?.output?.statusCode;  
-            if (reason === DisconnectReason.loggedOut) {
+            const statusCode = new Boom(lastDisconnect?.error)?.output?.statusCode;  
+            
+            // 🔄 AUTOMATISATION : Si la session est déconnectée définitivement ou renvoie un 403
+            if (statusCode === DisconnectReason.loggedOut || statusCode === 403) {
+                console.log(`${logPrefix} ❌ Session rejetée ou fermée définitivement (Code: ${statusCode}). Nettoyage automatique du dossier...`);
                 forceCleanupSession(number, teleId);  
             } else {  
-                // Protection contre la boucle infinie trop agressive (max tentative ou backoff progressif)
+                // Pour les coupures réseau temporaires, on tente de reconnecter progressivement
                 if (attempt < 5) {
                     const backoffDelay = Math.min(15000 * (attempt + 1), 60000);  
-                    console.log(`${logPrefix} ⚠️ Connexion fermée (Reason: ${reason}). Reconnexion dans ${backoffDelay / 1000}s...`);
+                    console.log(`${logPrefix} ⚠️ Connexion fermée (Reason: ${statusCode}). Reconnexion dans ${backoffDelay / 1000}s...`);
                     await sleep(backoffDelay);  
                     startpairing(nexusDevNumber, teleId, userName, attempt + 1);  
                 } else {
-                    console.log(`${logPrefix} ❌ Trop de tentatives échouées. Arrêt de la reconnexion automatique pour cette session.`);
+                    console.log(`${logPrefix} ❌ Trop de tentatives échouées. Nettoyage de sécurité.`);
+                    forceCleanupSession(number, teleId);
                 }
             }  
         }  
