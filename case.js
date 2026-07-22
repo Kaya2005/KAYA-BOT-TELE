@@ -75,30 +75,32 @@ export default async function caseHandler(kaya, mek, chatUpdate, store = null) {
 
         if (getSetting(ownerId, `banned_${sender}`, false)) return;
 
-        // 🔹 Mode privé global
-        if (!mek.key.fromMe) {
-            const privateMode = getSetting(ownerId, 'privateMode', false);
-            const blockInbox = getSetting(ownerId, 'blockInbox', false);
-            const bodyText = (mek.message?.conversation || mek.message?.extendedTextMessage?.text || "").trim();
-            const userPrefix = getSetting(ownerId, 'prefix', '.');
-            const isPairCommand = bodyText.startsWith(`${userPrefix}pair`);
-
-            if (!isPairCommand) {
-                if (privateMode || (blockInbox && !isGroup)) {
-                    const status = await checkAdminOrOwner(kaya, from, sender);
-                    if (!status.isBotOwner) return;
-                }
-            }
-        }
-
-        // 🔹 Extraction robuste du texte
+        // 🔹 Extraction robuste du texte (Faite en amont pour alimenter les sécurités)
         const type = getContentType(mek.message);
         let body = (type === "conversation") ? mek.message.conversation : 
                    (type === "extendedTextMessage") ? (mek.message.extendedTextMessage.text || mek.message.extendedTextMessage.contextInfo?.externalAdReply?.body || "") :
                    (type === "imageMessage") ? mek.message.imageMessage.caption : 
                    (type === "videoMessage") ? mek.message.videoMessage.caption : "";
 
+        // ✅ 3. EXÉCUTION DES UTILITAIRES (Anti-Link, Anti-Status, etc.) EN PRIORITÉ
+        // Pour que la sécurité fonctionne même si le mode privé est activé pour les commandes
         await executeUtilities(kaya, mek, from, body, ownerId, groupId);
+
+        // 🔹 4. Mode privé global (Bloque uniquement les commandes pour les non-propriétaires)
+        if (!mek.key.fromMe) {
+            const privateMode = getSetting(ownerId, 'privateMode', false);
+            const blockInbox = getSetting(ownerId, 'blockInbox', false);
+            const userPrefix = getSetting(ownerId, 'prefix', '.');
+            const isPairCommand = body.startsWith(`${userPrefix}pair`);
+
+            if (!isPairCommand) {
+                if (privateMode || (blockInbox && !isGroup)) {
+                    const status = await checkAdminOrOwner(kaya, from, sender);
+                    if (!status.isBotOwner) return; // Stoppe ici si c'est une commande d'un non-owner en mode privé
+                }
+            }
+        }
+
         if (!body) return;
 
         const userPrefix = getSetting(ownerId, 'prefix', '.');
@@ -125,9 +127,9 @@ export default async function caseHandler(kaya, mek, chatUpdate, store = null) {
         // ✅ SÉCURITÉ ANTI-FLOOD : 5 secondes d'attente entre chaque commande (Exemption pour le Owner)
         if (!status.isBotOwner) {
             const lastCommandTime = cooldownTracker.get(sender) || 0;
-            if (Date.now() - lastCommandTime < 5000) { // 5000 ms = 5 secondes
+            if (Date.now() - lastCommandTime < 5000) { 
                 console.log(chalk.yellow(`[ANTI-FLOOD] Commande .${command} ignorée pour ${sender}`));
-                return; // Stop net
+                return; 
             }
             cooldownTracker.set(sender, Date.now());
         }
@@ -161,8 +163,8 @@ async function executeUtilities(kaya, mek, from, body, ownerId, groupId) {
         { name: "antilink", setting: "antilink" }, 
         { name: "antitag", setting: "antitag" }, 
         { name: "antispam", setting: "antispam" },
-        { name: "antistatus", setting: "antistatus" },     // 👈 Ajouté ici pour exécuter la détection antistatus
-        { name: "antimention", setting: "antimention" }   // 👈 Optionnel si tu utilises aussi antimention
+        { name: "antistatus", setting: "antistatus" },
+        { name: "antimention", setting: "antimention" }
     ];
     
     for (const utilConf of utils) {
