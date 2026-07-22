@@ -23,7 +23,7 @@ if (!fs.existsSync(PAIRING_DIR)) {
     fs.mkdirSync(PAIRING_DIR, { recursive: true });
 }
 
-// 🛡️ NOUVEAU : Liste pour éviter de lancer deux fois le même processus pour le même utilisateur
+// 🛡️ Liste pour éviter de lancer deux fois le même processus pour le même utilisateur
 const processingRequests = new Set();
 
 export function watchPairingRequests() {
@@ -37,13 +37,12 @@ export function watchPairingRequests() {
                     const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
                     const teleId = file.replace('request_', '').replace('.json', '');
 
-                    // Si on traite déjà ce teleId, on ignore
                     if (processingRequests.has(teleId)) continue;
 
                     console.log(`[WATCHER] ✨ Demande détectée pour : ${data.jid}`);  
                     
                     fs.unlinkSync(filePath);  
-                    processingRequests.add(teleId); // Verrouillage
+                    processingRequests.add(teleId);
 
                     startpairing(data.jid, teleId, data.name)
                         .then(() => processingRequests.delete(teleId))
@@ -63,13 +62,20 @@ export async function restoreSessions() {
     if (!fs.existsSync(PAIRING_DIR)) return;
     const folders = fs.readdirSync(PAIRING_DIR);
     for (const folder of folders) {
+        // Ignorer les fichiers de requêtes/pairing temporaires
+        if (folder.startsWith('request_') || folder.startsWith('pairing_') || folder.endsWith('.json')) continue;
+        
         const sessionPath = path.join(PAIRING_DIR, folder);
         if (fs.lstatSync(sessionPath).isDirectory()) {
-            console.log(`[RESTORE] 🔄 Restauration de la session: ${folder}`);
-            startpairing(folder).catch((e) => {
-                console.error(`[RESTORE] ❌ Erreur restauration ${folder}:`, e);
-            });
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            // Vérifier si le dossier contient des creds valides avant de restaurer en boucle
+            const credsPath = path.join(sessionPath, 'creds.json');
+            if (fs.existsSync(credsPath)) {
+                console.log(`[RESTORE] 🔄 Restauration propre de la session: ${folder}`);
+                startpairing(folder).catch((e) => {
+                    console.error(`[RESTORE] ❌ Erreur restauration ${folder}:`, e.message);
+                });
+                await new Promise(resolve => setTimeout(resolve, 3000)); // Délai augmenté pour laisser respirer la RAM et l'API
+            }
         }
     }
 }
@@ -103,19 +109,15 @@ export function forceCleanupSession(number, teleId) {
                 tracker.connection.ev.removeAllListeners("connection.update");
                 tracker.connection.ev.removeAllListeners("creds.update");
                 tracker.connection.end(); 
-            } catch (e) {
-                console.error(`[CLEANUP] ⚠️ Erreur fermeture socket ${number}:`, e.message);
-            } 
+            } catch (e) {} 
         }
         rentbotTracker.delete(number);
     }
 }
 
 export default async function startpairing(nexusDevNumber, teleId = "default", userName = "Unknown", attempt = 0) {
-    // Nettoyage du numéro
     const number = nexusDevNumber.replace(/[^0-9]/g, "");
 
-    // 🛡️ CORRECTION : Vérification de la longueur (min 9 chiffres requis)
     if (!number || number.length < 9) {
         console.log(`[PAIRING] ❌ Tentative de connexion avec un numéro invalide/court : ${nexusDevNumber}`);
         throw new Error("Numéro invalide (minimum 9 chiffres requis)");
@@ -129,16 +131,14 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
     if (rentbotTracker.has(number)) {  
         const tracker = rentbotTracker.get(number);  
         if (tracker.connection) { 
-            console.log(`${logPrefix} 🔪 Fermeture de l'ancienne instance existante...`);
+            console.log(`${logPrefix} 🔪 Fermeture propre de l'ancienne instance en double...`);
             try { 
                 tracker.connection.ev.removeAllListeners("connection.update");
                 tracker.connection.ev.removeAllListeners("creds.update");
                 tracker.connection.ev.removeAllListeners("messages.upsert");
                 tracker.connection.ws.close(); 
                 tracker.connection.end(); 
-            } catch (e) {
-                console.log(`${logPrefix} ⚠️ Erreur lors de la fermeture:`, e.message);
-            } 
+            } catch (e) {} 
         }  
     }  
 
@@ -155,7 +155,7 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
     await sleep(2000);   
 
     const kaya = makeWASocket({  
-        logger: pino({ level: "warn" }),
+        logger: pino({ level: "silent" }), // 👈 Mis en "silent" pour éviter de saturer les logs avec les erreurs de décryptage de signal
         printQRInTerminal: false,  
         auth: state,  
         browser: Browsers.macOS("Chrome"),  
@@ -175,10 +175,8 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
             try {  
                 if (rentbotTracker.get(number)?.connection !== kaya) return;
                 
-                // 🚀 SUPPRESSION FORCÉE : On supprime l'ancien fichier ici pour forcer un nouveau code
                 const pairingFile = path.join(PAIRING_DIR, `pairing_${teleId}.json`);
                 if (fs.existsSync(pairingFile)) {
-                    console.log(`${logPrefix} 🧹 Suppression de l'ancien code pour en générer un nouveau.`);
                     fs.unlinkSync(pairingFile);
                 }
                 
@@ -212,12 +210,12 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
             const mek = smsg(kaya, rawMsg);  
             await handler(kaya, mek, chatUpdate);   
         } catch (err) { 
-            console.error(`${logPrefix} ❌ Erreur handler:`, err); 
+            // Ignorer les erreurs mineures de décryptage pour stopper les crashs en chaîne
         }  
     });  
 
     kaya.ev.on("connection.update", async (update) => {  
-        const { connection, lastDisconnect, isNewLogin } = update;  
+        const { connection, lastDisconnect } = update;  
           
         if (connection === "open") {  
             if (rentbotTracker.get(number)?.connection !== kaya) return;
@@ -237,11 +235,18 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
             if (rentbotTracker.get(number)?.connection !== kaya) return;
             
             const reason = new Boom(lastDisconnect?.error)?.output?.statusCode;  
-            if (reason === DisconnectReason.loggedOut) forceCleanupSession(number, teleId);  
-            else {  
-                const backoffDelay = Math.min(10000 * (attempt + 1), 60000);  
-                await sleep(backoffDelay);  
-                startpairing(nexusDevNumber, teleId, userName, attempt + 1);  
+            if (reason === DisconnectReason.loggedOut) {
+                forceCleanupSession(number, teleId);  
+            } else {  
+                // Protection contre la boucle infinie trop agressive (max tentative ou backoff progressif)
+                if (attempt < 5) {
+                    const backoffDelay = Math.min(15000 * (attempt + 1), 60000);  
+                    console.log(`${logPrefix} ⚠️ Connexion fermée (Reason: ${reason}). Reconnexion dans ${backoffDelay / 1000}s...`);
+                    await sleep(backoffDelay);  
+                    startpairing(nexusDevNumber, teleId, userName, attempt + 1);  
+                } else {
+                    console.log(`${logPrefix} ❌ Trop de tentatives échouées. Arrêt de la reconnexion automatique pour cette session.`);
+                }
             }  
         }  
     });  
