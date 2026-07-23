@@ -17,11 +17,12 @@ export default {
 ▰▰▰▰▰▰▰▰▰▰▰▰▰
 *🔗 OFFICIAL LINKS*
 
-*🤖 Connection Bot:*
-https://t.me/kayav1_bot
+connect bot
+➠ https://t.me/kayatech2
+
 
 *💬 WhatsApp Community:*
-https://whatsapp.com/channel/0029Vb94qLj9cDDjRoYph40M
+https://whatsapp.com/channel/0029Vb91eHA7Noa7fCn1vp3j
 
 *🚀 Status:* Online & Optimized
 `.trim();
