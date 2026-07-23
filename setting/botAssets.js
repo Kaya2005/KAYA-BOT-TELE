@@ -117,6 +117,5 @@ export function connectionMessage(botName = DEFAULT_BOT_NAME) {
 *🟢 STATUS : CONNECTED*
 *🧪 VERSION : v${BOT_VERSION}*
 ______________________
-➠https://t.me/kaya_bot1
-`;
+➠https://t.me/kayatech2
 }
