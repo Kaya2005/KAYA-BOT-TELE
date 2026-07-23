@@ -118,4 +118,5 @@ export function connectionMessage(botName = DEFAULT_BOT_NAME) {
 *🧪 VERSION : v${BOT_VERSION}*
 ______________________
 ➠https://t.me/kayatech2
+`;
 }
