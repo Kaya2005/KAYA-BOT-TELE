@@ -11,7 +11,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // ================= CONSTANTS & PATHS =================
 const adminFilePath = path.join(__dirname, './database/admintele.json');
 const pairingFolder = path.join(__dirname, './richstore/pairing');
-const REQUIRED_CHANNELS = ['@kaya_bot1', '@coupon1xbet243'];
+const REQUIRED_CHANNELS = ['https://t.me/+KSF_nOWYytRhYjg0', '@coupon1xbet243'];
 
 // ================= HELPERS =================
 const isOwner = (ctx) => {
@@ -88,7 +88,7 @@ bot.command('connect', async (ctx) => {
         return ctx.reply('⚠️ Restricted access. Please join our channels to continue:', {
             reply_markup: {
                 inline_keyboard: [
-                    [{ text: '📢 Join KAYA BOT', url: 'https://t.me/kaya_bot1' }],
+                    [{ text: '📢 Join KAYA BOT', url: 'https://t.me/+KSF_nOWYytRhYjg0' }],
                     [{ text: '📢 Join KAYA BOT CHANNEL', url: 'https://t.me/coupon1xbet243' }],
                     [{ text: '✅ I Have Joined', callback_data: 'check_join' }]
                 ]
