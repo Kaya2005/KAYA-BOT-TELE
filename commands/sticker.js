@@ -1,45 +1,39 @@
+import { addExif } from '../lib/sticker.js';
 import { downloadContentFromMessage } from '@whiskeysockets/baileys';
-import { Sticker, StickerTypes } from 'wa-sticker-formatter';
+import { StickerTypes } from 'wa-sticker-formatter';
 
 export default {
     name: 'sticker',
     alias: ['s', 'stiker', 'stick'],
-    description: 'Convert media to sticker',
-    category: 'Tools',
+    description: 'Convert image or video to sticker',
+    category: 'Sticker',
 
     async execute(kaya, mek, from, args, prefix) {
         try {
-            const quoted = mek.message?.extendedTextMessage?.contextInfo?.quotedMessage;
-            const mediaMsg = mek.message?.imageMessage || mek.message?.videoMessage || 
-                             quoted?.imageMessage || quoted?.videoMessage;
+            const quoted = mek.quoted ? mek.quoted : mek;
+            const mime = (quoted.msg || quoted).mimetype || '';
 
-            if (!mediaMsg) {
-                return kaya.sendMessage(from, { text: `⚠️ *Usage:* Réponds à une image ou une vidéo avec ${prefix}sticker` }, { quoted: mek });
+            if (!/image|video/.test(mime)) {
+                return await kaya.sendMessage(from, { text: '⚠️ Reply to an image or video.' }, { quoted: mek });
             }
 
-            await kaya.sendPresenceUpdate('composing', from);
+            const media = await downloadContentFromMessage(quoted, mime.split('/')[0]);
+            let buffer = Buffer.alloc(0);
+            for await (const chunk of media) buffer = Buffer.concat([buffer, chunk]);
 
-            const type = mediaMsg.mimetype?.includes('video') ? 'video' : 'image';
-            const stream = await downloadContentFromMessage(mediaMsg, type);
-            const chunks = [];
-            for await (const chunk of stream) chunks.push(chunk);
-            const buffer = Buffer.concat(chunks);
+            const stickerOptions = {
+                packname: 'KAYA-MD',
+                author: 'kaya-tech',
+                type: /video/.test(mime) ? StickerTypes.ANIMATED : StickerTypes.FULL
+            };
 
-            // Utilisation de wa-sticker-formatter pour créer un sticker valide
-            const sticker = new Sticker(buffer, {
-                pack: 'Kaya Bot', // Nom du pack
-                author: 'Kaya',    // Nom de l'auteur
-                type: StickerTypes.FULL, // FULL remplit le cadre, CROPPED le centre
-                quality: 50
-            });
-
-            const stickerBuffer = await sticker.toBuffer();
+            const stickerBuffer = await addExif(buffer, stickerOptions);
 
             await kaya.sendMessage(from, { sticker: stickerBuffer }, { quoted: mek });
 
-        } catch (error) {
-            console.error('❌ Sticker error:', error);
-            await kaya.sendMessage(from, { text: '❌ Erreur lors de la création du sticker.' }, { quoted: mek });
+        } catch (err) {
+            console.error('❌ Sticker error:', err);
+            await kaya.sendMessage(from, { text: '❌ Failed to create sticker.' }, { quoted: mek });
         }
     }
 };
