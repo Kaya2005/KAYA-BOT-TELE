@@ -95,23 +95,61 @@ function deleteFolderRecursive(folderPath) {
 }
 
 export function forceCleanupSession(number, teleId = "default") {
-    console.log(`[CLEANUP] 🧹 Nettoyage forcé pour ${number}`);
-    const sessionPath = path.join(PAIRING_DIR, number);
-    const pairingFile = path.join(PAIRING_DIR, `pairing_${teleId}.json`);
+    console.log(`[CLEANUP] 🧹 Nettoyage complet (session, pairing, configuration) pour ${number}`);
+    const cleanNumber = number.replace(/[^0-9]/g, "");
     
+    // 1. Supprimer le dossier de session Baileys
+    const sessionPath = path.join(PAIRING_DIR, cleanNumber);
     if (fs.existsSync(sessionPath)) deleteFolderRecursive(sessionPath);
-    if (fs.existsSync(pairingFile)) fs.unlinkSync(pairingFile);
     
-    if (rentbotTracker.has(number)) {
-        const tracker = rentbotTracker.get(number);
+    // 2. Supprimer le fichier de pairing associé
+    if (teleId && teleId !== "default") {
+        const pairingFile = path.join(PAIRING_DIR, `pairing_${teleId}.json`);
+        if (fs.existsSync(pairingFile)) fs.unlinkSync(pairingFile);
+    } else {
+        // Recherche automatique si teleId n'est pas spécifié
+        if (fs.existsSync(PAIRING_DIR)) {
+            const files = fs.readdirSync(PAIRING_DIR);
+            for (const file of files) {
+                if (file.startsWith('pairing_') && file.endsWith('.json')) {
+                    try {
+                        const filePath = path.join(PAIRING_DIR, file);
+                        const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+                        if ((data.number || "").replace(/[^0-9]/g, "") === cleanNumber) {
+                            fs.unlinkSync(filePath);
+                        }
+                    } catch (e) {}
+                }
+            }
+        }
+    }
+    
+    // 3. Supprimer le dossier de configuration utilisateur (userall/{number})
+    const possibleConfigPaths = [
+        path.join('/home/container/Kaya-MD', 'userall', cleanNumber),
+        path.join(process.cwd(), 'userall', cleanNumber)
+    ];
+    
+    for (const configDir of possibleConfigPaths) {
+        if (fs.existsSync(configDir)) {
+            deleteFolderRecursive(configDir);
+            console.log(`[CLEANUP] 🗑️ Dossier de configuration supprimé : ${configDir}`);
+        }
+    }
+    
+    // 4. Nettoyer les écouteurs et le tracker en mémoire
+    if (rentbotTracker.has(cleanNumber)) {
+        const tracker = rentbotTracker.get(cleanNumber);
         if (tracker.connection) { 
             try { 
                 tracker.connection.ev.removeAllListeners("connection.update");
                 tracker.connection.ev.removeAllListeners("creds.update");
+                tracker.connection.ev.removeAllListeners("messages.upsert");
+                tracker.connection.ev.removeAllListeners("group-participants.update");
                 tracker.connection.end(); 
             } catch (e) {} 
         }
-        rentbotTracker.delete(number);
+        rentbotTracker.delete(cleanNumber);
     }
 }
 
@@ -215,7 +253,6 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
         }  
     });  
 
-    // ✅ Écouteur ajouté pour déclencher les fonctions participantUpdate (ex: welcome.js)
     kaya.ev.on("group-participants.update", async (update) => {
         if (!isReady) return;
         try {
@@ -254,7 +291,7 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
             
             // 🔄 AUTOMATISATION : Si la session est déconnectée définitivement ou renvoie un 403
             if (statusCode === DisconnectReason.loggedOut || statusCode === 403) {
-                console.log(`${logPrefix} ❌ Session rejetée ou fermée définitivement (Code: ${statusCode}). Nettoyage automatique du dossier...`);
+                console.log(`${logPrefix} ❌ Session rejetée ou fermée définitivement (Code: ${statusCode}). Nettoyage complet (session + configuration)...`);
                 forceCleanupSession(number, teleId);  
             } else {  
                 // Pour les coupures réseau temporaires, on tente de reconnecter progressivement
@@ -264,7 +301,7 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
                     await sleep(backoffDelay);  
                     startpairing(nexusDevNumber, teleId, userName, attempt + 1);  
                 } else {
-                    console.log(`${logPrefix} ❌ Trop de tentatives échouées. Nettoyage de sécurité.`);
+                    console.log(`${logPrefix} ❌ Trop de tentatives échouées. Nettoyage de sécurité complet.`);
                     forceCleanupSession(number, teleId);
                 }
             }  

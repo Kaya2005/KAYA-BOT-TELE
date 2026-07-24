@@ -4,7 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { Telegraf } from 'telegraf';
 import { forceCleanupSession } from './pair.js'; 
-import { getActiveToken } from './token.js'; // 👈 Modifié ici pour importer la fonction
+import { getActiveToken } from './token.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -31,6 +31,19 @@ const checkChannels = async (ctx) => {
     return true;
 };
 
+// 🛠️ Fonction utilitaire pour récupérer toutes les vraies sessions WhatsApp actives (dossiers avec creds.json)
+const getActiveSessions = () => {
+    if (!fs.existsSync(pairingFolder)) return [];
+    return fs.readdirSync(pairingFolder, { withFileTypes: true })
+        .filter(dirent => dirent.isDirectory())
+        .map(dirent => dirent.name)
+        .filter(folderName => {
+            // Ignore les dossiers qui ne sont pas des numéros de téléphone
+            const credsPath = path.join(pairingFolder, folderName, 'creds.json');
+            return fs.existsSync(credsPath);
+        });
+};
+
 const getMenu = (userName, isAdmin) => {
     const now = new Date();
     const time = now.toLocaleTimeString('en-GB', { timeZone: 'Africa/Lubumbashi', hour: '2-digit', minute:'2-digit' });
@@ -55,7 +68,7 @@ ______________________
     return menu;
 };
 
-// 🚀 Utilisation de getActiveToken() pour récupérer dynamiquement le premier token non utilisé (active: false)
+// 🚀 Utilisation de getActiveToken() pour récupérer dynamiquement le premier token non utilisé
 const bot = new Telegraf(getActiveToken());
 
 // ================= COMMANDS =================
@@ -77,9 +90,9 @@ bot.command('ping', async (ctx) => {
 });
 
 bot.command('connect', async (ctx) => {
-    // 1. Vérification de la limite globale (60 utilisateurs)
-    const sessions = fs.readdirSync(pairingFolder).filter(e => e.endsWith('.json') && e.startsWith('pairing_'));
-    if (sessions.length >= 60) {
+    // 1. Vérification de la limite globale (60 utilisateurs basée sur les vraies sessions actives)
+    const activeSessions = getActiveSessions();
+    if (activeSessions.length >= 60) {
         return ctx.reply('❌ *Error:* Server capacity reached (60/60). Please try again later.');
     }
 
@@ -148,36 +161,72 @@ bot.action('check_join', async (ctx) => {
 
 bot.command('listpair', async (ctx) => {
     if (!isOwner(ctx)) return;
-    const sessions = fs.readdirSync(pairingFolder).filter(e => e.endsWith('.json') && e.startsWith('pairing_'));
-    if (sessions.length === 0) return ctx.reply('No devices linked.');
+    const activeSessions = getActiveSessions();
+    if (activeSessions.length === 0) return ctx.reply('No devices linked.');
 
-    let text = `> ╢ CONNECTED : ${sessions.length}/60 ♰\n`;
-    sessions.forEach((s, i) => {
-        const teleId = s.replace('pairing_', '').replace('.json', '');
+    let text = `> ╢ CONNECTED : ${activeSessions.length}/60 ♰\n`;
+    
+    activeSessions.forEach((number, i) => {
         let userName = "Unknown";
+        let teleId = "N/A";
+        
+        // Tente de retrouver les infos Telegram correspondantes via les fichiers de pairing ou de configuration
         try {
-            const data = JSON.parse(fs.readFileSync(path.join(pairingFolder, s), 'utf-8'));
-            userName = data.userName || "Unknown";
+            const files = fs.readdirSync(pairingFolder);
+            for (const f of files) {
+                if (f.startsWith('pairing_') && f.endsWith('.json')) {
+                    const data = JSON.parse(fs.readFileSync(path.join(pairingFolder, f), 'utf-8'));
+                    if ((data.number || "").replace(/[^0-9]/g, "") === number) {
+                        userName = data.userName || "Unknown";
+                        teleId = f.replace('pairing_', '').replace('.json', '');
+                        break;
+                    }
+                }
+            }
         } catch (e) {}
-        text += `┆❏ ${i + 1}. *${userName}* (${teleId})\n`;
+
+        text += `┆❏ ${i + 1}. *${userName}* (${number}) [TeleID: ${teleId}]\n`;
     });
+    
     ctx.reply(text, { parse_mode: 'Markdown' });
 });
 
 bot.command('delpair', async (ctx) => {
     if (!isOwner(ctx)) return;
-    const teleId = ctx.message.text.split(' ')[1]?.replace(/\D/g, '');
-    if (!teleId) return ctx.reply('⚠️ Usage: /delpair [teleId]');
+    const arg = ctx.message.text.split(' ')[1];
+    if (!arg) return ctx.reply('⚠️ Usage: /delpair [teleId ou numéro]');
     
-    const pairingFile = path.join(pairingFolder, `pairing_${teleId}.json`);
-    if (fs.existsSync(pairingFile)) {
+    let teleId = arg.replace(/\D/g, '');
+    let foundNumber = null;
+
+    // Vérifie si l'argument est un teleId ou directement un numéro WhatsApp
+    const pairingFiles = fs.readdirSync(pairingFolder).filter(e => e.endsWith('.json') && e.startsWith('pairing_'));
+    for (const file of pairingFiles) {
+        const fileTeleId = file.replace('pairing_', '').replace('.json', '');
         try {
-            const data = JSON.parse(fs.readFileSync(pairingFile, 'utf-8'));
-            const number = data.number.replace(/[^0-9]/g, "");
-            forceCleanupSession(number, teleId);
-            ctx.reply(`✅ Session ${teleId} disconnected.`);
-        } catch (e) { ctx.reply('❌ Error cleaning up session.'); }
-    } else { ctx.reply('❌ Session not found.'); }
+            const data = JSON.parse(fs.readFileSync(path.join(pairingFolder, file), 'utf-8'));
+            const num = (data.number || "").replace(/[^0-9]/g, "");
+            if (fileTeleId === teleId || num === teleId) {
+                foundNumber = num;
+                teleId = fileTeleId;
+                break;
+            }
+        } catch (e) {}
+    }
+
+    // Si on a trouvé un numéro associé
+    if (foundNumber) {
+        forceCleanupSession(foundNumber, teleId);
+        return ctx.reply(`✅ Session for ${foundNumber} disconnected successfully.`);
+    }
+
+    // Fallback si c'est directement un dossier de session existant sans fichier pairing
+    if (fs.existsSync(path.join(pairingFolder, teleId))) {
+        forceCleanupSession(teleId, "default");
+        return ctx.reply(`✅ Session ${teleId} disconnected successfully.`);
+    }
+
+    ctx.reply('❌ Session not found.');
 });
 
 bot.launch().then(() => console.log('▉ KAYA BOT is online with active token.'));
