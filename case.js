@@ -27,7 +27,10 @@ if (fs.existsSync(commandsPath)) {
             const cmdModule = await import(fileUrl);  
             const cmd = cmdModule.default || cmdModule; 
             if (cmd.name) commands.set(cmd.name, cmd);
-            if (cmd.alias && Array.isArray(cmd.alias)) cmd.alias.forEach(a => commands.set(a, cmd));
+            const cmdAliases = cmd.aliases || cmd.alias;
+            if (cmdAliases && Array.isArray(cmdAliases)) {
+                cmdAliases.forEach(a => commands.set(a, cmd));
+            }
         } catch (error) { console.error(chalk.red(`[ERREUR] Impossible de charger ${file}:`), error); }
     }
 }
@@ -108,26 +111,36 @@ export default async function caseHandler(kaya, mek, chatUpdate, store = null) {
 
         const userPrefix = getSetting(ownerId, 'prefix', '.');
         const isAllPrefixEnabled = Boolean(getSetting(ownerId, 'allPrefix', true));
-        const noPrefixEnabled = getSetting(ownerId, 'noPrefix', false); // 👈 Vérifie si delprefix off est actif
+        const noPrefixEnabled = getSetting(ownerId, 'noPrefix', false); // 👈 Vérifie si le mode sans préfixe est actif
         
         let prefix = '';
         let args = [];
 
-        // 🔹 GESTION DU PRÉFIXE OU DU MODE SANS PRÉFIXE
-        if (trimmedBody.startsWith(userPrefix)) {
-            prefix = userPrefix;
-            args = trimmedBody.slice(prefix.length).trim().split(/ +/);
-        } else if (isAllPrefixEnabled && /^[°•π÷×¶∆£¢€¥®™+✓_=|~!?@#%^&.©^]/.test(trimmedBody)) {
-            const match = trimmedBody.match(/^[°•π÷×¶∆£¢€¥®™+✓_=|~!?@#%^&.©^]/);
-            if (match) {
-                prefix = match[0];
-                args = trimmedBody.slice(prefix.length).trim().split(/ +/);
+        // 🔹 GESTION STRICTE DU PRÉFIXE OU DU MODE SANS PRÉFIXE
+        if (noPrefixEnabled) {
+            // Si le mode sans préfixe est ACTIF : on refuse tout ce qui a un préfixe et on vérifie directement le mot
+            if (commands.has(firstWord)) {
+                prefix = '';
+                args = splitArgs;
+            } else {
+                return; // Ignore si ce n'est pas une commande directe (bloque les .menu, etc.)
             }
-        } else if (noPrefixEnabled && commands.has(firstWord)) {
-            prefix = '';
-            args = splitArgs;
         } else {
-            return;
+            // Mode normal avec préfixes
+            if (trimmedBody.startsWith(userPrefix)) {
+                prefix = userPrefix;
+                args = trimmedBody.slice(prefix.length).trim().split(/ +/);
+            } else if (isAllPrefixEnabled && /^[°•π÷×¶∆£¢€¥®™+✓_=|~!?@#%^&.©^]/.test(trimmedBody)) {
+                const match = trimmedBody.match(/^[°•π÷×¶∆£¢€¥®™+✓_=|~!?@#%^&.©^]/);
+                if (match) {
+                    prefix = match[0];
+                    args = trimmedBody.slice(prefix.length).trim().split(/ +/);
+                } else {
+                    return;
+                }
+            } else {
+                return;
+            }
         }
 
         const rawCommand = args.shift();
