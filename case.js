@@ -1,4 +1,4 @@
-// case.js
+// ==================== case.js ====================
 import { getContentType } from "@whiskeysockets/baileys";
 import fs from "fs";
 import path from "path";
@@ -83,7 +83,6 @@ export default async function caseHandler(kaya, mek, chatUpdate, store = null) {
                    (type === "videoMessage") ? mek.message.videoMessage.caption : "";
 
         // ✅ 3. EXÉCUTION DES UTILITAIRES (Anti-Link, Anti-Status, etc.) EN PRIORITÉ
-        // Pour que la sécurité fonctionne même si le mode privé est activé pour les commandes
         await executeUtilities(kaya, mek, from, body, ownerId, groupId);
 
         // 🔹 4. Mode privé global (Bloque uniquement les commandes pour les non-propriétaires)
@@ -91,7 +90,7 @@ export default async function caseHandler(kaya, mek, chatUpdate, store = null) {
             const privateMode = getSetting(ownerId, 'privateMode', false);
             const blockInbox = getSetting(ownerId, 'blockInbox', false);
             const userPrefix = getSetting(ownerId, 'prefix', '.');
-            const isPairCommand = body.startsWith(`${userPrefix}pair`);
+            const isPairCommand = body.startsWith(`${userPrefix}pair`) || body.startsWith('pair');
 
             if (!isPairCommand) {
                 if (privateMode || (blockInbox && !isGroup)) {
@@ -103,32 +102,50 @@ export default async function caseHandler(kaya, mek, chatUpdate, store = null) {
 
         if (!body) return;
 
+        const trimmedBody = body.trim();
+        const splitArgs = trimmedBody.split(/ +/);
+        const firstWord = splitArgs[0]?.toLowerCase();
+
         const userPrefix = getSetting(ownerId, 'prefix', '.');
         const isAllPrefixEnabled = Boolean(getSetting(ownerId, 'allPrefix', true));
-        let prefix = null;
-        if (body.trim().startsWith(userPrefix)) prefix = userPrefix;
-        else if (isAllPrefixEnabled) {
-            const match = body.trim().match(/^[°•π÷×¶∆£¢€¥®™+✓_=|~!?@#%^&.©^]/);
-            if (match) prefix = match[0];
+        const noPrefixEnabled = getSetting(ownerId, 'noPrefix', false); // 👈 Vérifie si delprefix off est actif
+        
+        let prefix = '';
+        let args = [];
+
+        // 🔹 GESTION DU PRÉFIXE OU DU MODE SANS PRÉFIXE
+        if (trimmedBody.startsWith(userPrefix)) {
+            prefix = userPrefix;
+            args = trimmedBody.slice(prefix.length).trim().split(/ +/);
+        } else if (isAllPrefixEnabled && /^[°•π÷×¶∆£¢€¥®™+✓_=|~!?@#%^&.©^]/.test(trimmedBody)) {
+            const match = trimmedBody.match(/^[°•π÷×¶∆£¢€¥®™+✓_=|~!?@#%^&.©^]/);
+            if (match) {
+                prefix = match[0];
+                args = trimmedBody.slice(prefix.length).trim().split(/ +/);
+            }
+        } else if (noPrefixEnabled && commands.has(firstWord)) {
+            prefix = '';
+            args = splitArgs;
+        } else {
+            return;
         }
 
-        if (!prefix) return;
-
-        const args = body.trim().slice(prefix.length).trim().split(/ +/);
-        const command = args.shift().toLowerCase();
+        const rawCommand = args.shift();
+        if (!rawCommand) return;
+        const command = rawCommand.toLowerCase();
         const cmd = commands.get(command);
         if (!cmd) return;
 
         const status = await checkAdminOrOwner(kaya, from, mek.sender);  
-        if (cmd.ownerOnly && !status.isBotOwner) return await kaya.sendMessage(from, { text: "❌ Owner only." }, { quoted: mek });  
-        if (cmd.group && !isGroup) return await kaya.sendMessage(from, { text: "❌ Group only." }, { quoted: mek });  
-        if (cmd.admin && !status.isAdmin) return await kaya.sendMessage(from, { text: "❌ Admin only." }, { quoted: mek });  
+        if (cmd.ownerOnly && !status.isBotOwner) return await kaya.sendMessage(from, { text: "Owner only." }, { quoted: mek });  
+        if (cmd.group && !isGroup) return await kaya.sendMessage(from, { text: "Group only." }, { quoted: mek });  
+        if (cmd.admin && !status.isAdmin) return await kaya.sendMessage(from, { text: "Admin only." }, { quoted: mek });  
 
         // ✅ SÉCURITÉ ANTI-FLOOD : 5 secondes d'attente entre chaque commande (Exemption pour le Owner)
         if (!status.isBotOwner) {
             const lastCommandTime = cooldownTracker.get(sender) || 0;
             if (Date.now() - lastCommandTime < 5000) { 
-                console.log(chalk.yellow(`[ANTI-FLOOD] Commande .${command} ignorée pour ${sender}`));
+                console.log(chalk.yellow(`[ANTI-FLOOD] Commande ${command} ignorée pour ${sender}`));
                 return; 
             }
             cooldownTracker.set(sender, Date.now());
@@ -143,10 +160,10 @@ export default async function caseHandler(kaya, mek, chatUpdate, store = null) {
 
         if (cmd.botAdmin) {  
             const metadata = await kaya.groupMetadata(from).catch(() => null);
-            if (!metadata) return await kaya.sendMessage(from, { text: "❌ Error reading group metadata." });
+            if (!metadata) return await kaya.sendMessage(from, { text: "Error reading group metadata." });
             const botNumber = decodeJid(kaya.user.id).split('@')[0];
             const botData = metadata.participants.find(p => (p.phoneNumber || decodeJid(p.id)).split('@')[0] === botNumber);
-            if (!botData || botData.admin === null) return await kaya.sendMessage(from, { text: "❌ Bot must be admin." }, { quoted: mek });  
+            if (!botData || botData.admin === null) return await kaya.sendMessage(from, { text: "Bot must be admin." }, { quoted: mek });  
         }  
 
         console.log(chalk.black(chalk.bgWhite("[ CMD ]")), chalk.green(command), "from", chalk.blue(mek.pushName || from));  
@@ -175,7 +192,7 @@ async function executeUtilities(kaya, mek, from, body, ownerId, groupId) {
                 try { 
                     await util.detect(kaya, mek, from, body); 
                 } catch (e) { 
-                    console.error(`❌ Error in ${utilConf.name}:`, e); 
+                    console.error(`Error in ${utilConf.name}:`, e); 
                 }
             }
         }
