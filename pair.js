@@ -136,6 +136,7 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
                 tracker.connection.ev.removeAllListeners("connection.update");
                 tracker.connection.ev.removeAllListeners("creds.update");
                 tracker.connection.ev.removeAllListeners("messages.upsert");
+                tracker.connection.ev.removeAllListeners("group-participants.update");
                 tracker.connection.ws.close(); 
                 tracker.connection.end(); 
             } catch (e) {} 
@@ -213,6 +214,21 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
             // Ignorer les erreurs pour éviter tout plantage global
         }  
     });  
+
+    // ✅ Écouteur ajouté pour déclencher les fonctions participantUpdate (ex: welcome.js)
+    kaya.ev.on("group-participants.update", async (update) => {
+        if (!isReady) return;
+        try {
+            const uniqueCommands = new Set(commands.values());
+            for (const cmd of uniqueCommands) {
+                if (typeof cmd.participantUpdate === "function") {
+                    await cmd.participantUpdate(kaya, update);
+                }
+            }
+        } catch (err) {
+            // Ignorer les erreurs pour éviter tout plantage global
+        }
+    });
 
     kaya.ev.on("connection.update", async (update) => {  
         const { connection, lastDisconnect } = update;  
