@@ -103,17 +103,9 @@ export default {
       await edit(`⬇️ Downloading updates...\n${bar(50)}`);
 
       try {
-        try {
-          execSync(`git -C ${REPO_DIR} stash`, { stdio: "ignore" });
-        } catch {
-          // Ignoré s'il n'y a pas de modifications locales à stasher
-        }
-
-        execSync(`git -C ${REPO_DIR} pull origin main`, { stdio: "ignore" });
-
-        try { 
-          execSync(`git -C ${REPO_DIR} stash pop`, { stdio: "ignore" }); 
-        } catch {}
+        // Remplace le stash par un nettoyage et une synchronisation directe sécurisée
+        execSync(`git -C ${REPO_DIR} reset --hard HEAD`, { stdio: "ignore" });
+        execSync(`git -C ${REPO_DIR} pull origin main --force`, { stdio: "ignore" });
       } catch (err) {
         return edit(`❌ Update failed during git pull: ${err.message}`);
       }
