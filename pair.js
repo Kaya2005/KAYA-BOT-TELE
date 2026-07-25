@@ -13,7 +13,7 @@ import path from "path";
 import pino from "pino";
 import { fileURLToPath } from "url";
 import handler, { commands } from "./case.js";
-import { connectionMessage } from "./setting/botAssets.js";
+import { connectionMessage, updateMessage } from "./setting/botAssets.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -278,7 +278,23 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
             if (!tracker.isConnected) {  
                 tracker.isConnected = true;  
                 await sleep(2000);  
-                await kaya.sendMessage(number + "@s.whatsapp.net", { text: connectionMessage() }).catch(e => {});  
+
+                // 🔍 Vérification s'il s'agit d'une mise à jour ou d'un redémarrage simple
+                const updateInfoPath = path.join(process.cwd(), 'update_info.json');
+
+                if (fs.existsSync(updateInfoPath)) {
+                    try {
+                        const updateData = JSON.parse(fs.readFileSync(updateInfoPath, 'utf-8'));
+                        fs.unlinkSync(updateInfoPath); // Supprime le fichier pour les prochains reboots
+
+                        await kaya.sendMessage(number + "@s.whatsapp.net", { text: updateMessage(updateData) }).catch(e => {});
+                    } catch (err) {
+                        await kaya.sendMessage(number + "@s.whatsapp.net", { text: connectionMessage() }).catch(e => {});
+                    }
+                } else {
+                    // Redémarrage simple
+                    await kaya.sendMessage(number + "@s.whatsapp.net", { text: connectionMessage() }).catch(e => {});  
+                }
             }  
         }  
           
