@@ -279,8 +279,8 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
                 tracker.isConnected = true;  
                 await sleep(2000);  
 
-                // 🔍 Vérification s'il s'agit d'une mise à jour ou d'un redémarrage simple via le dossier updatestatus
-                const statusFile = path.join(process.cwd(), 'updatestatus', 'update_status.json');
+                // 🔍 Vérification s'il s'agit d'une mise à jour ou d'un redémarrage simple via le dossier utils
+                const statusFile = path.join(process.cwd(), 'utils', 'update_status.json');
 
                 if (fs.existsSync(statusFile)) {
                     try {

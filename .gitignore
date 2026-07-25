@@ -1,5 +1,5 @@
 richstore/
 userall/
-updatestatus/
+utils/         
 node_modules/
 .env
