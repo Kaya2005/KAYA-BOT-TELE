@@ -279,13 +279,13 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
                 tracker.isConnected = true;  
                 await sleep(2000);  
 
-                // 🔍 Vérification s'il s'agit d'une mise à jour ou d'un redémarrage simple
-                const updateInfoPath = path.join(process.cwd(), 'update_info.json');
+                // 🔍 Vérification s'il s'agit d'une mise à jour ou d'un redémarrage simple via le dossier updatestatus
+                const statusFile = path.join(process.cwd(), 'updatestatus', 'update_status.json');
 
-                if (fs.existsSync(updateInfoPath)) {
+                if (fs.existsSync(statusFile)) {
                     try {
-                        const updateData = JSON.parse(fs.readFileSync(updateInfoPath, 'utf-8'));
-                        fs.unlinkSync(updateInfoPath); // Supprime le fichier pour les prochains reboots
+                        const updateData = JSON.parse(fs.readFileSync(statusFile, 'utf-8'));
+                        fs.unlinkSync(statusFile); // Supprime le fichier pour les prochains reboots
 
                         await kaya.sendMessage(number + "@s.whatsapp.net", { text: updateMessage(updateData) }).catch(e => {});
                     } catch (err) {
