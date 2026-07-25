@@ -1,9 +1,9 @@
 import { execSync } from "child_process";
+import fs from "fs";
+import path from "path";
 
-// Chemin absolu vers votre dossier
 const REPO_DIR = "/home/container/Kaya-MD";
 
-/* ================= GIT HELPERS ================= */
 function getLocalCommit() {
   try {
     return execSync(`git -C ${REPO_DIR} log -1 --pretty=format:"%h|%s|%cr"`)
@@ -34,19 +34,26 @@ function getCurrentCommit() {
   }
 }
 
-function getChangedFiles() {
+function getChangedFilesDetails() {
   try {
-    return execSync(`git -C ${REPO_DIR} diff --name-only HEAD@{1} HEAD`)
+    const output = execSync(`git -C ${REPO_DIR} diff --name-status HEAD@{1} HEAD`)
       .toString()
-      .trim()
-      .split("\n")
-      .filter(Boolean);
+      .trim();
+    if (!output) return [];
+    
+    return output.split("\n").map(line => {
+      const [status, filePath] = line.split("\t");
+      let icon = "📂";
+      if (status === "A") icon = "✨ [Ajout]";
+      if (status === "M") icon = "✏️ [Modifié]";
+      if (status === "D") icon = "🗑️ [Supprimé]";
+      return `${icon} ${filePath}`;
+    });
   } catch {
     return [];
   }
 }
 
-/* ================= PROGRESS BAR ================= */
 function bar(p) {
   const total = 10;
   const filled = Math.round((p / 100) * total);
@@ -55,17 +62,15 @@ function bar(p) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-/* ================= UPDATE COMMAND ================= */
 export default {
   name: "update",
   alias: ["maj"],
-  description: "Update the bot live",
+  description: "Update the bot live with detailed changelog",
   category: "System",
   ownerOnly: true,
 
   async execute(kaya, mek, from) {
     try {
-      // 1. Initialisation de la mise à jour
       const msg = await kaya.sendMessage(
         from,
         { text: `🔄 Checking for updates...\n${bar(10)}` },
@@ -79,7 +84,6 @@ export default {
       await sleep(400);
       await edit(`🔍 Verifying repository...\n${bar(25)}`);
 
-      // 2. Fetch du dépôt
       execSync(`git -C ${REPO_DIR} fetch origin`, { stdio: "ignore" });
 
       const local = getCurrentCommit();
@@ -95,7 +99,6 @@ export default {
         );
       }
 
-      // 3. Application des changements
       await sleep(400);
       await edit(`⬇️ Downloading updates...\n${bar(50)}`);
 
@@ -110,20 +113,27 @@ export default {
       await sleep(400);
       await edit(`⚙️ Analyzing changes...\n${bar(80)}`);
 
-      const changed = getChangedFiles();
+      const changedDetails = getChangedFilesDetails();
       const localAfter = getLocalCommit();
+      const [commitHash, commitMsg, commitTime] = localAfter ? localAfter.split("|") : ["N/A", "Mise à jour du bot", "Récemment"];
 
-      // 4. Finalisation
+      // 💾 Enregistrement des infos de mise à jour dans un fichier temporaire à la racine
+      const updateInfo = {
+        commitHash,
+        commitMsg,
+        commitTime,
+        changed: changedDetails
+      };
+      fs.writeFileSync(path.join(process.cwd(), 'update_info.json'), JSON.stringify(updateInfo, null, 2));
+
       await sleep(400);
       await edit(
-        `🚀 UPDATE COMPLETED\n${bar(100)}\n\n📌 Current commit:\n${localAfter || "N/A"}\n\n📂 Modified files (${changed.length}):\n${
-          changed.length
-            ? changed.slice(0, 6).map(f => `• ${f}`).join("\n")
-            : "• Various files"
-        }\n\n♻️ Restarting now...`
+        `🚀 **UPDATE COMPLETED**\n${bar(100)}\n\n` +
+        `📌 **Commit :** \`${commitHash}\`\n` +
+        `💬 **Message :** _${commitMsg}_\n\n` +
+        `♻️ Restarting bot to apply changes...`
       );
 
-      // Redémarrage sécurisé
       setTimeout(() => {
         process.exit(0);
       }, 2000);
