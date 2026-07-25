@@ -84,7 +84,8 @@ export default {
       await sleep(400);
       await edit(`🔍 Verifying repository...\n${bar(25)}`);
 
-      execSync(`git -C ${REPO_DIR} fetch origin`, { stdio: "ignore" });
+      // 1. Récupération des nouveautés depuis le serveur distant
+      execSync(`git -C ${REPO_DIR} fetch origin main`, { stdio: "ignore" });
 
       const local = getCurrentCommit();
       const remote = getRemoteCommit();
@@ -103,11 +104,17 @@ export default {
       await edit(`⬇️ Downloading updates...\n${bar(50)}`);
 
       try {
-        // Remplace le stash par un nettoyage et une synchronisation directe sécurisée
-        execSync(`git -C ${REPO_DIR} reset --hard HEAD`, { stdio: "ignore" });
-        execSync(`git -C ${REPO_DIR} pull origin main --force`, { stdio: "ignore" });
+        // CORRECTION : Annule tout conflit/merge en attente et force l'alignement sur origin/main
+        execSync(`git -C ${REPO_DIR} merge --abort`, { stdio: "ignore" }); // Au cas où un merge est en cours
+      } catch {
+        // Ignorer si aucun merge n'est en cours
+      }
+
+      try {
+        // Forcer le reset directement sur la version à jour de GitHub
+        execSync(`git -C ${REPO_DIR} reset --hard origin/main`, { stdio: "ignore" });
       } catch (err) {
-        return edit(`❌ Update failed during git pull: ${err.message}`);
+        return edit(`❌ Update failed during git reset: ${err.message}`);
       }
 
       await sleep(400);
