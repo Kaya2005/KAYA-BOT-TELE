@@ -184,7 +184,9 @@ export default async function caseHandler(kaya, mek, chatUpdate, store = null) {
         if (typeof cmd.execute === "function") await cmd.execute(kaya, mek, from, args, prefix);
         else if (typeof cmd.run === "function") await cmd.run(kaya, mek, args, prefix);
 
-    } catch (err) { console.error(chalk.red("[ERROR case.js]:"), err); }
+    } catch (err) { 
+        console.error(chalk.red("[ERROR case.js]:"), err.stack || err); 
+    }
 }
 
 async function executeUtilities(kaya, mek, from, body, ownerId, groupId) {
