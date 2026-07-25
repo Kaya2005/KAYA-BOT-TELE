@@ -66,7 +66,7 @@ export default {
   name: "update",
   alias: ["maj"],
   description: "Update the bot live with detailed changelog",
-  category: "System",
+  category: "Owner",
   ownerOnly: true,
 
   async execute(kaya, mek, from) {

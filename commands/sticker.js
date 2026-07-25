@@ -6,7 +6,7 @@ export default {
     name: 'sticker',
     alias: ['s', 'stiker', 'stick'],
     description: 'Convert image or video to sticker',
-    category: 'Sticker',
+    category: 'Tools',
 
     async execute(kaya, mek, from, args, prefix) {
         try {
