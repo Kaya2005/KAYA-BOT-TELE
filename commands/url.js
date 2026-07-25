@@ -1,4 +1,4 @@
-import { downloadMediaMessage } from "@whiskeysockets/baileys";
+import { downloadContentFromMessage } from "@whiskeysockets/baileys";
 import FormData from "form-data";
 import fetch from "node-fetch";
 
@@ -8,76 +8,74 @@ export default {
     description: "Convertit une image répondue en lien URL public",
     category: "Tools",
 
-    async execute(kaya, mek, from, args) {
+    async execute(kaya, mek, from, args, prefix) {
         try {
-            const quoted = mek.quoted;
+            // Détection de l'image (réponse ou message direct)
+            const quoted = mek.message?.extendedTextMessage?.contextInfo?.quotedMessage;
+            const imageMsg = mek.message?.imageMessage || quoted?.imageMessage;
 
-            if (!quoted || !quoted.mtype || !quoted.mtype.includes("image")) {
-                return await kaya.sendMessage(
+            if (!imageMsg) {
+                return kaya.sendMessage(
                     from,
                     {
-                        text: "❌ Veuillez répondre à une image avec la commande `.url` pour obtenir son lien."
+                        text: `⚠️ *Usage :* Réponds à une image avec ${prefix}url`
                     },
                     { quoted: mek }
                 );
             }
 
-            const waitMsg = await kaya.sendMessage(
-                from,
-                {
-                    text: "⏳ Téléchargement et upload de l'image en cours..."
-                },
-                { quoted: mek }
-            );
+            await kaya.sendPresenceUpdate("composing", from);
 
-            const buffer = await downloadMediaMessage(
-                quoted,
-                "buffer",
-                {},
-                {
-                    logger: console,
-                    reuploadRequest: kaya.updateMediaMessage
-                }
-            );
+            // Téléchargement de l'image
+            const stream = await downloadContentFromMessage(imageMsg, "image");
+            const chunks = [];
 
-            if (!buffer) {
-                return await kaya.sendMessage(
+            for await (const chunk of stream) {
+                chunks.push(chunk);
+            }
+
+            const buffer = Buffer.concat(chunks);
+
+            if (!buffer || buffer.length < 100) {
+                return kaya.sendMessage(
                     from,
                     {
-                        text: "❌ Impossible de télécharger l'image.",
-                        edit: waitMsg.key
-                    }
+                        text: "❌ Impossible de télécharger cette image."
+                    },
+                    { quoted: mek }
                 );
             }
 
-            const formData = new FormData();
-            formData.append("reqtype", "fileupload");
-            formData.append("fileToUpload", buffer, {
-                filename: "kaya_image.jpg"
+            // Upload vers Catbox
+            const form = new FormData();
+            form.append("reqtype", "fileupload");
+            form.append("fileToUpload", buffer, {
+                filename: "image.jpg",
+                contentType: "image/jpeg"
             });
 
-            const response = await fetch("https://catbox.moe/user/api.php", {
+            const res = await fetch("https://catbox.moe/user/api.php", {
                 method: "POST",
-                body: formData,
-                headers: formData.getHeaders()
+                body: form,
+                headers: form.getHeaders()
             });
 
-            const resultUrl = (await response.text()).trim();
+            const url = (await res.text()).trim();
 
-            if (!resultUrl.startsWith("http")) {
-                throw new Error("Réponse invalide de l'hébergeur.");
+            if (!url.startsWith("http")) {
+                throw new Error(url);
             }
 
             await kaya.sendMessage(
                 from,
                 {
-                    text: `✅ **Lien généré avec succès !**\n\n🔗 ${resultUrl}`,
-                    edit: waitMsg.key
-                }
+                    text: `✅ *Image uploadée avec succès !*\n\n🔗 ${url}`
+                },
+                { quoted: mek }
             );
 
         } catch (err) {
-            console.error("Erreur lors de l'exécution de la commande url :", err);
+            console.error(err);
 
             await kaya.sendMessage(
                 from,
@@ -87,5 +85,5 @@ export default {
                 { quoted: mek }
             );
         }
-    },
+    }
 };
