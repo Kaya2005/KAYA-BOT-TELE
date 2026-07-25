@@ -102,7 +102,7 @@ export async function sendWithBotImage(kaya, chat, senderJid, content = {}, opti
   }
 }
 
-// ===================== CONNECTION MESSAGE =====================
+// ===================== MESSAGES (CONNECTION & UPDATE) =====================
 
 export function connectionMessage(botName = DEFAULT_BOT_NAME) {
   const now = new Date();
@@ -118,5 +118,21 @@ export function connectionMessage(botName = DEFAULT_BOT_NAME) {
 *🧪 VERSION : v${BOT_VERSION}*
 ______________________
 ➠https://t.me/kayatech2
-`;
+`.trim();
+}
+
+export function updateMessage(updateData, botName = DEFAULT_BOT_NAME) {
+  return `
+ \`${botName} UPDATED\` 
+▰▰▰▰▰▰▰▰▰▰▰▰▰
+*📌 Commit :* \`${updateData.commitHash}\`
+*💬 Message :* _${updateData.commitMsg}_
+
+*📂 Fichiers modifiés (${updateData.changed?.length || 0}) :*
+${updateData.changed && updateData.changed.length ? updateData.changed.slice(0, 6).join('\n') : '• Fichiers système mis à jour'}
+
+*🟢 STATUS : RUNNING LATEST VERSION*
+______________________
+➠https://t.me/kayatech2
+`.trim();
 }
