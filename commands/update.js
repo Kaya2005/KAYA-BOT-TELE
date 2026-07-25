@@ -117,14 +117,20 @@ export default {
       const localAfter = getLocalCommit();
       const [commitHash, commitMsg, commitTime] = localAfter ? localAfter.split("|") : ["N/A", "Mise à jour du bot", "Récemment"];
 
-      // 💾 Enregistrement des infos de mise à jour dans un fichier temporaire à la racine
+      // 💾 Enregistrement des infos de mise à jour dans le dossier updatestatus sécurisé
+      const updateStatusDir = path.join(process.cwd(), 'updatestatus');
+      if (!fs.existsSync(updateStatusDir)) {
+        fs.mkdirSync(updateStatusDir, { recursive: true });
+      }
+
       const updateInfo = {
         commitHash,
         commitMsg,
         commitTime,
         changed: changedDetails
       };
-      fs.writeFileSync(path.join(process.cwd(), 'update_info.json'), JSON.stringify(updateInfo, null, 2));
+      
+      fs.writeFileSync(path.join(updateStatusDir, 'update_status.json'), JSON.stringify(updateInfo, null, 2));
 
       await sleep(400);
       await edit(
