@@ -11,7 +11,7 @@ const botImageFile = path.join(process.cwd(), 'setting', 'botImage.json');
 const localFallbackImage = path.join(process.cwd(), 'setting', 'bot.jpg');
 
 // Nom par défaut si rien n'est configuré
-export const DEFAULT_BOT_NAME = '𝐊𝐀𝐘𝐀 𝐁𝐎𝐓';
+export const DEFAULT_BOT_NAME = 'ƘƛƳƛ ƁƠƬ';
 
 // Image par défaut (Globale)
 let globalBotImagePath = 'https://files.catbox.moe/1ddhgm.jpg';
