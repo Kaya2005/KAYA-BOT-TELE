@@ -10,8 +10,8 @@ import { forceCleanupSession } from './pair.js';
 import { getActiveToken } from './token.js';
 
 // Importation des commandes Telegram depuis le dossier commandtele
-//import setupWelcome from './commandtele/welcome.js';
-//import setupAntiLink from './commandtele/antilink.js';
+import setupWelcome from './commandtele/welcome.js';
+import setupAntiLink from './commandtele/antilink.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -79,8 +79,8 @@ ______________________
 const bot = new Telegraf(getActiveToken());
 
 // ================= CHARGEMENT DES MODULES TELEGRAM =================
-//setupWelcome(bot);
-//setupAntiLink(bot);
+setupWelcome(bot);
+setupAntiLink(bot);
 
 // ================= COMMANDS =================
 bot.start(async (ctx) => {
