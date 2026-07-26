@@ -232,7 +232,7 @@ bot.command('listpair', async (ctx) => {
 });
 
 bot.command('delpair', async (ctx) => {
-    if (!isOptionAdmin => !isOwner(ctx)) return; // Restreint à l'owner
+    if (!isOptionAdmin => !isOwner(ctx)) return; 
     const arg = ctx.message.text.split(' ')[1];
     if (!arg) return ctx.reply('⚠️ Usage: /delpair [teleId ou numéro]');
     
