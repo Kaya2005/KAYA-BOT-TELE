@@ -33,6 +33,15 @@ export default function setupWelcome(bot) {
 ┆❏ 🆔 ɪᴅ : ${id}
 ╰▰▰▰▰▰▰▰◈`;
 
+                // Configuration du bouton de redirection vers le canal
+                const channelButton = {
+                    reply_markup: {
+                        inline_keyboard: [
+                            [{ text: '𝙺𝙰𝚈𝙰 𝙱𝙾𝚃 | 𝙲𝙰𝙽𝙰𝙻', url: 'https://t.me/kayatech2' }]
+                        ]
+                    }
+                };
+
                 // Récupération de la photo de profil du membre
                 let photoFileId = null;
                 try {
@@ -45,11 +54,14 @@ export default function setupWelcome(bot) {
                     console.error("Impossible de récupérer la photo de profil :", e);
                 }
 
-                // Envoi de la photo avec la légende ou message texte simple
+                // Envoi de la photo avec la légende et le bouton, ou message texte avec le bouton
                 if (photoFileId) {
-                    await ctx.replyWithPhoto(photoFileId, { caption: welcomeText });
+                    await ctx.replyWithPhoto(photoFileId, { 
+                        caption: welcomeText,
+                        ...channelButton 
+                    });
                 } else {
-                    await ctx.reply(welcomeText);
+                    await ctx.reply(welcomeText, channelButton);
                 }
             }
             
