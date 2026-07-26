@@ -4,8 +4,6 @@
 export default function setupWelcome(bot) {
     bot.on('new_chat_members', async (ctx, next) => {
         try {
-            const chatName = ctx.chat?.title || "ChatinGroup";
-
             if (!ctx.message || !ctx.message.new_chat_members) {
                 return next();
             }
@@ -24,18 +22,17 @@ export default function setupWelcome(bot) {
                 const time = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
                 const date = now.toLocaleDateString('fr-FR');
 
-                const welcomeText = `▰▰▰▰▰▰▰▰▰▰\n` +
-                                    `➠ User: ${fullName}\n` +
-                                    `➠ Time: ${time}\n` +
-                                    `➠ Date: ${date}\n\n` +
-                                    `> ╢ WELCOME ♰\n` +
-                                    `╭▰▰▰▰▰▰▰◈\n` +
-                                    `┆❏ ɴᴏᴍ : ${fullName}\n` +
-                                    `┆❏ ᴜsᴇʀɴᴀᴍᴇ : ${username}\n` +
-                                    `┆❏ ɪᴅ : ${id}\n` +
-                                    `╰▰▰▰▰▰▰▰◈\n\n` +
-                                    `▰▰▰▰▰▰▰▰▰▰\n` +
-                                    `ʙᴏɴ sÉᴊᴏᴜʀ ❤️`;
+                const welcomeText = `▰▰▰▰▰▰▰▰▰▰
+➠ ᴜsᴇʀ : ${fullName}
+➠ ᴛɪᴍᴇ : ${time}
+➠ ᴅᴀᴛᴇ : ${date}
+
+    🇼​🇪​🇱​🇨​🇴​🇲​🇪​ 
+╭▰▰▰▰▰▰▰◈
+┆❏ 💬 ɴᴏᴍ : ${fullName}
+┆❏ 🙋 ᴜsᴇʀɴᴀᴍᴇ : ${username}
+┆❏ 🆔 ɪᴅ : ${id}
+╰▰▰▰▰▰▰▰◈`;
 
                 // Récupération de la photo de profil du membre
                 let photoFileId = null;
@@ -49,7 +46,7 @@ export default function setupWelcome(bot) {
                     console.error("Impossible de récupérer la photo de profil :", e);
                 }
 
-                // Envoi de la photo avec la légende
+                // Envoi de la photo avec la légende ou message texte simple
                 if (photoFileId) {
                     await ctx.replyWithPhoto(photoFileId, { caption: welcomeText });
                 } else {
