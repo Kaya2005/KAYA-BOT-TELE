@@ -9,6 +9,10 @@ import { Telegraf } from 'telegraf';
 import { forceCleanupSession } from './pair.js'; 
 import { getActiveToken } from './token.js';
 
+// Importation des commandes Telegram depuis le dossier commandtele
+import setupWelcome from './commandtele/welcome.js';
+import setupAntiLink from './commandtele/antilink.js';
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // ================= CONSTANTS & PATHS =================
@@ -73,6 +77,10 @@ ______________________
 
 // 🚀 Utilisation de getActiveToken() pour récupérer dynamiquement le premier token non utilisé
 const bot = new Telegraf(getActiveToken());
+
+// ================= CHARGEMENT DES MODULES TELEGRAM =================
+setupWelcome(bot);
+setupAntiLink(bot);
 
 // ================= COMMANDS =================
 bot.start(async (ctx) => {
@@ -232,7 +240,7 @@ bot.command('listpair', async (ctx) => {
 });
 
 bot.command('delpair', async (ctx) => {
-    if (!isOptionAdmin => !isOwner(ctx)) return; 
+    if (!isOwner(ctx)) return; 
     const arg = ctx.message.text.split(' ')[1];
     if (!arg) return ctx.reply('⚠️ Usage: /delpair [teleId ou numéro]');
     
