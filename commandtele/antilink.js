@@ -16,15 +16,29 @@ export default function setupAntiLink(bot) {
             const linkRegex = /(https?:\/\/[^\s]+)|(www\.[^\s]+)|(t\.me\/[^\s]+)/gi;
 
             if (linkRegex.test(text)) {
-                // Vérifier si l'utilisateur est admin
-                const member = await ctx.telegram.getChatMember(ctx.chat.id, ctx.from.id);
-                if (['creator', 'administrator'].includes(member.status)) {
-                    return next(); // Les admins ont le droit de poster des liens
+                // 1. Vérifier si c'est un administrateur anonyme (envoyé au nom du groupe/canal)
+                if (ctx.sender_chat && ctx.sender_chat.id === ctx.chat.id) {
+                    return next(); 
                 }
+
+                // 2. Vérifier si l'utilisateur est un administrateur standard
+                try {
+                    const member = await ctx.telegram.getChatMember(ctx.chat.id, ctx.from.id);
+                    if (['creator', 'administrator'].includes(member.status)) {
+                        return next(); // Les admins ont le droit de poster des liens
+                    }
+                } catch (err) {
+                    console.error("[ANTILINK] Erreur lors de la vérification de l'admin :", err);
+                    // En cas d'erreur API, on laisse passer pour éviter de bloquer à tort
+                    return next();
+                }
+
+                // --- POUR LES MEMBRES NORMAUX UNIQUEMENT ---
 
                 // Supprimer le message contenant le lien
                 await ctx.deleteMessage().catch(() => {});
                 
+                // Envoyer le message d'avertissement temporaire
                 const warning = await ctx.reply(`⚠️ @${ctx.from.username || ctx.from.first_name}, les liens sont interdits ici !`);
                 setTimeout(() => ctx.telegram.deleteMessage(ctx.chat.id, warning.message_id).catch(() => {}), 4000);
                 
@@ -36,7 +50,7 @@ export default function setupAntiLink(bot) {
             
         } catch (err) {
             console.error("[ANTILINK ERROR]", err);
-            return next(); // En cas d'erreur, on évite de bloquer tout le bot
+            return next(); // En cas d'erreur globale, on évite de bloquer tout le bot
         }
     });
 }
