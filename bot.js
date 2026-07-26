@@ -85,11 +85,11 @@ setupAntiLink(bot);
 // ================= COMMANDS =================
 bot.start(async (ctx) => {
     await ctx.replyWithPhoto('https://files.catbox.moe/1ddhgm.jpg', {
-        caption: '▉ 𝐊𝐀𝐘𝐀 𝐁𝐎𝐓 ▉\n\nWelcome! Click the button below to open your dashboard.',
+        caption: '▉ 𝐊𝐀𝐘𝐀 𝐁𝐎𝐓 ▉\n\nWelcome! Choose an option below to connect your WhatsApp or add the bot to your group.',
         reply_markup: { 
             inline_keyboard: [
-                [{ text: '🚀 Start Menu', callback_data: 'start_bot' }],
-                [{ text: '➕ Ajouter le bot à un groupe', callback_data: 'info_group' }]
+                [{ text: '🚀 Start Menu (WhatsApp)', callback_data: 'start_bot' }],
+                [{ text: '➕ Add Bot to Group', callback_data: 'info_group' }]
             ] 
         }
     });
@@ -103,18 +103,18 @@ bot.action('start_bot', async (ctx) => {
 
 // Action d'information pour l'ajout dans un groupe
 bot.action('info_group', async (ctx) => {
-    const text = `🤖 *CONFIGURATION DES GROUPES TELEGRAM*\n\n` +
-                 `Pour utiliser les commandes de modération (Anti-lien, Bienvenue, etc.) dans votre groupe :\n\n` +
-                 `1️⃣ Cliquez sur le bouton ci-dessous pour ajouter le bot à votre groupe.\n` +
-                 `2️⃣ Assurez-vous de donner les droits d'**administrateur** au bot (notamment la suppression des messages).\n` +
-                 `3️⃣ Le bot sera immédiatement opérationnel !`;
+    const text = `🤖 *TELEGRAM GROUP SETUP*\n\n` +
+                 `To use moderation commands (Anti-link, Welcome) in your group:\n\n` +
+                 `1️⃣ Click the button below to add the bot.\n` +
+                 `2️⃣ Promote the bot as **Admin** with delete message rights.\n` +
+                 `3️⃣ The bot is ready to work!`;
 
     const botUsername = ctx.botInfo?.username || 'KayaMdBot';
     await ctx.reply(text, {
         parse_mode: 'Markdown',
         reply_markup: {
             inline_keyboard: [
-                [{ text: '➕ Ajouter à mon groupe', url: `https://t.me/${botUsername}?startgroup=true` }]
+                [{ text: '➕ Add to my Group', url: `https://t.me/${botUsername}?startgroup=true` }]
             ]
         }
     });
@@ -122,18 +122,18 @@ bot.action('info_group', async (ctx) => {
 
 // Commande /group pour les utilisateurs qui l'invoquent depuis le chat du bot
 bot.command('group', async (ctx) => {
-    const text = `🤖 *CONFIGURATION DES GROUPES TELEGRAM*\n\n` +
-                 `Pour activer les commandes de modération et de bienvenue dans votre groupe :\n\n` +
-                 `1. Ajoutez le bot à votre groupe.\n` +
-                 `2. Promouvez le bot **Administrateur** avec les droits de suppression de messages.\n\n` +
-                 `Cliquez ci-dessous pour l'ajouter directement :`;
+    const text = `🤖 *TELEGRAM GROUP SETUP*\n\n` +
+                 `To enable moderation and welcome features in your group:\n\n` +
+                 `1. Add the bot to your group.\n` +
+                 `2. Make the bot an **Administrator**.\n\n` +
+                 `Click below to add it directly:`;
 
     const botUsername = ctx.botInfo?.username || 'KayaMdBot';
     await ctx.reply(text, {
         parse_mode: 'Markdown',
         reply_markup: {
             inline_keyboard: [
-                [{ text: '➕ Ajouter à mon groupe', url: `https://t.me/${botUsername}?startgroup=true` }]
+                [{ text: '➕ Add to my Group', url: `https://t.me/${botUsername}?startgroup=true` }]
             ]
         }
     });
@@ -242,7 +242,7 @@ bot.command('listpair', async (ctx) => {
 bot.command('delpair', async (ctx) => {
     if (!isOwner(ctx)) return; 
     const arg = ctx.message.text.split(' ')[1];
-    if (!arg) return ctx.reply('⚠️ Usage: /delpair [teleId ou numéro]');
+    if (!arg) return ctx.reply('⚠️ Usage: /delpair [teleId or number]');
     
     let teleId = arg.replace(/\D/g, '');
     let foundNumber = null;
