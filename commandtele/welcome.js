@@ -29,7 +29,6 @@ export default function setupWelcome(bot) {
 
     🇼​🇪​🇱​🇨​🇴​🇲​🇪​ 
 ╭▰▰▰▰▰▰▰◈
-┆❏ 💬 ɴᴏᴍ : ${fullName}
 ┆❏ 🙋 ᴜsᴇʀɴᴀᴍᴇ : ${username}
 ┆❏ 🆔 ɪᴅ : ${id}
 ╰▰▰▰▰▰▰▰◈`;
