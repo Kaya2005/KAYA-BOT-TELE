@@ -19,24 +19,23 @@ export default function setupWelcome(bot) {
                 const username = member.username ? `@${member.username}` : 'Aucun';
                 const id = member.id;
 
-                // Style avec le cadre Telegram (blockquote >)
-                const welcomeText = `> ▉ \`WELCOME\` ▉\n` +
-                                    `> ▰▰▰▰▰▰▰▰▰▰\n` +
-                                    `> \n` +
-                                    `> 🥳 ʙɪᴇɴᴠᴇɴᴜᴇ ᴅᴀɴs ⟨ ${chatName}...\n` +
-                                    `> \n` +
-                                    `> 👤 ɴᴏᴍ : ${fullName}\n` +
-                                    `> \n` +
-                                    `> 🆔 ᴜsᴇʀɴᴀᴍᴇ : ${username}\n` +
-                                    `> \n` +
-                                    `> 🆔 ɪᴅ : ${id}\n` +
-                                    `> \n` +
-                                    `> ▰▰▰▰▰▰▰▰▰▰\n` +
-                                    `> \n` +
-                                    `> ⚠️ ᴍᴇʀᴄɪ ᴅᴇ ʀᴇsᴘᴇᴄᴛᴇʀ ʟᴇs ʀèɢʟᴇs.\n` +
-                                    `> ʟᴇs ʟɪᴇɴs ᴇᴛ ʟᴇs ᴀʙᴜs sᴏɴᴛ ɪɴᴛᴇʀᴅɪᴛs.\n` +
-                                    `> \n` +
-                                    `> ʙᴏɴ séᴊᴏᴜʀ ❤️`;
+                // Date et heure dynamiques
+                const now = new Date();
+                const time = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+                const date = now.toLocaleDateString('fr-FR');
+
+                const welcomeText = `▰▰▰▰▰▰▰▰▰▰\n` +
+                                    `➠ User: ${fullName}\n` +
+                                    `➠ Time: ${time}\n` +
+                                    `➠ Date: ${date}\n\n` +
+                                    `> ╢ WELCOME ♰\n` +
+                                    `╭▰▰▰▰▰▰▰◈\n` +
+                                    `┆❏ ɴᴏᴍ : ${fullName}\n` +
+                                    `┆❏ ᴜsᴇʀɴᴀᴍᴇ : ${username}\n` +
+                                    `┆❏ ɪᴅ : ${id}\n` +
+                                    `╰▰▰▰▰▰▰▰◈\n\n` +
+                                    `▰▰▰▰▰▰▰▰▰▰\n` +
+                                    `ʙᴏɴ sÉᴊᴏᴜʀ ❤️`;
 
                 // Récupération de la photo de profil du membre
                 let photoFileId = null;
@@ -50,16 +49,11 @@ export default function setupWelcome(bot) {
                     console.error("Impossible de récupérer la photo de profil :", e);
                 }
 
-                // Envoi de la photo avec la légende et le parse_mode Markdown pour activer le cadre
+                // Envoi de la photo avec la légende
                 if (photoFileId) {
-                    await ctx.replyWithPhoto(photoFileId, { 
-                        caption: welcomeText, 
-                        parse_mode: 'Markdown' 
-                    });
+                    await ctx.replyWithPhoto(photoFileId, { caption: welcomeText });
                 } else {
-                    await ctx.reply(welcomeText, { 
-                        parse_mode: 'Markdown' 
-                    });
+                    await ctx.reply(welcomeText);
                 }
             }
             
