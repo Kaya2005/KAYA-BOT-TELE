@@ -1,3 +1,6 @@
+// ==========================================
+// FICHIER : bot.js
+// ==========================================
 import './config.js'; 
 import fs from 'fs';
 import path from 'path';
@@ -31,14 +34,13 @@ const checkChannels = async (ctx) => {
     return true;
 };
 
-// 🛠️ Fonction utilitaire pour récupérer toutes les vraies sessions WhatsApp actives (dossiers avec creds.json)
+// 🛠️ Fonction utilitaire pour récupérer toutes les vraies sessions WhatsApp actives
 const getActiveSessions = () => {
     if (!fs.existsSync(pairingFolder)) return [];
     return fs.readdirSync(pairingFolder, { withFileTypes: true })
         .filter(dirent => dirent.isDirectory())
         .map(dirent => dirent.name)
         .filter(folderName => {
-            // Ignore les dossiers qui ne sont pas des numéros de téléphone
             const credsPath = path.join(pairingFolder, folderName, 'creds.json');
             return fs.existsSync(credsPath);
         });
@@ -60,6 +62,7 @@ ______________________
 ╭▰▰▰▰▰▰▰◈
 ┆❏ /connect
 ┆❏ /ping
+┆❏ /group
 ╰▰▰▰▰▰▰▰◈`;
     
     if (isAdmin) {
@@ -75,7 +78,12 @@ const bot = new Telegraf(getActiveToken());
 bot.start(async (ctx) => {
     await ctx.replyWithPhoto('https://files.catbox.moe/1ddhgm.jpg', {
         caption: '▉ 𝐊𝐀𝐘𝐀 𝐁𝐎𝐓 ▉\n\nWelcome! Click the button below to open your dashboard.',
-        reply_markup: { inline_keyboard: [[{ text: '🚀 Start Menu', callback_data: 'start_bot' }]] }
+        reply_markup: { 
+            inline_keyboard: [
+                [{ text: '🚀 Start Menu', callback_data: 'start_bot' }],
+                [{ text: '➕ Ajouter le bot à un groupe', callback_data: 'info_group' }]
+            ] 
+        }
     });
 });
 
@@ -85,18 +93,54 @@ bot.action('start_bot', async (ctx) => {
     });
 });
 
+// Action d'information pour l'ajout dans un groupe
+bot.action('info_group', async (ctx) => {
+    const text = `🤖 *CONFIGURATION DES GROUPES TELEGRAM*\n\n` +
+                 `Pour utiliser les commandes de modération (Anti-lien, Bienvenue, etc.) dans votre groupe :\n\n` +
+                 `1️⃣ Cliquez sur le bouton ci-dessous pour ajouter le bot à votre groupe.\n` +
+                 `2️⃣ Assurez-vous de donner les droits d'**administrateur** au bot (notamment la suppression des messages).\n` +
+                 `3️⃣ Le bot sera immédiatement opérationnel !`;
+
+    const botUsername = ctx.botInfo?.username || 'KayaMdBot';
+    await ctx.reply(text, {
+        parse_mode: 'Markdown',
+        reply_markup: {
+            inline_keyboard: [
+                [{ text: '➕ Ajouter à mon groupe', url: `https://t.me/${botUsername}?startgroup=true` }]
+            ]
+        }
+    });
+});
+
+// Commande /group pour les utilisateurs qui l'invoquent depuis le chat du bot
+bot.command('group', async (ctx) => {
+    const text = `🤖 *CONFIGURATION DES GROUPES TELEGRAM*\n\n` +
+                 `Pour activer les commandes de modération et de bienvenue dans votre groupe :\n\n` +
+                 `1. Ajoutez le bot à votre groupe.\n` +
+                 `2. Promouvez le bot **Administrateur** avec les droits de suppression de messages.\n\n` +
+                 `Cliquez ci-dessous pour l'ajouter directement :`;
+
+    const botUsername = ctx.botInfo?.username || 'KayaMdBot';
+    await ctx.reply(text, {
+        parse_mode: 'Markdown',
+        reply_markup: {
+            inline_keyboard: [
+                [{ text: '➕ Ajouter à mon groupe', url: `https://t.me/${botUsername}?startgroup=true` }]
+            ]
+        }
+    });
+});
+
 bot.command('ping', async (ctx) => {
     ctx.reply('▉ 𝐊𝐀𝐘𝐀 𝐁𝐎𝐓 ▉\n\n✅ *Status:* Online', { parse_mode: 'Markdown' });
 });
 
 bot.command('connect', async (ctx) => {
-    // 1. Vérification de la limite globale (60 utilisateurs basée sur les vraies sessions actives)
     const activeSessions = getActiveSessions();
     if (activeSessions.length >= 60) {
         return ctx.reply('❌ *Error:* Server capacity reached (60/60). Please try again later.');
     }
 
-    // 2. Vérification des canaux
     if (!(await checkChannels(ctx))) {
         return ctx.reply('⚠️ Restricted access. Please join our channels to continue:', {
             reply_markup: {
@@ -112,7 +156,6 @@ bot.command('connect', async (ctx) => {
     const text = ctx.message.text.split(' ')[1];
     if (!text) return ctx.reply('⚠️ Usage: `/connect 243xxxxxx`', { parse_mode: 'Markdown' });
     
-    // 3. Validation du numéro (minimum 9 chiffres)
     const number = text.replace(/\D/g, '');
     if (number.length < 9) return ctx.reply('❌ Invalid number. Minimum 9 digits required.');
     
@@ -120,13 +163,11 @@ bot.command('connect', async (ctx) => {
     const teleId = ctx.from.id;
     const userName = ctx.from.first_name || "Unknown";
     
-    // 4. Écriture de la requête pour que pair.js la traite
     const requestPath = path.join(pairingFolder, `request_${teleId}.json`);
     fs.writeFileSync(requestPath, JSON.stringify({ jid, name: userName }));
     
     ctx.reply('⏳ Initialization... please wait.');
     
-    // 5. Attente de la réponse
     let attempts = 0;
     let cuObj = null;
     const pairingFile = path.join(pairingFolder, `pairing_${teleId}.json`);
@@ -170,7 +211,6 @@ bot.command('listpair', async (ctx) => {
         let userName = "Unknown";
         let teleId = "N/A";
         
-        // Tente de retrouver les infos Telegram correspondantes via les fichiers de pairing ou de configuration
         try {
             const files = fs.readdirSync(pairingFolder);
             for (const f of files) {
@@ -192,14 +232,13 @@ bot.command('listpair', async (ctx) => {
 });
 
 bot.command('delpair', async (ctx) => {
-    if (!isOwner(ctx)) return;
+    if (!isOptionAdmin => !isOwner(ctx)) return; // Restreint à l'owner
     const arg = ctx.message.text.split(' ')[1];
     if (!arg) return ctx.reply('⚠️ Usage: /delpair [teleId ou numéro]');
     
     let teleId = arg.replace(/\D/g, '');
     let foundNumber = null;
 
-    // Vérifie si l'argument est un teleId ou directement un numéro WhatsApp
     const pairingFiles = fs.readdirSync(pairingFolder).filter(e => e.endsWith('.json') && e.startsWith('pairing_'));
     for (const file of pairingFiles) {
         const fileTeleId = file.replace('pairing_', '').replace('.json', '');
@@ -214,13 +253,11 @@ bot.command('delpair', async (ctx) => {
         } catch (e) {}
     }
 
-    // Si on a trouvé un numéro associé
     if (foundNumber) {
         forceCleanupSession(foundNumber, teleId);
         return ctx.reply(`✅ Session for ${foundNumber} disconnected successfully.`);
     }
 
-    // Fallback si c'est directement un dossier de session existant sans fichier pairing
     if (fs.existsSync(path.join(pairingFolder, teleId))) {
         forceCleanupSession(teleId, "default");
         return ctx.reply(`✅ Session ${teleId} disconnected successfully.`);
