@@ -19,13 +19,24 @@ export default function setupWelcome(bot) {
                 const username = member.username ? `@${member.username}` : 'Aucun';
                 const id = member.id;
 
-                const welcomeText = `🥳 ʙɪᴇɴᴠᴇɴᴜᴇ ᴅᴀɴs ⟨ ${chatName}...\n\n` +
-                                    `👤 ɴᴏᴍ : ${fullName}\n\n` +
-                                    `🆔 ᴜsᴇʀɴᴀᴍᴇ : ${username}\n\n` +
-                                    `🆔 ɪᴅ : ${id}\n\n` +
-                                    `⚠️ ᴍᴇʀᴄɪ ᴅᴇ ʀᴇsᴘᴇᴄᴛᴇʀ ʟᴇs ʀèɢʟᴇs.\n` +
-                                    `ʟᴇs ʟɪᴇɴs ᴇᴛ ʟᴇs ᴀʙᴜs sᴏɴᴛ ɪɴᴛᴇʀᴅɪᴛs.\n\n` +
-                                    `ʙᴏɴ séᴊᴏᴜʀ ❤️`;
+                // Style avec le cadre Telegram (blockquote >)
+                const welcomeText = `> ▉ \`WELCOME\` ▉\n` +
+                                    `> ▰▰▰▰▰▰▰▰▰▰\n` +
+                                    `> \n` +
+                                    `> 🥳 ʙɪᴇɴᴠᴇɴᴜᴇ ᴅᴀɴs ⟨ ${chatName}...\n` +
+                                    `> \n` +
+                                    `> 👤 ɴᴏᴍ : ${fullName}\n` +
+                                    `> \n` +
+                                    `> 🆔 ᴜsᴇʀɴᴀᴍᴇ : ${username}\n` +
+                                    `> \n` +
+                                    `> 🆔 ɪᴅ : ${id}\n` +
+                                    `> \n` +
+                                    `> ▰▰▰▰▰▰▰▰▰▰\n` +
+                                    `> \n` +
+                                    `> ⚠️ ᴍᴇʀᴄɪ ᴅᴇ ʀᴇsᴘᴇᴄᴛᴇʀ ʟᴇs ʀèɢʟᴇs.\n` +
+                                    `> ʟᴇs ʟɪᴇɴs ᴇᴛ ʟᴇs ᴀʙᴜs sᴏɴᴛ ɪɴᴛᴇʀᴅɪᴛs.\n` +
+                                    `> \n` +
+                                    `> ʙᴏɴ séᴊᴏᴜʀ ❤️`;
 
                 // Récupération de la photo de profil du membre
                 let photoFileId = null;
@@ -39,11 +50,16 @@ export default function setupWelcome(bot) {
                     console.error("Impossible de récupérer la photo de profil :", e);
                 }
 
-                // Envoi de la photo avec la légende si elle existe, sinon envoi du texte seul
+                // Envoi de la photo avec la légende et le parse_mode Markdown pour activer le cadre
                 if (photoFileId) {
-                    await ctx.replyWithPhoto(photoFileId, { caption: welcomeText });
+                    await ctx.replyWithPhoto(photoFileId, { 
+                        caption: welcomeText, 
+                        parse_mode: 'Markdown' 
+                    });
                 } else {
-                    await ctx.reply(welcomeText);
+                    await ctx.reply(welcomeText, { 
+                        parse_mode: 'Markdown' 
+                    });
                 }
             }
             
