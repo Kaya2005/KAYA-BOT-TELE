@@ -1,8 +1,13 @@
+// ==========================================
+// FICHIER : commandtele/welcome.js
+// ==========================================
 export default function setupWelcome(bot) {
-    bot.on('new_chat_members', async (ctx) => {
+    bot.on('new_chat_members', async (ctx, next) => {
         try {
             const chatName = ctx.chat.title || "ChatinGroup";
-            const memberCount = await ctx.telegram.getChatMembersCount(ctx.chat.id).catch(() => "N/A");
+            
+            // Correction : getChatMemberCount au singulier
+            const memberCount = await ctx.telegram.getChatMemberCount(ctx.chat.id).catch(() => "N/A");
 
             for (const member of ctx.message.new_chat_members) {
                 // Ignorer si le bot lui-même rejoint
@@ -24,8 +29,11 @@ export default function setupWelcome(bot) {
 
                 await ctx.reply(welcomeText);
             }
+            
+            return next();
         } catch (err) {
             console.error("[WELCOME ERROR]", err);
+            return next();
         }
     });
 }
