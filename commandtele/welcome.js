@@ -5,18 +5,6 @@ export default function setupWelcome(bot) {
     bot.on('new_chat_members', async (ctx, next) => {
         try {
             const chatName = ctx.chat?.title || "ChatinGroup";
-            
-            // Récupération sécurisée du nombre de membres (compatible Telegraf)
-            let memberCount = "N/A";
-            try {
-                if (typeof ctx.getChatMemberCount === 'function') {
-                    memberCount = await ctx.getChatMemberCount();
-                } else if (ctx.telegram && typeof ctx.telegram.getChatMemberCount === 'function') {
-                    memberCount = await ctx.telegram.getChatMemberCount(ctx.chat.id);
-                }
-            } catch (e) {
-                memberCount = "N/A";
-            }
 
             if (!ctx.message || !ctx.message.new_chat_members) {
                 return next();
@@ -35,12 +23,28 @@ export default function setupWelcome(bot) {
                                     `👤 ɴᴏᴍ : ${fullName}\n\n` +
                                     `🆔 ᴜsᴇʀɴᴀᴍᴇ : ${username}\n\n` +
                                     `🆔 ɪᴅ : ${id}\n\n` +
-                                    `👥 ᴠᴏᴜs êᴛᴇs ʟᴇ ᴍᴇᴍʙʀᴇ ɴᴜᴍéʀᴏ ${memberCount}\n\n` +
                                     `⚠️ ᴍᴇʀᴄɪ ᴅᴇ ʀᴇsᴘᴇᴄᴛᴇʀ ʟᴇs ʀèɢʟᴇs.\n` +
                                     `ʟᴇs ʟɪᴇɴs ᴇᴛ ʟᴇs ᴀʙᴜs sᴏɴᴛ ɪɴᴛᴇʀᴅɪᴛs.\n\n` +
                                     `ʙᴏɴ séᴊᴏᴜʀ ❤️`;
 
-                await ctx.reply(welcomeText);
+                // Récupération de la photo de profil du membre
+                let photoFileId = null;
+                try {
+                    const profilePhotos = await ctx.telegram.getUserProfilePhotos(member.id, { limit: 1 });
+                    if (profilePhotos && profilePhotos.total_count > 0) {
+                        const photos = profilePhotos.photos[0];
+                        photoFileId = photos[photos.length - 1].file_id;
+                    }
+                } catch (e) {
+                    console.error("Impossible de récupérer la photo de profil :", e);
+                }
+
+                // Envoi de la photo avec la légende si elle existe, sinon envoi du texte seul
+                if (photoFileId) {
+                    await ctx.replyWithPhoto(photoFileId, { caption: welcomeText });
+                } else {
+                    await ctx.reply(welcomeText);
+                }
             }
             
             return next();
