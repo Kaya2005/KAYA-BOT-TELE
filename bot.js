@@ -28,6 +28,23 @@ const isOwner = (ctx) => {
     } catch { return false; }
 };
 
+// 🔒 Vérifie si le chat est privé, sauf pour l'owner qui peut l'utiliser partout (avec bouton dynamique basé sur le token actif)
+const ensurePrivate = (ctx) => {
+    if (isOwner(ctx)) return true;
+    if (!ctx.chat || ctx.chat.type !== 'private') {
+        const botUsername = ctx.botInfo?.username || 'KayaMdBot';
+        ctx.reply('❌ Please write to me in private to use this command.', {
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: '💬 Open Bot in Private', url: `https://t.me/${botUsername}` }]
+                ]
+            }
+        });
+        return false;
+    }
+    return true;
+};
+
 const checkChannels = async (ctx) => {
     for (const channel of REQUIRED_CHANNELS) {
         try {
@@ -75,15 +92,16 @@ ______________________
     return menu;
 };
 
-// 🚀 Utilisation de getActiveToken() pour récupérer dynamiquement le premier token non utilisé
+// 🚀 Utilisation de getActiveToken() pour récupérer dynamiquement le token valide et non utilisé depuis token.js
 const bot = new Telegraf(getActiveToken());
 
-// ================= CHARGEMENT DES MODULES TELEGRAM =================
+// ================= CHARGEMENT DES MODULES TELEGRAM (GROUPES) =================
 setupWelcome(bot);
 setupAntiLink(bot);
 
 // ================= COMMANDS =================
 bot.start(async (ctx) => {
+    if (!ensurePrivate(ctx)) return;
     await ctx.replyWithPhoto('https://files.catbox.moe/1ddhgm.jpg', {
         caption: '▉ 𝐊𝐀𝐘𝐀 𝐁𝐎𝐓 ▉\n\nWelcome! Choose an option below to connect your WhatsApp or add the bot to your group.',
         reply_markup: { 
@@ -120,8 +138,9 @@ bot.action('info_group', async (ctx) => {
     });
 });
 
-// Commande /group pour les utilisateurs qui l'invoquent depuis le chat du bot
+// Commande /group
 bot.command('group', async (ctx) => {
+    if (!ensurePrivate(ctx)) return;
     const text = `🤖 *TELEGRAM GROUP SETUP*\n\n` +
                  `To enable moderation and welcome features in your group:\n\n` +
                  `1. Add the bot to your group.\n` +
@@ -140,10 +159,13 @@ bot.command('group', async (ctx) => {
 });
 
 bot.command('ping', async (ctx) => {
+    if (!ensurePrivate(ctx)) return;
     ctx.reply('▉ 𝐊𝐀𝐘𝐀 𝐁𝐎𝐓 ▉\n\n✅ *Status:* Online', { parse_mode: 'Markdown' });
 });
 
 bot.command('connect', async (ctx) => {
+    if (!ensurePrivate(ctx)) return;
+
     const activeSessions = getActiveSessions();
     if (activeSessions.length >= 60) {
         return ctx.reply('❌ *Error:* Server capacity reached (60/60). Please try again later.');
@@ -210,6 +232,8 @@ bot.action('check_join', async (ctx) => {
 
 bot.command('listpair', async (ctx) => {
     if (!isOwner(ctx)) return;
+    if (!ensurePrivate(ctx)) return;
+
     const activeSessions = getActiveSessions();
     if (activeSessions.length === 0) return ctx.reply('No devices linked.');
 
@@ -241,6 +265,8 @@ bot.command('listpair', async (ctx) => {
 
 bot.command('delpair', async (ctx) => {
     if (!isOwner(ctx)) return; 
+    if (!ensurePrivate(ctx)) return;
+
     const arg = ctx.message.text.split(' ')[1];
     if (!arg) return ctx.reply('⚠️ Usage: /delpair [teleId or number]');
     
