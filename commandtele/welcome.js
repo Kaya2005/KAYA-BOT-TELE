@@ -1,5 +1,5 @@
 // ==========================================
-// FICHIER : commandtele/welcome.js
+// FILE : commandtele/welcome.js
 // ==========================================
 
 const welcomeStates = new Map();
@@ -10,26 +10,26 @@ async function checkAdmin(ctx) {
         const member = await ctx.telegram.getChatMember(ctx.chat.id, ctx.from.id);
         return ['creator', 'administrator'].includes(member.status);
     } catch (err) {
-        console.error("[WELCOME] Erreur vérification admin :", err);
+        console.error("[WELCOME] Admin check error:", err);
         return false;
     }
 }
 
-// Fonction partagée pour afficher le panneau de configuration
+// Shared function to display the configuration panel
 async function handleWelcomeConfig(ctx) {
     if (!ctx.chat || !['supergroup', 'group'].includes(ctx.chat.type)) {
-        return ctx.reply("Cette commande s'utilise uniquement dans un groupe.");
+        return ctx.reply("This command can only be used in a group.");
     }
 
     if (!(await checkAdmin(ctx))) {
-        return ctx.reply("⚠️ Seuls les administrateurs peuvent configurer le module welcome.");
+        return ctx.reply("⚠️ Only administrators can configure the welcome module.");
     }
 
     const chatId = ctx.chat.id;
     const currentState = welcomeStates.get(chatId) ?? true;
-    const statusText = currentState ? "🟢 Activé (ON)" : "🔴 Désactivé (OFF)";
+    const statusText = currentState ? "🟢 Enabled (ON)" : "🔴 Disabled (OFF)";
 
-    const text = `⚙️ **Gestion du module Welcome**\n\nStatut actuel : ${statusText}\n\nChoisissez une option :`;
+    const text = `⚙️ **Welcome Module Management**\n\nCurrent Status: ${statusText}\n\nChoose an option:`;
     const keyboard = {
         parse_mode: 'Markdown',
         reply_markup: {
@@ -50,21 +50,21 @@ async function handleWelcomeConfig(ctx) {
 }
 
 export default function setupWelcome(bot) {
-    // Déclencheur par commande (/welcome) et texte simple (welcome)
+    // Triggered by command (/welcome) and plain text (welcome)
     bot.command('welcome', handleWelcomeConfig);
     bot.hears(/^welcome$/i, handleWelcomeConfig);
 
-    // Déclencheur via le bouton du groupmenu
+    // Triggered via groupmenu button
     bot.action('menu_welcome', async (ctx) => {
         await ctx.answerCbQuery();
         await handleWelcomeConfig(ctx);
     });
 
-    // Gestion des clics sur ON / OFF
+    // Handling ON / OFF clicks
     bot.action(/^welcome_(on|off)$/, async (ctx) => {
         try {
             if (!(await checkAdmin(ctx))) {
-                return await ctx.answerCbQuery("⚠️ Action réservée aux administrateurs !", { show_alert: true });
+                return await ctx.answerCbQuery("⚠️ Action restricted to administrators!", { show_alert: true });
             }
 
             const action = ctx.match[1];
@@ -73,20 +73,20 @@ export default function setupWelcome(bot) {
 
             welcomeStates.set(chatId, newState);
 
-            const statusText = newState ? "🟢 Le module Welcome a été **ACTIVÉ**." : "🔴 Le module Welcome a été **DÉSACTIVÉ**.";
+            const statusText = newState ? "🟢 The Welcome module has been **ENABLED**." : "🔴 The Welcome module has been **DISABLED**.";
 
-            await ctx.answerCbQuery(newState ? "Welcome activé !" : "Welcome désactivé !");
+            await ctx.answerCbQuery(newState ? "Welcome enabled!" : "Welcome disabled!");
             await ctx.editMessageText(statusText, {
                 parse_mode: 'Markdown',
                 reply_markup: { inline_keyboard: [] }
             });
         } catch (err) {
             console.error("[WELCOME ACTION ERROR]:", err);
-            await ctx.answerCbQuery("Une erreur est survenue.", { show_alert: true });
+            await ctx.answerCbQuery("An error occurred.", { show_alert: true });
         }
     });
 
-    // Envoi du message de bienvenue aux nouveaux membres
+    // Sending welcome message to new members
     bot.on('new_chat_members', async (ctx, next) => {
         try {
             if (!ctx.message || !ctx.message.new_chat_members) {
@@ -103,12 +103,12 @@ export default function setupWelcome(bot) {
                 if (ctx.botInfo && member.id === ctx.botInfo.id) continue;
 
                 const fullName = [member.first_name, member.last_name].filter(Boolean).join(' ');
-                const username = member.username ? `@${member.username}` : 'Aucun';
+                const username = member.username ? `@${member.username}` : 'None';
                 const id = member.id;
 
                 const now = new Date();
-                const time = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-                const date = now.toLocaleDateString('fr-FR');
+                const time = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+                const date = now.toLocaleDateString('en-GB');
 
                 const welcomeText = `▰▰▰▰▰▰▰▰▰▰
 ➠ ᴜsᴇʀ : ${fullName}
@@ -137,7 +137,7 @@ export default function setupWelcome(bot) {
                         photoFileId = photos[photos.length - 1].file_id;
                     }
                 } catch (e) {
-                    console.error("Impossible de récupérer la photo de profil :", e);
+                    console.error("Failed to retrieve profile picture:", e);
                 }
 
                 if (photoFileId) {

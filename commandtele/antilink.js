@@ -1,5 +1,5 @@
 // ==========================================
-// FICHIER : commandtele/antilink.js
+// FILE : commandtele/antilink.js
 // ==========================================
 
 const antilinkStates = new Map();
@@ -10,26 +10,26 @@ async function checkAdmin(ctx) {
         const member = await ctx.telegram.getChatMember(ctx.chat.id, ctx.from.id);
         return ['creator', 'administrator'].includes(member.status);
     } catch (err) {
-        console.error("[ANTILINK] Erreur vérification admin :", err);
+        console.error("[ANTILINK] Admin check error:", err);
         return false;
     }
 }
 
-// Fonction partagée pour afficher le panneau de configuration
+// Shared function to display the configuration panel
 async function handleAntiLinkConfig(ctx) {
     if (!ctx.chat || !['supergroup', 'group'].includes(ctx.chat.type)) {
-        return ctx.reply("Cette commande s'utilise uniquement dans un groupe.");
+        return ctx.reply("This command can only be used in a group.");
     }
 
     if (!(await checkAdmin(ctx))) {
-        return ctx.reply("⚠️ Seuls les administrateurs peuvent configurer le module antilink.");
+        return ctx.reply("⚠️ Only administrators can configure the anti-link module.");
     }
 
     const chatId = ctx.chat.id;
     const currentState = antilinkStates.get(chatId) ?? false;
-    const statusText = currentState ? "🟢 Activé (ON)" : "🔴 Désactivé (OFF)";
+    const statusText = currentState ? "🟢 Enabled (ON)" : "🔴 Disabled (OFF)";
 
-    const text = `⚙️ **Gestion du module AntiLink**\n\nStatut actuel : ${statusText}\n\nChoisissez une option :`;
+    const text = `⚙️ **AntiLink Module Management**\n\nCurrent Status: ${statusText}\n\nChoose an option:`;
     const keyboard = {
         parse_mode: 'Markdown',
         reply_markup: {
@@ -50,21 +50,21 @@ async function handleAntiLinkConfig(ctx) {
 }
 
 export default function setupAntiLink(bot) {
-    // Déclencheur par commande (/antilink) et texte simple (antilink)
+    // Triggered by command (/antilink) and plain text (antilink)
     bot.command('antilink', handleAntiLinkConfig);
     bot.hears(/^antilink$/i, handleAntiLinkConfig);
 
-    // Déclencheur via le bouton du groupmenu
+    // Triggered via groupmenu button
     bot.action('menu_antilink', async (ctx) => {
         await ctx.answerCbQuery();
         await handleAntiLinkConfig(ctx);
     });
 
-    // Gestion des clics sur ON / OFF
+    // Handling ON / OFF clicks
     bot.action(/^antilink_(on|off)$/, async (ctx) => {
         try {
             if (!(await checkAdmin(ctx))) {
-                return await ctx.answerCbQuery("⚠️ Action réservée aux administrateurs !", { show_alert: true });
+                return await ctx.answerCbQuery("⚠️ Action restricted to administrators!", { show_alert: true });
             }
 
             const action = ctx.match[1];
@@ -73,20 +73,20 @@ export default function setupAntiLink(bot) {
 
             antilinkStates.set(chatId, newState);
 
-            const statusText = newState ? "🟢 Le module AntiLink a été **ACTIVÉ**." : "🔴 Le module AntiLink a été **DÉSACTIVÉ**.";
+            const statusText = newState ? "🟢 The AntiLink module has been **ENABLED**." : "🔴 The AntiLink module has been **DISABLED**.";
 
-            await ctx.answerCbQuery(newState ? "AntiLink activé !" : "AntiLink désactivé !");
+            await ctx.answerCbQuery(newState ? "AntiLink enabled!" : "AntiLink disabled!");
             await ctx.editMessageText(statusText, {
                 parse_mode: 'Markdown',
                 reply_markup: { inline_keyboard: [] }
             });
         } catch (err) {
             console.error("[ANTILINK ACTION ERROR]:", err);
-            await ctx.answerCbQuery("Une erreur est survenue.", { show_alert: true });
+            await ctx.answerCbQuery("An error occurred.", { show_alert: true });
         }
     });
 
-    // Surveillance des liens
+    // Monitoring links
     bot.on('message', async (ctx, next) => {
         try {
             if (!ctx.chat || !['supergroup', 'group'].includes(ctx.chat.type)) {
@@ -117,13 +117,13 @@ export default function setupAntiLink(bot) {
                         return next();
                     }
                 } catch (err) {
-                    console.error("[ANTILINK] Erreur lors de la vérification de l'admin :", err);
+                    console.error("[ANTILINK] Error verifying admin:", err);
                     return next();
                 }
 
                 await ctx.deleteMessage().catch(() => {});
                 
-                const warning = await ctx.reply(`⚠️ @${ctx.from.username || ctx.from.first_name}, les liens sont interdits ici !`);
+                const warning = await ctx.reply(`⚠️ @${ctx.from.username || ctx.from.first_name}, links are not allowed here!`);
                 setTimeout(() => ctx.telegram.deleteMessage(ctx.chat.id, warning.message_id).catch(() => {}), 4000);
                 
                 return;
