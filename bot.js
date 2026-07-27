@@ -105,7 +105,6 @@ setupAntiLink(bot);
 setupGroupMenu(bot);
 
 // ================= COMMANDS =================
-
 // /start fonctionne partout (groupes et privé)
 bot.start(async (ctx) => {
     // Si c'est en privé, on affiche la photo et le menu complet
@@ -120,10 +119,14 @@ bot.start(async (ctx) => {
             }
         });
     } else {
-        // Si c'est dans un groupe, on affiche directement le menu complet
-        await ctx.reply(getMenu(ctx.from.first_name, isOwner(ctx)), { parse_mode: 'Markdown' });
+        // Si c'est dans un groupe, on affiche l'image avec le menu complet en légende
+        await ctx.replyWithPhoto('https://files.catbox.moe/1ddhgm.jpg', {
+            caption: getMenu(ctx.from.first_name, isOwner(ctx)),
+            parse_mode: 'Markdown'
+        });
     }
 });
+
 
 bot.action('start_bot', async (ctx) => {
     await ctx.editMessageCaption(getMenu(ctx.from.first_name, isOwner(ctx)), { parse_mode: 'Markdown' }).catch(async () => {
