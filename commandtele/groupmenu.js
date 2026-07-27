@@ -24,7 +24,8 @@ ______________________
 
             const botUsername = ctx.botInfo?.username || 'KayaMdBot';
 
-            await ctx.reply(groupMenuText, {
+            await ctx.replyWithPhoto('https://files.catbox.moe/1ddhgm.jpg', {
+                caption: groupMenuText,
                 parse_mode: 'Markdown',
                 reply_markup: {
                     inline_keyboard: [
