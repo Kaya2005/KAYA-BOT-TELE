@@ -9,9 +9,10 @@ import { Telegraf } from 'telegraf';
 import { forceCleanupSession } from './pair.js'; 
 import { getActiveToken } from './token.js';
 
-// Importation des commandes Telegram depuis le dossier commandtele
+// Importation des commandes et modules Telegram
 import setupWelcome from './commandtele/welcome.js';
 import setupAntiLink from './commandtele/antilink.js';
+import setupGroupMenu from './commandtele/groupmenu.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -28,7 +29,7 @@ const isOwner = (ctx) => {
     } catch { return false; }
 };
 
-// 🔒 Vérifie si le chat est privé, sauf pour l'owner qui peut l'utiliser partout (avec bouton dynamique basé sur le token actif)
+// 🔒 Vérifie si le chat est privé (uniquement pour les commandes sensibles comme /connect)
 const ensurePrivate = (ctx) => {
     if (isOwner(ctx)) return true;
     if (!ctx.chat || ctx.chat.type !== 'private') {
@@ -79,11 +80,14 @@ const getMenu = (userName, isAdmin) => {
 ➠ Date: *${date}*
 ______________________
 
-> ╢ GENERAL ♰
+> ╢ WhatsApp connection ♰
 ╭▰▰▰▰▰▰▰◈
 ┆❏ /connect
 ┆❏ /ping
+┆ ▰▰▰▰▰▰
+> ╢commands groupe telegram 
 ┆❏ /group
+┆❏ /groupmenu
 ╰▰▰▰▰▰▰▰◈`;
     
     if (isAdmin) {
@@ -95,22 +99,30 @@ ______________________
 // 🚀 Utilisation de getActiveToken() pour récupérer dynamiquement le token valide et non utilisé depuis token.js
 const bot = new Telegraf(getActiveToken());
 
-// ================= CHARGEMENT DES MODULES TELEGRAM (GROUPES) =================
+// ================= CHARGEMENT DES MODULES TELEGRAM =================
 setupWelcome(bot);
 setupAntiLink(bot);
+setupGroupMenu(bot);
 
 // ================= COMMANDS =================
+
+// /start fonctionne partout (groupes et privé)
 bot.start(async (ctx) => {
-    if (!ensurePrivate(ctx)) return;
-    await ctx.replyWithPhoto('https://files.catbox.moe/1ddhgm.jpg', {
-        caption: '▉ 𝐊𝐀𝐘𝐀 𝐁𝐎𝐓 ▉\n\nWelcome! Choose an option below to connect your WhatsApp or add the bot to your group.',
-        reply_markup: { 
-            inline_keyboard: [
-                [{ text: '🚀 Start Menu (WhatsApp)', callback_data: 'start_bot' }],
-                [{ text: '➕ Add Bot to Group', callback_data: 'info_group' }]
-            ] 
-        }
-    });
+    // Si c'est en privé, on affiche la photo et le menu complet
+    if (ctx.chat.type === 'private') {
+        await ctx.replyWithPhoto('https://files.catbox.moe/1ddhgm.jpg', {
+            caption: '▉ 𝐊𝐀𝐘𝐀 𝐁𝐎𝐓 ▉\n\nWelcome! Choose an option below to connect your WhatsApp or add the bot to your group.',
+            reply_markup: { 
+                inline_keyboard: [
+                    [{ text: '🚀 Start Menu (WhatsApp)', callback_data: 'start_bot' }],
+                    [{ text: '➕ Add Bot to Group', callback_data: 'info_group' }]
+                ] 
+            }
+        });
+    } else {
+        // Si c'est dans un groupe, un petit message simple ou d'accueil
+        await ctx.reply('▉ 𝐊𝐀𝐘𝐀 𝐁𝐎𝐓 ▉\n\n✅ Bot is active in this group! Use /groupmenu to see available group features.');
+    }
 });
 
 bot.action('start_bot', async (ctx) => {
@@ -119,7 +131,6 @@ bot.action('start_bot', async (ctx) => {
     });
 });
 
-// Action d'information pour l'ajout dans un groupe
 bot.action('info_group', async (ctx) => {
     const text = `🤖 *TELEGRAM GROUP SETUP*\n\n` +
                  `To use moderation commands (Anti-link, Welcome) in your group:\n\n` +
@@ -138,9 +149,8 @@ bot.action('info_group', async (ctx) => {
     });
 });
 
-// Commande /group
+// /group fonctionne partout
 bot.command('group', async (ctx) => {
-    if (!ensurePrivate(ctx)) return;
     const text = `🤖 *TELEGRAM GROUP SETUP*\n\n` +
                  `To enable moderation and welcome features in your group:\n\n` +
                  `1. Add the bot to your group.\n` +
@@ -158,11 +168,12 @@ bot.command('group', async (ctx) => {
     });
 });
 
+// /ping fonctionne partout
 bot.command('ping', async (ctx) => {
-    if (!ensurePrivate(ctx)) return;
     ctx.reply('▉ 𝐊𝐀𝐘𝐀 𝐁𝐎𝐓 ▉\n\n✅ *Status:* Online', { parse_mode: 'Markdown' });
 });
 
+// /connect est STRICTEMENT réservé aux messages privés (DM)
 bot.command('connect', async (ctx) => {
     if (!ensurePrivate(ctx)) return;
 
