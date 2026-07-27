@@ -1,6 +1,5 @@
 import { downloadContentFromMessage } from "@whiskeysockets/baileys";
 import FormData from "form-data";
-import fetch from "node-fetch";
 
 export default {
     name: "url",
@@ -46,7 +45,7 @@ export default {
                 );
             }
 
-            // Upload vers Catbox
+            // Upload vers Catbox via form.submit (plus robuste sur les panels)
             const form = new FormData();
             form.append("reqtype", "fileupload");
             form.append("fileToUpload", buffer, {
@@ -54,16 +53,20 @@ export default {
                 contentType: "image/jpeg"
             });
 
-            const res = await fetch("https://catbox.moe/user/api.php", {
-                method: "POST",
-                body: form,
-                headers: form.getHeaders()
+            const url = await new Promise((resolve, reject) => {
+                form.submit("https://catbox.moe/user/api.php", (err, res) => {
+                    if (err) return reject(err);
+                    let rawData = "";
+                    res.on("data", (chunk) => { rawData += chunk; });
+                    res.on("end", () => {
+                        resolve(rawData.trim());
+                    });
+                    res.on("error", (e) => { reject(e); });
+                });
             });
 
-            const url = (await res.text()).trim();
-
             if (!url.startsWith("http")) {
-                throw new Error(url);
+                throw new Error(url || "Réponse invalide de Catbox");
             }
 
             await kaya.sendMessage(
