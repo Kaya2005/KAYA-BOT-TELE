@@ -85,7 +85,7 @@ ______________________
 ┆❏ /connect
 ┆❏ /ping
 ┆ ▰▰▰▰▰▰
-> ╢commands groupe telegram 
+> ╢ Commands groupe telegram 
 ┆❏ /group
 ┆❏ /groupmenu
 ╰▰▰▰▰▰▰▰◈`;
@@ -136,7 +136,7 @@ bot.action('info_group', async (ctx) => {
                  `To use moderation commands (Anti-link, Welcome) in your group:\n\n` +
                  `1️⃣ Click the button below to add the bot.\n` +
                  `2️⃣ Promote the bot as **Admin** with delete message rights.\n` +
-                 `3️⃣ The bot is ready to work!`;
+                 `3️⃣ Use \`/groupmenu\` inside the group to see all options!`;
 
     const botUsername = ctx.botInfo?.username || 'KayaMdBot';
     await ctx.reply(text, {
@@ -154,7 +154,8 @@ bot.command('group', async (ctx) => {
     const text = `🤖 *TELEGRAM GROUP SETUP*\n\n` +
                  `To enable moderation and welcome features in your group:\n\n` +
                  `1. Add the bot to your group.\n` +
-                 `2. Make the bot an **Administrator**.\n\n` +
+                 `2. Make the bot an **Administrator**.\n` +
+                 `3. Send \`/groupmenu\` to view features.\n\n` +
                  `Click below to add it directly:`;
 
     const botUsername = ctx.botInfo?.username || 'KayaMdBot';
