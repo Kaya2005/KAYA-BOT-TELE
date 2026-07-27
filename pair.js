@@ -23,7 +23,7 @@ if (!fs.existsSync(PAIRING_DIR)) {
     fs.mkdirSync(PAIRING_DIR, { recursive: true });
 }
 
-// 🛡️ Liste pour éviter de lancer deux fois le même processus pour le même utilisateur
+// 🛡️ Liste pour éviter de lancer deux fois le même processus pour le même utilisateur et le même numéro
 const processingRequests = new Set();
 
 export function watchPairingRequests() {
@@ -36,18 +36,25 @@ export function watchPairingRequests() {
                     const filePath = path.join(PAIRING_DIR, file);
                     const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
                     const teleId = file.replace('request_', '').replace('.json', '');
+                    const cleanNumber = (data.jid || "").replace(/[^0-9]/g, "");
+                    
+                    // Clé unique combinant l'ID Telegram et le numéro pour éviter les blocages croisés
+                    const requestKey = `${teleId}_${cleanNumber}`;
 
-                    if (processingRequests.has(teleId)) continue;
+                    if (processingRequests.has(requestKey)) {
+                        fs.unlinkSync(filePath); // Nettoyer le fichier doublon en attente
+                        continue;
+                    }
 
                     console.log(`[WATCHER] ✨ Demande détectée pour : ${data.jid}`);  
                     
                     fs.unlinkSync(filePath);  
-                    processingRequests.add(teleId);
+                    processingRequests.add(requestKey);
 
                     startpairing(data.jid, teleId, data.name)
-                        .then(() => processingRequests.delete(teleId))
+                        .then(() => processingRequests.delete(requestKey))
                         .catch(e => {
-                            processingRequests.delete(teleId);
+                            processingRequests.delete(requestKey);
                             console.error(`[WATCHER] ❌ Erreur critique startpairing pour ${data.jid}:`, e);
                         }); 
                 } catch (e) {  
@@ -275,6 +282,16 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
             console.log(`${logPrefix} 🟢 CONNEXION RÉUSSIE`);
             isReady = true;  
             tracker.status = 'connected';
+
+            // 🧹 Suppression propre du fichier de pairing temporaire après connexion réussie
+            if (teleId && teleId !== "default") {
+                const pairingFile = path.join(PAIRING_DIR, `pairing_${teleId}.json`);
+                if (fs.existsSync(pairingFile)) {
+                    fs.unlinkSync(pairingFile);
+                    console.log(`${logPrefix} 🗑️ Fichier pairing_${teleId}.json supprimé après succès.`);
+                }
+            }
+
             if (!tracker.isConnected) {  
                 tracker.isConnected = true;  
                 await sleep(2000);  
