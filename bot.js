@@ -120,8 +120,8 @@ bot.start(async (ctx) => {
             }
         });
     } else {
-        // Si c'est dans un groupe, un petit message simple ou d'accueil
-        await ctx.reply('▉ 𝐊𝐀𝐘𝐀 𝐁𝐎𝐓 ▉\n\n✅ Bot is active in this group! Use /groupmenu to see available group features.');
+        // Si c'est dans un groupe, on affiche directement le menu complet
+        await ctx.reply(getMenu(ctx.from.first_name, isOwner(ctx)), { parse_mode: 'Markdown' });
     }
 });
 
