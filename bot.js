@@ -19,7 +19,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // ================= CONSTANTS & PATHS =================
 const adminFilePath = path.join(__dirname, './database/admintele.json');
 const pairingFolder = path.join(__dirname, './richstore/pairing');
-const REQUIRED_CHANNELS = ['https://t.me/kayatech243', '@kayatech2'];
+const REQUIRED_CHANNELS = ['kayatech243', '@kayatech2'];
 
 // ================= HELPERS =================
 const isOwner = (ctx) => {
