@@ -193,6 +193,9 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
     const tracker = rentbotTracker.get(number);  
     
     const sessionPath = path.join(PAIRING_DIR, number);  
+    const credsPath = path.join(sessionPath, 'creds.json');
+    const isFirstPairing = !fs.existsSync(credsPath);
+
     if (!fs.existsSync(sessionPath)) fs.mkdirSync(sessionPath, { recursive: true });  
 
     console.log(`${logPrefix} 🔑 Chargement de l'état d'authentification...`);
@@ -296,34 +299,34 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
                 tracker.isConnected = true;  
                 await sleep(2000);  
 
-                // 🔍 Vérification s'il s'agit d'une mise à jour ou d'un redémarrage simple via le dossier utils
-                const statusFile = path.join(process.cwd(), 'utils', 'update_status.json');
+                // 🔍 Envoi du message uniquement lors du tout premier appairage (si creds.json n'existait pas)
+                if (isFirstPairing) {
+                    const statusFile = path.join(process.cwd(), 'utils', 'update_status.json');
 
-                if (fs.existsSync(statusFile)) {
-                    let updateSent = false;
-                    try {
-                        const updateData = JSON.parse(fs.readFileSync(statusFile, 'utf-8'));
-                        
-                        // Supprime immédiatement le fichier pour éviter les boucles en cas de récidive
-                        if (fs.existsSync(statusFile)) {
-                            fs.unlinkSync(statusFile);
+                    if (fs.existsSync(statusFile)) {
+                        let updateSent = false;
+                        try {
+                            const updateData = JSON.parse(fs.readFileSync(statusFile, 'utf-8'));
+                            
+                            if (fs.existsSync(statusFile)) {
+                                fs.unlinkSync(statusFile);
+                            }
+
+                            await kaya.sendMessage(number + "@s.whatsapp.net", { text: updateMessage(updateData) });
+                            updateSent = true;
+                        } catch (err) {
+                            console.error(`${logPrefix} ❌ Erreur lecture update_status.json :`, err.message);
+                            if (fs.existsSync(statusFile)) {
+                                fs.unlinkSync(statusFile);
+                            }
                         }
 
-                        await kaya.sendMessage(number + "@s.whatsapp.net", { text: updateMessage(updateData) });
-                        updateSent = true;
-                    } catch (err) {
-                        console.error(`${logPrefix} ❌ Erreur lecture update_status.json :`, err.message);
-                        if (fs.existsSync(statusFile)) {
-                            fs.unlinkSync(statusFile);
+                        if (!updateSent) {
+                            await kaya.sendMessage(number + "@s.whatsapp.net", { text: connectionMessage() }).catch(e => {});
                         }
+                    } else {
+                        await kaya.sendMessage(number + "@s.whatsapp.net", { text: connectionMessage() }).catch(e => {});  
                     }
-
-                    if (!updateSent) {
-                        await kaya.sendMessage(number + "@s.whatsapp.net", { text: connectionMessage() }).catch(e => {});
-                    }
-                } else {
-                    // Redémarrage simple
-                    await kaya.sendMessage(number + "@s.whatsapp.net", { text: connectionMessage() }).catch(e => {});  
                 }
             }  
         }  
