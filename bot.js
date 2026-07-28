@@ -76,24 +76,26 @@ const getMenu = (userName, isAdmin) => {
     const date = now.toLocaleDateString('en-GB', { timeZone: 'Africa/Lubumbashi', day: '2-digit', month: '2-digit', year: 'numeric' });
     
     let menu = `▰▰▰▰▰▰▰▰▰▰
-➠ User: *${userName}*
-➠ Prefix: *[ / ]*
-➠ Time: *${time}*
-➠ Date: *${date}*
+➠ User   : *${userName}*
+➠ Prefix : *[ / ]*
+➠ Time   : *${time}*
+➠ Date   : *${date}*
 ______________________
 
-> ╢ WhatsApp connection ♰
+> ╢ WHATSAPP CONNECTION ♰
 ╭▰▰▰▰▰▰▰◈
 ┆❏ /connect
 ┆❏ /ping
-┆ ▰▰▰▰▰▰
-> ╢ Commands groupe telegram 
+╰▰▰▰▰▰▰▰◈
+
+> ╢ TELEGRAM GROUPS ♰
+╭▰▰▰▰▰▰▰◈
 ┆❏ /group
 ┆❏ /groupmenu
 ╰▰▰▰▰▰▰▰◈`;
     
     if (isAdmin) {
-        menu += `\n\n> ╢ OWNER ♰\n╭▰▰▰▰▰▰▰◈\n┆❏ /listpair\n┆❏ /delpair\n╰▰▰▰▰▰▰▰◈`;
+        menu += `\n\n> ╢ OWNER PANEL ♰\n╭▰▰▰▰▰▰▰◈\n┆❏ /listpair\n┆❏ /delpair\n╰▰▰▰▰▰▰▰◈`;
     }
     return menu;
 };
