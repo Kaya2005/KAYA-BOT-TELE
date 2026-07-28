@@ -19,7 +19,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // ================= CONSTANTS & PATHS =================
 const adminFilePath = path.join(__dirname, './database/admintele.json');
 const pairingFolder = path.join(__dirname, './richstore/pairing');
-const REQUIRED_CHANNELS = ['@kayatech2'];
+const REQUIRED_CHANNELS = ['@kayatech243', '@kayatech2'];
 
 // ================= HELPERS =================
 const isOwner = (ctx) => {
@@ -187,16 +187,17 @@ bot.command('connect', async (ctx) => {
     }
 
     if (!(await checkChannels(ctx))) {
-        return ctx.reply('⚠️ Restricted access. Please join our channel to continue:', {
+        return ctx.reply('⚠️ Restricted access. Please join our channels to continue:', {
             reply_markup: {
                 inline_keyboard: [
-                    [{ text: '📢 Join KAYA BOT CHANNEL', url: 'https://t.me/kayatech2' }],
+                    [{ text: '𝚉𝙾𝙽𝙴 〽️𝙲𝙷𝙰𝚃', url: 'https://t.me/kayatech243' }],
+                    [{ text: '𝙺𝙰𝚈𝙰 𝙱𝙾𝚃 | 𝙲𝙰𝙽𝙰𝙻', url: 'https://t.me/kayatech2' }],
                     [{ text: '✅ I Have Joined', callback_data: 'check_join' }]
                 ]
             }
         });
     }
-
+*
     const text = ctx.message.text.split(' ')[1];
     if (!text) return ctx.reply('⚠️ Usage: `/connect 243xxxxxx`', { parse_mode: 'Markdown' });
     
@@ -240,7 +241,7 @@ bot.action('check_join', async (ctx) => {
         await ctx.editMessageText('✅ You can connect now.');
         ctx.answerCbQuery('✅ Access authorized.');
     } else {
-        ctx.answerCbQuery('❌ You must join the required channel first.', { show_alert: true });
+        ctx.answerCbQuery('❌ You must join the required channels first.', { show_alert: true });
     }
 });
 
