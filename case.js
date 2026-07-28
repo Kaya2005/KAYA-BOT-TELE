@@ -181,8 +181,17 @@ export default async function caseHandler(kaya, mek, chatUpdate, store = null) {
 
         console.log(chalk.black(chalk.bgWhite("[ CMD ]")), chalk.green(command), "from", chalk.blue(mek.pushName || from));  
 
-        if (typeof cmd.execute === "function") await cmd.execute(kaya, mek, from, args, prefix);
-        else if (typeof cmd.run === "function") await cmd.run(kaya, mek, args, prefix);
+        // 🛡️ EXÉCUTION SÉCURISÉE DE LA COMMANDE (Anti-Crash Global)
+        try {
+            if (typeof cmd.execute === "function") {
+                await cmd.execute(kaya, mek, from, args, prefix);
+            } else if (typeof cmd.run === "function") {
+                await cmd.run(kaya, mek, args, prefix);
+            }
+        } catch (cmdErr) {
+            console.error(chalk.red(`[ERREUR COMMANDE] (${command}):`), cmdErr.stack || cmdErr);
+            await kaya.sendMessage(from, { text: `❌ Une erreur critique est survenue lors de l'exécution de la commande **${command}**.` }, { quoted: mek }).catch(() => {});
+        }
 
     } catch (err) { 
         console.error(chalk.red("[ERROR case.js]:"), err.stack || err); 

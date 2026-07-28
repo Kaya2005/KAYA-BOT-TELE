@@ -300,12 +300,25 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
                 const statusFile = path.join(process.cwd(), 'utils', 'update_status.json');
 
                 if (fs.existsSync(statusFile)) {
+                    let updateSent = false;
                     try {
                         const updateData = JSON.parse(fs.readFileSync(statusFile, 'utf-8'));
-                        fs.unlinkSync(statusFile); // Supprime le fichier pour les prochains reboots
+                        
+                        // Supprime immédiatement le fichier pour éviter les boucles en cas de récidive
+                        if (fs.existsSync(statusFile)) {
+                            fs.unlinkSync(statusFile);
+                        }
 
-                        await kaya.sendMessage(number + "@s.whatsapp.net", { text: updateMessage(updateData) }).catch(e => {});
+                        await kaya.sendMessage(number + "@s.whatsapp.net", { text: updateMessage(updateData) });
+                        updateSent = true;
                     } catch (err) {
+                        console.error(`${logPrefix} ❌ Erreur lecture update_status.json :`, err.message);
+                        if (fs.existsSync(statusFile)) {
+                            fs.unlinkSync(statusFile);
+                        }
+                    }
+
+                    if (!updateSent) {
                         await kaya.sendMessage(number + "@s.whatsapp.net", { text: connectionMessage() }).catch(e => {});
                     }
                 } else {
