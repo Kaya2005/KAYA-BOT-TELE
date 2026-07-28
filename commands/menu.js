@@ -51,7 +51,8 @@ export default {
             const userNumber = userId.split('@')[0];
             const userMention = `@${userNumber}`;
             
-            const botName = getBotName(from);
+            // 🛠️ CORRECTION : Utilisation de mek.sender au lieu de from pour correspondre à botname.js
+            const botName = getBotName(mek.sender);
 
             const commandsDir = path.join(process.cwd(), 'commands');
             const categories = {};
