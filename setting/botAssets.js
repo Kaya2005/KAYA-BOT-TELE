@@ -14,7 +14,7 @@ const localFallbackImage = path.join(process.cwd(), 'setting', 'bot.jpg');
 export const DEFAULT_BOT_NAME = 'ƘƛƳƛ ƁƠƬ';
 
 // Image par défaut (Globale)
-let globalBotImagePath = 'https://files.catbox.moe/1ddhgm.jpg';
+let globalBotImagePath = 'https://files.catbox.moe/0daj32.jpg';
 
 const settingDir = path.join(process.cwd(), 'setting');
 if (!fs.existsSync(settingDir)) {
