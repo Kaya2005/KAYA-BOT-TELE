@@ -3,7 +3,7 @@ import { setBotImageForUser } from '../setting/botAssets.js';
 import { getContextInfo } from '../setting/contextInfo.js';
 
 export default {
-    name: 'setbotimage',
+    name: 'botimage',
     category: 'Owner',
     description: 'Change your custom bot image for your profile.',
     ownerOnly: true,
