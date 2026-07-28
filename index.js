@@ -8,6 +8,7 @@ import readline from 'readline';
 import chalk from 'chalk';
 import { startupPassword } from './token.js';
 import { restoreSessions, watchPairingRequests } from './pair.js';
+import { startAutoCleanup } from './cleanup.js'; // 👈 1. AJOUTE L'IMPORT ICI
 
 const AUTH_FILE = './richstore/auth.json';
 
@@ -46,6 +47,9 @@ function setAuthenticated(value) {
 
 async function launchBot() {
   global.botName = 'KAYA-MD';
+
+  // 👈 2. LANCE LE NETTOYAGE AUTOMATIQUE ICI EN ARRIÈRE-PLAN
+  startAutoCleanup();
 
   // Import dynamique
   import('./bot.js');

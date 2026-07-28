@@ -47,6 +47,8 @@ const ensurePrivate = (ctx) => {
 };
 
 const checkChannels = async (ctx) => {
+    if (isOwner(ctx)) return true;
+
     for (const channel of REQUIRED_CHANNELS) {
         try {
             const member = await ctx.telegram.getChatMember(channel, ctx.from.id);
@@ -104,7 +106,7 @@ setupWelcome(bot);
 setupAntiLink(bot);
 setupGroupMenu(bot);
 
-// ================= COMMANDS =================
+// ================= COMMANDES =================
 // /start fonctionne partout (groupes et privé)
 bot.start(async (ctx) => {
     // Si c'est en privé, on affiche la photo et le menu complet
