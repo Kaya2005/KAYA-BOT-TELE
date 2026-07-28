@@ -197,7 +197,7 @@ bot.command('connect', async (ctx) => {
             }
         });
     }
-*
+
     const text = ctx.message.text.split(' ')[1];
     if (!text) return ctx.reply('⚠️ Usage: `/connect 243xxxxxx`', { parse_mode: 'Markdown' });
     
