@@ -51,7 +51,7 @@ export default {
                 await kaya.sendMessage(from, {
                     image: { url: imageUrl },
                     caption: caption,
-                    contextInfo: getContextInfo() // Utilisation de ton contextInfo personnalisé
+                    contextInfo: getContextInfo(sender) // 🛠️ Passage du sender ici pour dynamiser le nom
                 }, { quoted: mek });
                 
                 // Petit délai pour éviter les limites de débit

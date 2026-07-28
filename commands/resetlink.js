@@ -27,7 +27,7 @@ The group invite link has been successfully revoked and reset.
 
       return await sendWithBotImage(kaya, from, sender, { 
           caption,
-          contextInfo: getContextInfo() 
+          contextInfo: getContextInfo(sender) 
       });
 
     } catch (err) {

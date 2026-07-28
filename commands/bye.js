@@ -19,34 +19,34 @@ export default {
     async execute(kaya, mek, from, args, prefix) {
         try {
             const status = await checkAdminOrOwner(kaya, from, mek.sender);
-            if (!status.isBotOwner) return kaya.sendMessage(from, { text: '❌ Owner Only', contextInfo: getContextInfo() }, { quoted: mek });
+            if (!status.isBotOwner) return kaya.sendMessage(from, { text: '❌ Owner Only', contextInfo: getContextInfo(mek.sender) }, { quoted: mek });
             
             const action = args[0]?.toLowerCase();
             const ownerId = kaya.user.id.split(':')[0];
             const groupId = from.split('@')[0];
 
-            if (!action) return kaya.sendMessage(from, { text: `⚙️ *GOODBYE SETTINGS*\n\n${prefix}bye on (Current group)\n${prefix}bye off (Current group)\n${prefix}bye all (Global)\n${prefix}bye alloff (Disable global)\n${prefix}bye status`, contextInfo: getContextInfo() }, { quoted: mek });
+            if (!action) return kaya.sendMessage(from, { text: `⚙️ *GOODBYE SETTINGS*\n\n${prefix}bye on (Current group)\n${prefix}bye off (Current group)\n${prefix}bye all (Global)\n${prefix}bye alloff (Disable global)\n${prefix}bye status`, contextInfo: getContextInfo(mek.sender) }, { quoted: mek });
 
             if (action === "on") { 
                 setSetting(ownerId, 'goodbyeEnabled', true, groupId); 
-                return kaya.sendMessage(from, { text: "✅ Goodbye enabled for this group.", contextInfo: getContextInfo() }, { quoted: mek }); 
+                return kaya.sendMessage(from, { text: "✅ Goodbye enabled for this group.", contextInfo: getContextInfo(mek.sender) }, { quoted: mek }); 
             }
             if (action === "off") { 
                 setSetting(ownerId, 'goodbyeEnabled', false, groupId); 
-                return kaya.sendMessage(from, { text: "❌ Goodbye disabled for this group.", contextInfo: getContextInfo() }, { quoted: mek }); 
+                return kaya.sendMessage(from, { text: "❌ Goodbye disabled for this group.", contextInfo: getContextInfo(mek.sender) }, { quoted: mek }); 
             }
             if (action === "all") {
                 setSetting(ownerId, 'goodbyeAll', true);
-                return kaya.sendMessage(from, { text: `✅ Goodbye enabled globally for all your groups.`, contextInfo: getContextInfo() }, { quoted: mek });
+                return kaya.sendMessage(from, { text: `✅ Goodbye enabled globally for all your groups.`, contextInfo: getContextInfo(mek.sender) }, { quoted: mek });
             }
             if (action === "alloff") {
                 setSetting(ownerId, 'goodbyeAll', false);
-                return kaya.sendMessage(from, { text: `❌ Goodbye disabled globally for all your groups.`, contextInfo: getContextInfo() }, { quoted: mek });
+                return kaya.sendMessage(from, { text: `❌ Goodbye disabled globally for all your groups.`, contextInfo: getContextInfo(mek.sender) }, { quoted: mek });
             }
             if (action === "status") {
                 const isEnabled = getSetting(ownerId, 'goodbyeEnabled', false, groupId);
                 const isAll = getSetting(ownerId, 'goodbyeAll', false);
-                return kaya.sendMessage(from, { text: `📊 *GOODBYE STATUS*\n\nLocal: ${isEnabled ? "ON" : "OFF"}\nGlobal (All): ${isAll ? "ON" : "OFF"}`, contextInfo: getContextInfo() }, { quoted: mek });
+                return kaya.sendMessage(from, { text: `📊 *GOODBYE STATUS*\n\nLocal: ${isEnabled ? "ON" : "OFF"}\nGlobal (All): ${isAll ? "ON" : "OFF"}`, contextInfo: getContextInfo(mek.sender) }, { quoted: mek });
             }
         } catch (e) { console.error('❌ goodbye.js error:', e); }
     },
@@ -95,7 +95,7 @@ ______________________`.trim();
                     image: { url: ppUrl },
                     caption: msg, 
                     mentions: [userId],
-                    contextInfo: getContextInfo() 
+                    contextInfo: getContextInfo(ownerId + '@s.whatsapp.net') 
                 });
             }
         } catch (e) { /* silent */ }

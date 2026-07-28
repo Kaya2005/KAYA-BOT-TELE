@@ -1,4 +1,6 @@
+// ================= commands/ai.js =================
 import axios from 'axios';
+import { getBotName } from '../setting/botAssets.js';
 import { getContextInfo } from '../setting/contextInfo.js';
 // Si tu as un fichier config, importe-le ici
 // import config from '../config.js'; 
@@ -13,6 +15,7 @@ export default {
     async execute(kaya, mek, from, args, prefix) {
         try {
             const question = args.join(' ');
+            const sender = mek.sender; // 👈 Récupération de l'expéditeur
             
             // 1. Vérification de l'argument
             if (!question) {
@@ -44,7 +47,7 @@ export default {
                 
                 await kaya.sendMessage(from, { 
                     text: answer,
-                    contextInfo: getContextInfo() // Ajout de ton contexte personnalisé
+                    contextInfo: getContextInfo(sender) // 👈 Passage du sender pour dynamiser le nom du bot
                 }, { quoted: mek });
             } else {
                 await kaya.sendMessage(from, { text: '❌ AI service returned an unexpected response.' }, { quoted: mek });

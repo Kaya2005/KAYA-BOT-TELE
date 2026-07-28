@@ -13,7 +13,7 @@ export default {
           from,
           {
             text: `❌ Usage:\n${prefix}channelid https://whatsapp.com/channel/XXXX`,
-            contextInfo: getContextInfo()
+            contextInfo: getContextInfo(mek.sender)
           },
           { quoted: mek }
         );
@@ -26,7 +26,7 @@ export default {
           from,
           {
             text: '❌ Invalid WhatsApp Channel link.',
-            contextInfo: getContextInfo()
+            contextInfo: getContextInfo(mek.sender)
           },
           { quoted: mek }
         );
@@ -42,7 +42,7 @@ export default {
           from,
           {
             text: '❌ Unable to fetch Channel ID.',
-            contextInfo: getContextInfo()
+            contextInfo: getContextInfo(mek.sender)
           },
           { quoted: mek }
         );
@@ -53,7 +53,7 @@ export default {
         from,
         {
           text: `✅ *WhatsApp Channel ID*\n\n\`${info.id}@newsletter\``,
-          contextInfo: getContextInfo()
+          contextInfo: getContextInfo(mek.sender)
         },
         { quoted: mek }
       );
@@ -65,7 +65,7 @@ export default {
         from,
         {
           text: '❌ Error while retrieving Channel ID.',
-          contextInfo: getContextInfo()
+          contextInfo: getContextInfo(mek.sender)
         },
         { quoted: mek }
       );

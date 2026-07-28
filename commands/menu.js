@@ -96,10 +96,10 @@ ${buildHeader({ user: userMention, prefix, totalCmds, botName })}
 ${menuList.trim()}
 `.trim();
 
-            // Utilisation de sendWithBotImage au lieu de kaya.sendMessage
+            // Utilisation de sendWithBotImage avec passage de mek.sender dans getContextInfo
             await sendWithBotImage(kaya, from, mek.sender, { 
                 caption: finalMenuText, 
-                contextInfo: { ...getContextInfo(), mentionedJid: [userId] } 
+                contextInfo: { ...getContextInfo(mek.sender), mentionedJid: [userId] } 
             });
 
         } catch (err) {

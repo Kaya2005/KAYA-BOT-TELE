@@ -23,7 +23,7 @@ export default {
       if (!args[0]) {
         return await sendWithBotImage(kaya, from, sender, { 
             caption: `*PAIRING HELP* 🔗\n\nUsage: \`${prefix}pair 243xxxxxxxxx\``,
-            contextInfo: getContextInfo() 
+            contextInfo: getContextInfo(sender) 
         });
       }
 

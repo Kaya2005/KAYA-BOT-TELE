@@ -18,7 +18,10 @@ export default {
       // 📞 Clean number
       const number = args[0] ? args[0].replace(/[^0-9]/g, '') : '';
       if (!number) {
-        return Kaya.sendMessage(m.chat, { text: '❌ Usage: .add 243XXXXXXXXX' }, { quoted: m });
+        return Kaya.sendMessage(m.chat, { 
+          text: '❌ Usage: .add 243XXXXXXXXX',
+          contextInfo: getContextInfo(m.sender) 
+        }, { quoted: m });
       }
 
       const jid = `${number}@s.whatsapp.net`;
@@ -28,14 +31,28 @@ export default {
 
       // 📝 Analyze WhatsApp response
       if (response[0].status === '403') {
-        return Kaya.sendMessage(m.chat, { text: '❌ Failed: The bot is not an admin or the user has restricted group invites.' }, { quoted: m });
+        return Kaya.sendMessage(m.chat, { 
+          text: '❌ Failed: The bot is not an admin or the user has restricted group invites.',
+          contextInfo: getContextInfo(m.sender) 
+        }, { quoted: m });
       } else if (response[0].status === '409') {
-        return Kaya.sendMessage(m.chat, { text: '⚠️ The user is already in the group.' }, { quoted: m });
+        return Kaya.sendMessage(m.chat, { 
+          text: '⚠️ The user is already in the group.',
+          contextInfo: getContextInfo(m.sender) 
+        }, { quoted: m });
+      } else {
+        return Kaya.sendMessage(m.chat, { 
+          text: '✅ Successfully added member to the group!',
+          contextInfo: getContextInfo(m.sender) 
+        }, { quoted: m });
       }
 
     } catch (err) {
       console.error('❌ ADD ERROR:', err);
-      await Kaya.sendMessage(m.chat, { text: '❌ Error: Unable to add this member.' }, { quoted: m });
+      await Kaya.sendMessage(m.chat, { 
+        text: '❌ Error: Unable to add this member.',
+        contextInfo: getContextInfo(m.sender) 
+      }, { quoted: m });
     }
   }
 };

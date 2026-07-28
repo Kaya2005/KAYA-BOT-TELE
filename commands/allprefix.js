@@ -1,4 +1,4 @@
-// allprefix.js
+// ================= commands/allprefix.js =================
 import { getSetting, setSetting } from '../setting.js'; 
 import { getContextInfo } from '../setting/contextInfo.js';
 import { getBotName, sendWithBotImage } from '../setting/botAssets.js';
@@ -22,7 +22,7 @@ export default {
       if (!args[0]) {
         const caption = `▉ \`${botName}\` ▉\n▰▰▰▰▰▰▰▰▰▰▰▰▰\n*⚙️ ALL PREFIX STATUS*\n*➡️ Current mode:* ${currentState ? '✅ Enabled' : '❌ Disabled'}\n______________________\n\n💡 *Usage:* \`${prefix}allprefix <on/off>\``;
         
-        return await sendWithBotImage(kaya, from, mek.sender, { caption, contextInfo: getContextInfo() });
+        return await sendWithBotImage(kaya, from, mek.sender, { caption, contextInfo: getContextInfo(mek.sender) });
       }
 
       // ================= TOGGLE MODE =================
@@ -42,7 +42,7 @@ export default {
 
       const caption = `▉ \`${botName}\` ▉\n▰▰▰▰▰▰▰▰▰▰▰▰▰\n*✅ MODE UPDATED*\n*➡️ New mode:* ${newState ? '✅ Enabled (Multi-prefix)' : '❌ Disabled (Strict prefix only)'}`;
 
-      return await sendWithBotImage(kaya, from, mek.sender, { caption, contextInfo: getContextInfo() });
+      return await sendWithBotImage(kaya, from, mek.sender, { caption, contextInfo: getContextInfo(mek.sender) });
 
     } catch (err) {
       console.error('❌ allprefix.js error:', err);

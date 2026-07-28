@@ -82,7 +82,7 @@ export default {
         
         await sendWithBotImage(kaya, from, mek.sender, {
             caption: caption,
-            contextInfo: getContextInfo()
+            contextInfo: getContextInfo(mek.sender) // 🛠️ Passage de mek.sender ici
         });
         
         await kaya.sendMessage(from, { delete: msgKey });
@@ -124,7 +124,7 @@ export default {
         fileName: fileName,
         mimetype: 'application/vnd.android.package-archive',
         caption: `📱 *APK File (Owner Mode)*\n\n📦 *App:* ${appname}\n👤 *Developer:* ${developer || 'Unknown'}\n🔗 *Source:* ${download_url}\n\n_Powered by ${botName}_`,
-        contextInfo: getContextInfo()
+        contextInfo: getContextInfo(mek.sender) // 🛠️ Passage de mek.sender ici aussi
       };
 
       if (iconBuffer) messageOptions.thumbnail = iconBuffer;

@@ -18,7 +18,7 @@ export default {
         if (!url || !url.startsWith('http')) {
             return await kaya.sendMessage(from, { 
                 text: `❌ Please provide a valid image link.\nExample: ${prefix}setbotimage https://files.catbox.moe/s42m2j.jpg`,
-                contextInfo: getContextInfo() 
+                contextInfo: getContextInfo(mek.sender) 
             }, { quoted: mek });
         }
 
@@ -30,7 +30,7 @@ export default {
             if (!contentType || !contentType.startsWith('image/')) {
                 return await kaya.sendMessage(from, { 
                     text: '❌ The provided link does not contain a valid image.',
-                    contextInfo: getContextInfo() 
+                    contextInfo: getContextInfo(mek.sender) 
                 }, { quoted: mek });
             }
 
@@ -39,14 +39,14 @@ export default {
 
             await kaya.sendMessage(from, { 
                 text: '✅ Your custom bot image has been updated successfully!',
-                contextInfo: getContextInfo() 
+                contextInfo: getContextInfo(mek.sender) 
             }, { quoted: mek });
 
         } catch (err) {
             console.error('❌ setbotimage error:', err);
             await kaya.sendMessage(from, { 
                 text: '❌ Unable to change the bot image. Check the link or try again.',
-                contextInfo: getContextInfo() 
+                contextInfo: getContextInfo(mek.sender) 
             }, { quoted: mek });
         }
     }

@@ -42,10 +42,10 @@ ______________________
 Bot name successfully updated for your profile!
 `.trim();
 
-            // Envoi avec l'image dynamique
+            // Envoi avec l'image dynamique et passage de mek.sender
             await sendWithBotImage(kaya, from, mek.sender, {
                 caption: caption,
-                contextInfo: getContextInfo()
+                contextInfo: getContextInfo(mek.sender)
             });
 
         } catch (err) {
