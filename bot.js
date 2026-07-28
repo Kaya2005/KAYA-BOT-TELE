@@ -19,7 +19,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // ================= CONSTANTS & PATHS =================
 const adminFilePath = path.join(__dirname, './database/admintele.json');
 const pairingFolder = path.join(__dirname, './richstore/pairing');
-const REQUIRED_CHANNELS = ['@kayatech243', '@kayatech2'];
+const REQUIRED_CHANNELS = ['-1004453499318', '@kayatech2'];
 
 // ================= HELPERS =================
 const isOwner = (ctx) => {
@@ -190,7 +190,7 @@ bot.command('connect', async (ctx) => {
         return ctx.reply('⚠️ Restricted access. Please join our channels to continue:', {
             reply_markup: {
                 inline_keyboard: [
-                    [{ text: '𝚉𝙾𝙽𝙴 〽️𝙲𝙷𝙰𝚃', url: 'https://t.me/kayatech243' }],
+                    [{ text: '𝚉𝙾𝙽𝙴 〽️𝙲𝙷𝙰𝚃', url: 'https://t.me/+nctwjD43hDk0ODBk' }],
                     [{ text: '𝙺𝙰𝚈𝙰 𝙱𝙾𝚃 | 𝙲𝙰𝙽𝙰𝙻', url: 'https://t.me/kayatech2' }],
                     [{ text: '✅ I Have Joined', callback_data: 'check_join' }]
                 ]
