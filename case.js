@@ -49,12 +49,15 @@ export default async function caseHandler(kaya, mek, chatUpdate, store = null) {
         // Ajout de la méthode explicite au cas où
         kaya.sendMessageLimited = kaya.sendMessage;
 
-        if (!mek.message || mek.key.id.startsWith("BAE5")) return;
+        // 🛡️ SÉCURITÉ : Vérification stricte que l'objet message et sa clé existent avant de lire .id
+        if (!mek || !mek.message || !mek.key || !mek.key.id || mek.key.id.startsWith("BAE5")) return;
 
         const sender = mek.sender;
         const from = mek.key.remoteJid;
+        if (!from) return;
+
         const isGroup = from.endsWith("@g.us");
-        const ownerId = kaya.user.id.split(':')[0];
+        const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0] : '';
         const groupId = from.split('@')[0];
 
         // 🔹 1. Simulation de présence HUMAINE
