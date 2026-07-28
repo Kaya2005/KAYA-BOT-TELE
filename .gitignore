@@ -1,5 +1,11 @@
+# Dépendances
+node_modules/
+
+# Fichiers sensibles et tokens
+.env
+token.js
+
+# Dossiers de données, sessions et utilitaires locaux
 richstore/
 userall/
-utils/         
-node_modules/
-.env
+utils/
