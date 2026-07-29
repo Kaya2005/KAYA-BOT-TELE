@@ -29,8 +29,23 @@ export default {
     async execute(kaya, mek, from, args, prefix) {
         try {
             const ownerId = kaya.user.id.split(':')[0];
-            const sub = String(args[0] || 'status').toLowerCase();
+            const sub = String(args[0] || '').toLowerCase();
             const state = readState(ownerId);
+
+            if (!sub) {
+                const currentState = readState(ownerId);
+                const msgText = `📊 *Auto Status*\n` +
+                    `View: ${currentState.autoView ? 'ON' : 'OFF'}\n` +
+                    `Like: ${currentState.autoLike ? 'ON' : 'OFF'}\n` +
+                    `Emoji: ${currentState.likeEmoji}\n\n` +
+                    `${prefix}autostatus on\n` +
+                    `${prefix}autostatus off\n` +
+                    `${prefix}autostatus view on\n` +
+                    `${prefix}autostatus like on\n` +
+                    `${prefix}autostatus 🔥`;
+
+                return await kaya.sendMessage(from, { text: msgText }, { quoted: mek });
+            }
 
             if (sub === 'on') {
                 setSetting(ownerId, KEY_VIEW, true);
@@ -65,24 +80,18 @@ export default {
             if (sub === 'emoji') {
                 const emoji = String(args[1] || '').trim();
                 if (!emoji) {
-                    return await kaya.sendMessage(from, { text: `❌ Usage: ${prefix}autostatus emoji 💚` }, { quoted: mek });
+                    return await kaya.sendMessage(from, { text: `❌ Usage: ${prefix}autostatus 💚` }, { quoted: mek });
                 }
                 setSetting(ownerId, KEY_EMOJI, emoji);
                 return await kaya.sendMessage(from, { text: `✅ Auto status like emoji set to ${emoji}` }, { quoted: mek });
             }
 
-            const currentState = readState(ownerId);
-            const msgText = `📊 *Auto Status*\n` +
-                `View: ${currentState.autoView ? 'ON' : 'OFF'}\n` +
-                `Like: ${currentState.autoLike ? 'ON' : 'OFF'}\n` +
-                `Emoji: ${currentState.likeEmoji}\n\n` +
-                `${prefix}autostatus on\n` +
-                `${prefix}autostatus off\n` +
-                `${prefix}autostatus view on\n` +
-                `${prefix}autostatus like on\n` +
-                `${prefix}autostatus emoji 💚`;
-
-            await kaya.sendMessage(from, { text: msgText }, { quoted: mek });
+            // Si ce n'est aucun des mots-clés ci-dessus, on considère que args[0] est directement l'emoji
+            const emoji = String(args[0] || '').trim();
+            if (emoji) {
+                setSetting(ownerId, KEY_EMOJI, emoji);
+                return await kaya.sendMessage(from, { text: `✅ Auto status like emoji set to ${emoji}` }, { quoted: mek });
+            }
 
         } catch (err) {
             console.error('❌ Erreur dans autostatus.js :', err);
@@ -129,7 +138,6 @@ export default {
             if (state.autoView) {
                 try {
                     await kaya.readMessages([statusKey]);
-                    console.log(`[AUTOSTATUS] ✅ Statut de ${participant} marqué comme lu.`);
                 } catch (readErr) {
                     console.error(`[AUTOSTATUS] ❌ Échec lecture statut :`, readErr.message);
                 }
@@ -140,7 +148,6 @@ export default {
                     await kaya.sendMessage('status@broadcast', {
                         react: { text: state.likeEmoji, key: statusKey }
                     }, { statusJidList: [participant] });
-                    console.log(`[AUTOSTATUS] ✅ Réaction ${state.likeEmoji} envoyée sur le statut de ${participant}.`);
                 } catch (likeErr) {
                     console.error(`[AUTOSTATUS] ❌ Échec réaction ${state.likeEmoji} :`, likeErr.message);
                 }
