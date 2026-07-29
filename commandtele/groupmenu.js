@@ -27,6 +27,7 @@ ______________________
             await ctx.replyWithPhoto('https://files.catbox.moe/1ddhgm.jpg', {
                 caption: groupMenuText,
                 parse_mode: 'HTML',
+                reply_to_message_id: ctx.message?.message_id,
                 reply_markup: {
                     inline_keyboard: [
                         [
@@ -39,7 +40,10 @@ ______________________
             });
         } catch (err) {
             console.error("[GROUPMENU ERROR]:", err);
-            await ctx.reply('<blockquote>⚠️ An error occurred while generating the group menu.</blockquote>', { parse_mode: 'HTML' });
+            await ctx.reply('<blockquote>⚠️ An error occurred while generating the group menu.</blockquote>', { 
+                parse_mode: 'HTML', 
+                reply_to_message_id: ctx.message?.message_id 
+            });
         }
     });
 }

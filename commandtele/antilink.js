@@ -24,11 +24,17 @@ async function checkAdmin(ctx) {
 // Shared function to display the configuration panel
 async function handleAntiLinkConfig(ctx) {
     if (!ctx.chat || !['supergroup', 'group'].includes(ctx.chat.type)) {
-        return ctx.reply("<blockquote>This command can only be used in a group.</blockquote>", { parse_mode: 'HTML' });
+        return ctx.reply("<blockquote>This command can only be used in a group.</blockquote>", { 
+            parse_mode: 'HTML', 
+            reply_to_message_id: ctx.message?.message_id 
+        });
     }
 
     if (!(await checkAdmin(ctx))) {
-        return ctx.reply("<blockquote>⚠️ Only administrators can configure the anti-link module.</blockquote>", { parse_mode: 'HTML' });
+        return ctx.reply("<blockquote>⚠️ Only administrators can configure the anti-link module.</blockquote>", { 
+            parse_mode: 'HTML', 
+            reply_to_message_id: ctx.message?.message_id 
+        });
     }
 
     const chatId = ctx.chat.id;
@@ -51,7 +57,10 @@ async function handleAntiLinkConfig(ctx) {
     if (ctx.callbackQuery) {
         await ctx.editMessageText(text, keyboard).catch(() => ctx.reply(text, keyboard));
     } else {
-        await ctx.reply(text, keyboard);
+        await ctx.reply(text, { 
+            ...keyboard, 
+            reply_to_message_id: ctx.message?.message_id 
+        });
     }
 }
 
@@ -132,7 +141,15 @@ export default function setupAntiLink(bot) {
 
                 await ctx.deleteMessage().catch(() => {});
                 
-                const warning = await ctx.reply(`<blockquote>⚠️ @${ctx.from?.username || ctx.from?.first_name || 'Admin'}, links are not allowed here!</blockquote>`, { parse_mode: 'HTML' });
+                // Tag cliquable de l'utilisateur qui a posté le lien + réponse directe à son message
+                const userId = ctx.from?.id;
+                const firstName = ctx.from?.first_name || 'Admin';
+                const userMention = userId ? `<a href="tg://user?id=${userId}">${firstName}</a>` : firstName;
+
+                const warning = await ctx.reply(`<blockquote>⚠️ ${userMention}, links are not allowed here!</blockquote>`, { 
+                    parse_mode: 'HTML',
+                    reply_to_message_id: ctx.message.message_id 
+                });
                 setTimeout(() => ctx.telegram.deleteMessage(ctx.chat.id, warning.message_id).catch(() => {}), 4000);
                 
                 return;

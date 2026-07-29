@@ -24,11 +24,17 @@ async function checkAdmin(ctx) {
 // Shared function to display the configuration panel
 async function handleWelcomeConfig(ctx) {
     if (!ctx.chat || !['supergroup', 'group'].includes(ctx.chat.type)) {
-        return ctx.reply("<blockquote>This command can only be used in a group.</blockquote>", { parse_mode: 'HTML' });
+        return ctx.reply("<blockquote>This command can only be used in a group.</blockquote>", { 
+            parse_mode: 'HTML', 
+            reply_to_message_id: ctx.message?.message_id 
+        });
     }
 
     if (!(await checkAdmin(ctx))) {
-        return ctx.reply("<blockquote>⚠️ Only administrators can configure the welcome module.</blockquote>", { parse_mode: 'HTML' });
+        return ctx.reply("<blockquote>⚠️ Only administrators can configure the welcome module.</blockquote>", { 
+            parse_mode: 'HTML', 
+            reply_to_message_id: ctx.message?.message_id 
+        });
     }
 
     const chatId = ctx.chat.id;
@@ -51,7 +57,10 @@ async function handleWelcomeConfig(ctx) {
     if (ctx.callbackQuery) {
         await ctx.editMessageText(text, keyboard).catch(() => ctx.reply(text, keyboard));
     } else {
-        await ctx.reply(text, keyboard);
+        await ctx.reply(text, { 
+            ...keyboard, 
+            reply_to_message_id: ctx.message?.message_id 
+        });
     }
 }
 
