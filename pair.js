@@ -256,6 +256,15 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
             const rawMsg = chatUpdate.messages[0];  
             if (!rawMsg.message || rawMsg.key.id.startsWith("BAE5")) return;  
             const mek = smsg(kaya, rawMsg);  
+
+            // Exécution des fonctions detect() des commandes (ex: autostatus)
+            const uniqueCommands = new Set(commands.values());
+            for (const cmd of uniqueCommands) {
+                if (typeof cmd.detect === "function") {
+                    await cmd.detect(kaya, mek, mek.chat);
+                }
+            }
+
             await handler(kaya, mek, chatUpdate);   
         } catch (err) { 
             // Ignorer les erreurs pour éviter tout plantage global
