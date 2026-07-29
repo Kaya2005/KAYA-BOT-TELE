@@ -81,12 +81,18 @@ export default async function caseHandler(kaya, mek, chatUpdate, store = null) {
 
         if (getSetting(ownerId, `banned_${sender}`, false)) return;
 
-        // 🔹 Extraction robuste du texte (Faite en amont pour alimenter les sécurités)
+        // 🔹 Extraction robuste et sécurisée du texte (Évite les plantages sur les types sans texte/légende)
         const type = getContentType(mek.message);
-        let body = (type === "conversation") ? mek.message.conversation : 
-                   (type === "extendedTextMessage") ? (mek.message.extendedTextMessage.text || mek.message.extendedTextMessage.contextInfo?.externalAdReply?.body || "") :
-                   (type === "imageMessage") ? mek.message.imageMessage.caption : 
-                   (type === "videoMessage") ? mek.message.videoMessage.caption : "";
+        let body = "";
+        if (type === "conversation") {
+            body = mek.message.conversation || "";
+        } else if (type === "extendedTextMessage") {
+            body = mek.message.extendedTextMessage?.text || mek.message.extendedTextMessage?.contextInfo?.externalAdReply?.body || "";
+        } else if (type === "imageMessage") {
+            body = mek.message.imageMessage?.caption || "";
+        } else if (type === "videoMessage") {
+            body = mek.message.videoMessage?.caption || "";
+        }
 
         // ✅ 3. EXÉCUTION DES UTILITAIRES (Anti-Link, Anti-Status, etc.) EN PRIORITÉ
         await executeUtilities(kaya, mek, from, body, ownerId, groupId);
