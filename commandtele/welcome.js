@@ -110,7 +110,7 @@ export default function setupWelcome(bot) {
                 const time = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
                 const date = now.toLocaleDateString('en-GB');
 
-                const welcomeText = `▰▰▰▰▰▰▰▰▰▰
+                const welcomeText = `<blockquote>▰▰▰▰▰▰▰▰▰▰
 ➠ ᴜsᴇʀ : ${fullName}
 ➠ ᴛɪᴍᴇ : ${time}
 ➠ ᴅᴀᴛᴇ : ${date}
@@ -119,9 +119,10 @@ export default function setupWelcome(bot) {
 ╭▰▰▰▰▰▰▰◈
 ┆❏ 🙋 ᴜsᴇʀɴᴀᴍᴇ : ${username}
 ┆❏ 🆔 ɪᴅ : ${id}
-╰▰▰▰▰▰▰▰◈`;
+╰▰▰▰▰▰▰▰◈</blockquote>`;
 
-                const channelButton = {
+                const options = {
+                    parse_mode: 'HTML',
                     reply_markup: {
                         inline_keyboard: [
                             [{ text: '𝙺𝙰𝚈𝙰 𝙱𝙾𝚃 | 𝙲𝙰𝙽𝙰𝙻', url: 'https://t.me/kayatech2' }]
@@ -143,10 +144,10 @@ export default function setupWelcome(bot) {
                 if (photoFileId) {
                     await ctx.replyWithPhoto(photoFileId, { 
                         caption: welcomeText,
-                        ...channelButton 
+                        ...options 
                     });
                 } else {
-                    await ctx.reply(welcomeText, channelButton);
+                    await ctx.reply(welcomeText, options);
                 }
             }
             
