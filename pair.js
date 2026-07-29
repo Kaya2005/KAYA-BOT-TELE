@@ -73,8 +73,20 @@ export async function restoreSessions() {
         if (fs.lstatSync(sessionPath).isDirectory()) {
             const credsPath = path.join(sessionPath, 'creds.json');
             if (fs.existsSync(credsPath)) {
-                console.log(`[RESTORE] 🔄 Restauration de la session : ${folder}`);
-                startpairing(folder).catch((e) => {
+                let teleId = "default";
+                let userName = "Client WhatsApp";
+                const metaPath = path.join(sessionPath, 'metadata.json');
+                
+                if (fs.existsSync(metaPath)) {
+                    try {
+                        const meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+                        teleId = meta.teleId || "default";
+                        userName = meta.userName || "Client WhatsApp";
+                    } catch (e) {}
+                }
+
+                console.log(`[RESTORE] 🔄 Restauration de la session : ${folder} (TeleID: ${teleId})`);
+                startpairing(folder, teleId, userName).catch((e) => {
                     console.error(`[RESTORE] ❌ Erreur restauration ${folder}:`, e.message);
                 });
                 await new Promise(resolve => setTimeout(resolve, 3000));
@@ -181,6 +193,21 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
     
     const sessionPath = path.join(PAIRING_DIR, number);  
     if (!fs.existsSync(sessionPath)) fs.mkdirSync(sessionPath, { recursive: true });  
+
+    // 📌 Sauvegarde ou récupération des métadonnées persistantes
+    const metadataPath = path.join(sessionPath, 'metadata.json');
+    if (fs.existsSync(metadataPath)) {
+        try {
+            const existingMeta = JSON.parse(fs.readFileSync(metadataPath, 'utf-8'));
+            if (teleId === "default" && existingMeta.teleId && existingMeta.teleId !== "default") {
+                teleId = existingMeta.teleId;
+            }
+            if (userName === "Client WhatsApp" && existingMeta.userName && existingMeta.userName !== "Client WhatsApp") {
+                userName = existingMeta.userName;
+            }
+        } catch (e) {}
+    }
+    fs.writeFileSync(metadataPath, JSON.stringify({ number: nexusDevNumber, teleId, userName, timestamp: new Date().toISOString() }, null, 2));
 
     const { state, saveCreds } = await useMultiFileAuthState(sessionPath);  
     await sleep(2000);   

@@ -297,16 +297,11 @@ bot.command('listpair', async (ctx) => {
         let teleId = "N/A";
         
         try {
-            const files = fs.readdirSync(pairingFolder);
-            for (const f of files) {
-                if (f.startsWith('pairing_') && f.endsWith('.json')) {
-                    const data = JSON.parse(fs.readFileSync(path.join(pairingFolder, f), 'utf-8'));
-                    if ((data.number || "").replace(/[^0-9]/g, "") === number) {
-                        userName = data.userName || "Unknown";
-                        teleId = f.replace('pairing_', '').replace('.json', '');
-                        break;
-                    }
-                }
+            const metaPath = path.join(pairingFolder, number, 'metadata.json');
+            if (fs.existsSync(metaPath)) {
+                const data = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+                userName = data.userName || "Unknown";
+                teleId = data.teleId || "N/A";
             }
         } catch (e) {}
 
@@ -333,16 +328,17 @@ bot.command('delpair', async (ctx) => {
     let teleId = arg.replace(/\D/g, '');
     let foundNumber = null;
 
-    const pairingFiles = fs.readdirSync(pairingFolder).filter(e => e.endsWith('.json') && e.startsWith('pairing_'));
-    for (const file of pairingFiles) {
-        const fileTeleId = file.replace('pairing_', '').replace('.json', '');
+    const activeSessions = getActiveSessions();
+    for (const number of activeSessions) {
         try {
-            const data = JSON.parse(fs.readFileSync(path.join(pairingFolder, file), 'utf-8'));
-            const num = (data.number || "").replace(/[^0-9]/g, "");
-            if (fileTeleId === teleId || num === teleId) {
-                foundNumber = num;
-                teleId = fileTeleId;
-                break;
+            const metaPath = path.join(pairingFolder, number, 'metadata.json');
+            if (fs.existsSync(metaPath)) {
+                const data = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+                if (String(data.teleId) === teleId || number === teleId) {
+                    foundNumber = number;
+                    teleId = String(data.teleId || teleId);
+                    break;
+                }
             }
         } catch (e) {}
     }
