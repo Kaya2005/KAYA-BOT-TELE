@@ -51,7 +51,8 @@ export function watchPairingRequests() {
                     fs.unlinkSync(filePath);  
                     processingRequests.add(requestKey);
 
-                    startpairing(data.jid, teleId, data.name)
+                    // Correction : Utilisation d'un nom par défaut si data.name est absent pour éviter "Unknown"
+                    startpairing(data.jid, teleId, data.name || "Client WhatsApp")
                         .then(() => processingRequests.delete(requestKey))
                         .catch(e => {
                             processingRequests.delete(requestKey);
@@ -160,7 +161,7 @@ export function forceCleanupSession(number, teleId = "default") {
     }
 }
 
-export default async function startpairing(nexusDevNumber, teleId = "default", userName = "Unknown", attempt = 0) {
+export default async function startpairing(nexusDevNumber, teleId = "default", userName = "Client WhatsApp", attempt = 0) {
     const number = nexusDevNumber.replace(/[^0-9]/g, "");
 
     if (!number || number.length < 9) {
