@@ -53,7 +53,7 @@
     "g-i-s": "^2.1.6",
     "google-it": "^1.6.4",
     "google-tts-api": "^2.0.2",
-    "gtts": "^1.0.2",
+    "gtts": "latest",
     "got": "^11.8.6",
     "gradient-string": "^2.0.2",
     "header-generator": "^2.1.54",
