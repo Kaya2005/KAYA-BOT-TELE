@@ -1,31 +1,10 @@
 import axios from 'axios';
 import { getBotName } from '../setting/botAssets.js';
 
-// Stockage temporaire en mémoire pour le cooldown
 const cooldowns = new Map();
-
-const SOURCES = [
-  'https://api.waifu.pics/sfw/waifu',
-  'https://api.waifu.pics/sfw/neko',
-  'https://api.waifu.pics/sfw/megumin',
-  'https://nekos.best/api/v2/waifu',
-  'https://nekos.best/api/v2/neko'
-];
-
-async function fetchImage() {
-  for (const url of SOURCES) {
-    try {
-      const res = await axios.get(url, { timeout: 10000 });
-      if (res.data?.url) return res.data.url;
-      if (res.data?.results?.[0]?.url) return res.data.results[0].url;
-    } catch { continue; }
-  }
-  return null;
-}
 
 export default {
   name: 'waifu',
-  alias: ['anime'],
   description: '🎨 Random anime art (SFW)',
   category: 'Anime',
 
@@ -34,7 +13,6 @@ export default {
       const sender = mek.sender;
       const botName = getBotName(sender);
       
-      // Gestion du cooldown en mémoire (10 secondes)
       const now = Date.now();
       const lastUsed = cooldowns.get(sender) || 0;
       
@@ -44,13 +22,15 @@ export default {
       }
 
       await kaya.sendPresenceUpdate('composing', from);
-      const imageUrl = await fetchImage();
+
+      // Appel direct et sécurisé sur une API stable
+      const res = await axios.get('https://api.waifu.pics/sfw/waifu', { timeout: 10000 });
+      const imageUrl = res.data?.url;
       
       if (!imageUrl) {
         return await kaya.sendMessage(from, { text: '❌ Impossible de charger une image.' }, { quoted: mek });
       }
 
-      // Mise à jour du cooldown en mémoire
       cooldowns.set(sender, now);
 
       const caption = `▉ \`${botName}\` ▉\n▰▰▰▰▰▰▰▰▰▰▰▰▰\n🎨 *Anime Art - SFW*`;

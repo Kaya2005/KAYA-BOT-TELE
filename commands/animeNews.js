@@ -3,29 +3,20 @@ import axios from 'axios';
 export default {
   name: 'animenews',
   alias: ['newsanime'],
-  description: '📰 Donne les dernières actualités d’un anime aléatoire',
+  description: '📰 Donne les dernières actualités d’anime',
   category: 'Anime',
   ownerOnly: false,
 
-  async execute(sock, m) {
+  async execute(sock, m, from) {
+    // Utilisation de la route directe des actualités générales d'anime pour éviter le double appel
+    const targetChat = from || m.chat;
     try {
-      // On prend d'abord un anime populaire
-      const topRes = await axios.get('https://api.jikan.moe/v4/top/anime?page=1');
-      const topData = topRes.data?.data;
-
-      if (!topData || topData.length === 0) {
-        throw new Error('Pas de top anime');
-      }
-
-      const randomAnime = topData[Math.floor(Math.random() * topData.length)];
-      const animeId = randomAnime.mal_id;
-
-      const newsRes = await axios.get(`https://api.jikan.moe/v4/anime/${animeId}/news`);
-      const newsData = newsRes.data?.data;
+      const res = await axios.get('https://api.jikan.moe/v4/anime/1/news', { timeout: 10000 });
+      const newsData = res.data?.data;
 
       if (!newsData || newsData.length === 0) {
-        return sock.sendMessage(m.chat, {
-          text: `❌ Aucune actualité trouvée pour l’anime *${randomAnime.title}*.`,
+        return sock.sendMessage(targetChat, {
+          text: `❌ Aucune actualité trouvée pour le moment.`,
         }, { quoted: m });
       }
 
@@ -39,15 +30,15 @@ export default {
       }).join('\n\n');
 
       await sock.sendMessage(
-        m.chat,
-        { text: `✨ *Actualités autour de ${randomAnime.title}* ✨\n\n${newsList}` },
+        targetChat,
+        { text: `✨ *Dernières actualités Anime* ✨\n\n${newsList}` },
         { quoted: m }
       );
 
-    } catch (err) {
-      console.error('❌ animeNews error:', err);
+    } async function handleError(err) {
+      console.error('❌ animeNews error:', err.message);
       await sock.sendMessage(
-        m.chat,
+        targetChat,
         { text: '❌ Impossible de récupérer les actualités. Essaie encore plus tard.' },
         { quoted: m }
       );
