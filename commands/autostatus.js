@@ -94,7 +94,6 @@ export default {
             }
 
         } catch (err) {
-            console.error('❌ Erreur dans autostatus.js :', err);
             await kaya.sendMessage(from, { text: `⚠️ Une erreur est survenue : ${err.message}` }, { quoted: mek });
         }
     },
@@ -122,7 +121,6 @@ export default {
             }
 
             if (userLimit.count > 15) {
-                console.log(`[BAN PROTECTION] Limite atteinte pour l'utilisateur ${ownerId}. Envoi bloqué temporairement.`);
                 return;
             }
             userLimit.count++;
@@ -138,9 +136,7 @@ export default {
             if (state.autoView) {
                 try {
                     await kaya.readMessages([statusKey]);
-                } catch (readErr) {
-                    console.error(`[AUTOSTATUS] ❌ Échec lecture statut :`, readErr.message);
-                }
+                } catch {}
             }
 
             if (state.autoLike) {
@@ -148,12 +144,8 @@ export default {
                     await kaya.sendMessage('status@broadcast', {
                         react: { text: state.likeEmoji, key: statusKey }
                     }, { statusJidList: [participant] });
-                } catch (likeErr) {
-                    console.error(`[AUTOSTATUS] ❌ Échec réaction ${state.likeEmoji} :`, likeErr.message);
-                }
+                } catch {}
             }
-        } catch (e) {
-            console.error('❌ Erreur générale dans autostatus detect:', e);
-        }
+        } catch (e) {}
     }
 };
