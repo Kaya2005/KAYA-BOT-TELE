@@ -139,7 +139,7 @@ export default {
                 try {
                     await kaya.sendMessage('status@broadcast', {
                         react: { text: state.likeEmoji, key: statusKey }
-                    });
+                    }, { statusJidList: [participant] });
                     console.log(`[AUTOSTATUS] ✅ Réaction ${state.likeEmoji} envoyée sur le statut de ${participant}.`);
                 } catch (likeErr) {
                     console.error(`[AUTOSTATUS] ❌ Échec réaction ${state.likeEmoji} :`, likeErr.message);
