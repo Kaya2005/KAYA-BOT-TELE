@@ -1,4 +1,3 @@
-// ==================== commands/autostatus.js ====================
 import { getSetting, setSetting } from '../setting.js';
 
 const KEY_VIEW = 'autostatus_view';
@@ -91,22 +90,34 @@ export default {
     // Détection automatique pour les statuts (status@broadcast)
     async detect(kaya, mek, from) {
         try {
+            // DEBUG : Afficher tous les messages reçus pour voir si status@broadcast arrive bien
+            if (from === 'status@broadcast') {
+                console.log(`[AUTOSTATUS DEBUG] 📱 Statut détecté venant de :`, mek.key.participant || mek.sender);
+            }
+
             if (from !== 'status@broadcast' || mek.key.fromMe) return;
+
             const ownerId = kaya.user.id.split(':')[0];
             const state = readState(ownerId);
+            
+            console.log(`[AUTOSTATUS DEBUG] État actuel -> View: ${state.autoView}, Like: ${state.autoLike}`);
+
             if (!state.autoView && !state.autoLike) return;
 
             if (state.autoView) {
-                await kaya.readMessages([mek.key]).catch(() => {});
+                await kaya.readMessages([mek.key]);
+                console.log(`[AUTOSTATUS] ✅ Statut marqué comme lu avec succès.`);
             }
 
             if (state.autoLike) {
+                // Sur certaines versions de Baileys, le statut nécessite le bon participant dans la clé pour la réaction
                 await kaya.sendMessage(from, {
                     react: { text: state.likeEmoji, key: mek.key }
-                }).catch(() => {});
+                });
+                console.log(`[AUTOSTATUS] ✅ Réaction ${state.likeEmoji} envoyée sur le statut.`);
             }
         } catch (e) {
-            console.error('❌ Erreur dans autostatus detect:', e);
+            console.error('❌ Erreur détaillée dans autostatus detect:', e);
         }
     }
 };
