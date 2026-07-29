@@ -8,7 +8,6 @@ export default {
   ownerOnly: false,
 
   async execute(sock, m, from) {
-    // Utilisation de la route directe des actualités générales d'anime pour éviter le double appel
     const targetChat = from || m.chat;
     try {
       const res = await axios.get('https://api.jikan.moe/v4/anime/1/news', { timeout: 10000 });
@@ -35,7 +34,7 @@ export default {
         { quoted: m }
       );
 
-    } async function handleError(err) {
+    } catch (err) {
       console.error('❌ animeNews error:', err.message);
       await sock.sendMessage(
         targetChat,
