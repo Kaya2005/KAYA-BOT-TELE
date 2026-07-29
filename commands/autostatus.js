@@ -21,7 +21,7 @@ export default {
     name: 'autostatus',
     aliases: ['statusauto', 'autostory'],
     description: '🤖 Auto view et auto like des statuts WhatsApp',
-    category: 'Dev',
+    category: 'Owner',
     ownerOnly: true,
 
     async execute(kaya, mek, from, args, prefix) {
