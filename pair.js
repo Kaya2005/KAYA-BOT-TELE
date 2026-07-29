@@ -1,4 +1,3 @@
-//pair.js
 import {
     default as makeWASocket,
     jidDecode,
@@ -194,8 +193,6 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
     const tracker = rentbotTracker.get(number);  
     
     const sessionPath = path.join(PAIRING_DIR, number);  
-    const credsPath = path.join(sessionPath, 'creds.json');
-    const isFirstPairing = !fs.existsSync(credsPath);
 
     if (!fs.existsSync(sessionPath)) fs.mkdirSync(sessionPath, { recursive: true });  
 
@@ -204,11 +201,13 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
       
     await sleep(2000);   
 
+    // 💡 Détection fiable : si l'appareil n'est pas encore enregistré dans l'état Baileys
+    const isBrandNewDevice = !state.creds.registered;
+
     const kaya = makeWASocket({  
         logger: pino({ level: "silent" }), 
         printQRInTerminal: false,  
         auth: state,  
-        // 🛠️ MODIFICATION DE LA SIGNATURE : Passage sur Ubuntu Chrome pour stabiliser le pairing RC
         browser: Browsers.ubuntu("Chrome"),  
         connectTimeoutMs: 60000,   
         defaultQueryTimeoutMs: 60000,  
@@ -222,7 +221,6 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
     if (!state.creds.registered) {  
         console.log(`${logPrefix} ⏳ Appareil non enregistré. Demande de code de pairage dans 8s...`);
         
-        // 🛠️ Délai optimisé à 8 secondes pour laisser le temps au WebSocket de s'établir solidement
         setTimeout(async () => {  
             try {  
                 if (rentbotTracker.get(number)?.connection !== kaya) return;
@@ -289,7 +287,7 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
             isReady = true;  
             tracker.status = 'connected';
 
-            // 🧹 Suppression propre du fichier de pairing temporaire après connexion réussie
+            // Suppression propre du fichier de pairing temporaire après connexion réussie
             if (teleId && teleId !== "default") {
                 const pairingFile = path.join(PAIRING_DIR, `pairing_${teleId}.json`);
                 if (fs.existsSync(pairingFile)) {
@@ -300,35 +298,33 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
 
             if (!tracker.isConnected) {  
                 tracker.isConnected = true;  
-                await sleep(2000);  
+                await sleep(4000);  // Délai de stabilisation du WebSocket
 
-                // 🔍 Envoi du message uniquement lors du tout premier appairage (si creds.json n'existait pas)
-                if (isFirstPairing) {
+                // Envoi du message uniquement lors de la toute première inscription
+                if (isBrandNewDevice) {
                     const statusFile = path.join(process.cwd(), 'utils', 'update_status.json');
+                    let updateSent = false;
 
                     if (fs.existsSync(statusFile)) {
-                        let updateSent = false;
                         try {
                             const updateData = JSON.parse(fs.readFileSync(statusFile, 'utf-8'));
-                            
-                            if (fs.existsSync(statusFile)) {
-                                fs.unlinkSync(statusFile);
-                            }
+                            fs.unlinkSync(statusFile);
 
                             await kaya.sendMessage(number + "@s.whatsapp.net", { text: updateMessage(updateData) });
                             updateSent = true;
                         } catch (err) {
                             console.error(`${logPrefix} ❌ Erreur lecture update_status.json :`, err.message);
-                            if (fs.existsSync(statusFile)) {
-                                fs.unlinkSync(statusFile);
-                            }
+                            if (fs.existsSync(statusFile)) fs.unlinkSync(statusFile);
                         }
+                    }
 
-                        if (!updateSent) {
-                            await kaya.sendMessage(number + "@s.whatsapp.net", { text: connectionMessage() }).catch(e => {});
+                    if (!updateSent) {
+                        try {
+                            await kaya.sendMessage(number + "@s.whatsapp.net", { text: connectionMessage() });
+                            console.log(`${logPrefix} 📨 Message de connexion envoyé avec succès.`);
+                        } catch (e) {
+                            console.error(`${logPrefix} ❌ Échec de l'envoi du message de connexion :`, e.message);
                         }
-                    } else {
-                        await kaya.sendMessage(number + "@s.whatsapp.net", { text: connectionMessage() }).catch(e => {});  
                     }
                 }
             }  
@@ -341,20 +337,18 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
             
             const statusCode = new Boom(lastDisconnect?.error)?.output?.statusCode;  
             
-            // 🔄 AUTOMATISATION : Si la session est déconnectée définitivement ou renvoie un 403
             if (statusCode === DisconnectReason.loggedOut || statusCode === 403) {
-                console.log(`${logPrefix} ❌ Session rejetée ou fermée définitivement (Code: ${statusCode}). Nettoyage complet (session + configuration)...`);
+                console.log(`${logPrefix} ❌ Session rejetée ou fermée définitivement (Code: ${statusCode}). Nettoyage complet...`);
                 forceCleanupSession(number, teleId);  
             } else {  
-                // 🔒 SÉCURITÉ PRÉSERVÉE : Ne supprime PLUS les sessions pour les codes 405 ou erreurs réseau temporaires
                 if (attempt < 10) {
                     const backoffDelay = Math.min(15000 * (attempt + 1), 60000);  
                     console.log(`${logPrefix} ⚠️ Connexion fermée (Reason: ${statusCode}). Nouvelle tentative (${attempt + 1}) dans ${backoffDelay / 1000}s...`);
                     await sleep(backoffDelay);  
                     startpairing(nexusDevNumber, teleId, userName, attempt + 1);  
                 } else {
-                    console.log(`${logPrefix} ⚠️ Trop de tentatives échouées d'affilée (Code: ${statusCode}). Pause prolongée avant réessai (session préservée)...`);
-                    await sleep(60000); // Pause d'une minute avant de relancer sans effacer les fichiers
+                    console.log(`${logPrefix} ⚠️ Trop de tentatives échouées d'affilée (Code: ${statusCode}). Pause prolongée...`);
+                    await sleep(60000); 
                     startpairing(nexusDevNumber, teleId, userName, 0); 
                 }
             }  
