@@ -6,6 +6,12 @@ const antilinkStates = new Map();
 
 async function checkAdmin(ctx) {
     if (!ctx.chat || ctx.chat.type === 'private') return true;
+    
+    // Autoriser automatiquement les administrateurs anonymes / propriétaires de canal
+    if (ctx.sender_chat || (ctx.from && ctx.from.id === 1087968824)) {
+        return true;
+    }
+
     try {
         const member = await ctx.telegram.getChatMember(ctx.chat.id, ctx.from.id);
         return ['creator', 'administrator'].includes(member.status);
@@ -18,20 +24,20 @@ async function checkAdmin(ctx) {
 // Shared function to display the configuration panel
 async function handleAntiLinkConfig(ctx) {
     if (!ctx.chat || !['supergroup', 'group'].includes(ctx.chat.type)) {
-        return ctx.reply("This command can only be used in a group.");
+        return ctx.reply("<blockquote>This command can only be used in a group.</blockquote>", { parse_mode: 'HTML' });
     }
 
     if (!(await checkAdmin(ctx))) {
-        return ctx.reply("⚠️ Only administrators can configure the anti-link module.");
+        return ctx.reply("<blockquote>⚠️ Only administrators can configure the anti-link module.</blockquote>", { parse_mode: 'HTML' });
     }
 
     const chatId = ctx.chat.id;
     const currentState = antilinkStates.get(chatId) ?? false;
     const statusText = currentState ? "🟢 Enabled (ON)" : "🔴 Disabled (OFF)";
 
-    const text = `⚙️ **AntiLink Module Management**\n\nCurrent Status: ${statusText}\n\nChoose an option:`;
+    const text = `<blockquote>⚙️ <b>AntiLink Module Management</b>\n\nCurrent Status: ${statusText}\n\nChoose an option:</blockquote>`;
     const keyboard = {
-        parse_mode: 'Markdown',
+        parse_mode: 'HTML',
         reply_markup: {
             inline_keyboard: [
                 [
@@ -73,11 +79,11 @@ export default function setupAntiLink(bot) {
 
             antilinkStates.set(chatId, newState);
 
-            const statusText = newState ? "🟢 The AntiLink module has been **ENABLED**." : "🔴 The AntiLink module has been **DISABLED**.";
+            const statusText = newState ? "<blockquote>🟢 The AntiLink module has been <b>ENABLED</b>.</blockquote>" : "<blockquote>🔴 The AntiLink module has been <b>DISABLED</b>.</blockquote>";
 
             await ctx.answerCbQuery(newState ? "AntiLink enabled!" : "AntiLink disabled!");
             await ctx.editMessageText(statusText, {
-                parse_mode: 'Markdown',
+                parse_mode: 'HTML',
                 reply_markup: { inline_keyboard: [] }
             });
         } catch (err) {
@@ -112,6 +118,9 @@ export default function setupAntiLink(bot) {
                 }
 
                 try {
+                    if (ctx.sender_chat || (ctx.from && ctx.from.id === 1087968824)) {
+                        return next();
+                    }
                     const member = await ctx.telegram.getChatMember(ctx.chat.id, ctx.from.id);
                     if (['creator', 'administrator'].includes(member.status)) {
                         return next();
@@ -123,7 +132,7 @@ export default function setupAntiLink(bot) {
 
                 await ctx.deleteMessage().catch(() => {});
                 
-                const warning = await ctx.reply(`⚠️ @${ctx.from.username || ctx.from.first_name}, links are not allowed here!`);
+                const warning = await ctx.reply(`<blockquote>⚠️ @${ctx.from?.username || ctx.from?.first_name || 'Admin'}, links are not allowed here!</blockquote>`, { parse_mode: 'HTML' });
                 setTimeout(() => ctx.telegram.deleteMessage(ctx.chat.id, warning.message_id).catch(() => {}), 4000);
                 
                 return;

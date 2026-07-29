@@ -8,10 +8,10 @@ export default function setupGroupMenu(bot) {
             const time = now.toLocaleTimeString('en-GB', { timeZone: 'Africa/Lubumbashi', hour: '2-digit', minute:'2-digit' });
             const date = now.toLocaleDateString('en-GB', { timeZone: 'Africa/Lubumbashi', day: '2-digit', month: '2-digit', year: 'numeric' });
             
-            const groupMenuText = `▰▰▰▰▰▰▰▰▰▰
-➠ Bot: *KAYA BOT (Group Mode)*
-➠ Time: *${time}*
-➠ Date: *${date}*
+            const groupMenuText = `<blockquote>▰▰▰▰▰▰▰▰▰▰
+➠ Bot: <b>KAYA BOT (Group Mode)</b>
+➠ Time: <b>${time}</b>
+➠ Date: <b>${date}</b>
 ______________________
 
 > ╢ GROUP & MODERATION ♰
@@ -20,13 +20,13 @@ ______________________
 ┆❏ /groupmenu
 ┆❏ /welcome 
 ┆❏ /antilink 
-╰▰▰▰▰▰▰▰◈`;
+╰▰▰▰▰▰▰▰◈</blockquote>`;
 
             const botUsername = ctx.botInfo?.username || 'KayaMdBot';
 
             await ctx.replyWithPhoto('https://files.catbox.moe/1ddhgm.jpg', {
                 caption: groupMenuText,
-                parse_mode: 'Markdown',
+                parse_mode: 'HTML',
                 reply_markup: {
                     inline_keyboard: [
                         [
@@ -39,7 +39,7 @@ ______________________
             });
         } catch (err) {
             console.error("[GROUPMENU ERROR]:", err);
-            await ctx.reply('⚠️ An error occurred while generating the group menu.');
+            await ctx.reply('<blockquote>⚠️ An error occurred while generating the group menu.</blockquote>', { parse_mode: 'HTML' });
         }
     });
 }

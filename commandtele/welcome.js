@@ -6,6 +6,12 @@ const welcomeStates = new Map();
 
 async function checkAdmin(ctx) {
     if (!ctx.chat || ctx.chat.type === 'private') return true;
+    
+    // Autoriser automatiquement les administrateurs anonymes / propriétaires de canal
+    if (ctx.sender_chat || (ctx.from && ctx.from.id === 1087968824)) {
+        return true;
+    }
+
     try {
         const member = await ctx.telegram.getChatMember(ctx.chat.id, ctx.from.id);
         return ['creator', 'administrator'].includes(member.status);
@@ -18,20 +24,20 @@ async function checkAdmin(ctx) {
 // Shared function to display the configuration panel
 async function handleWelcomeConfig(ctx) {
     if (!ctx.chat || !['supergroup', 'group'].includes(ctx.chat.type)) {
-        return ctx.reply("This command can only be used in a group.");
+        return ctx.reply("<blockquote>This command can only be used in a group.</blockquote>", { parse_mode: 'HTML' });
     }
 
     if (!(await checkAdmin(ctx))) {
-        return ctx.reply("⚠️ Only administrators can configure the welcome module.");
+        return ctx.reply("<blockquote>⚠️ Only administrators can configure the welcome module.</blockquote>", { parse_mode: 'HTML' });
     }
 
     const chatId = ctx.chat.id;
     const currentState = welcomeStates.get(chatId) ?? true;
     const statusText = currentState ? "🟢 Enabled (ON)" : "🔴 Disabled (OFF)";
 
-    const text = `⚙️ **Welcome Module Management**\n\nCurrent Status: ${statusText}\n\nChoose an option:`;
+    const text = `<blockquote>⚙️ <b>Welcome Module Management</b>\n\nCurrent Status: ${statusText}\n\nChoose an option:</blockquote>`;
     const keyboard = {
-        parse_mode: 'Markdown',
+        parse_mode: 'HTML',
         reply_markup: {
             inline_keyboard: [
                 [
@@ -73,11 +79,11 @@ export default function setupWelcome(bot) {
 
             welcomeStates.set(chatId, newState);
 
-            const statusText = newState ? "🟢 The Welcome module has been **ENABLED**." : "🔴 The Welcome module has been **DISABLED**.";
+            const statusText = newState ? "<blockquote>🟢 The Welcome module has been <b>ENABLED</b>.</blockquote>" : "<blockquote>🔴 The Welcome module has been <b>DISABLED</b>.</blockquote>";
 
             await ctx.answerCbQuery(newState ? "Welcome enabled!" : "Welcome disabled!");
             await ctx.editMessageText(statusText, {
-                parse_mode: 'Markdown',
+                parse_mode: 'HTML',
                 reply_markup: { inline_keyboard: [] }
             });
         } catch (err) {
