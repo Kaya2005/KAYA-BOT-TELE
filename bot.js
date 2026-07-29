@@ -75,11 +75,11 @@ const getMenu = (userName, isAdmin) => {
     const time = now.toLocaleTimeString('en-GB', { timeZone: 'Africa/Lubumbashi', hour: '2-digit', minute:'2-digit' });
     const date = now.toLocaleDateString('en-GB', { timeZone: 'Africa/Lubumbashi', day: '2-digit', month: '2-digit', year: 'numeric' });
     
-    let menu = `▰▰▰▰▰▰▰▰▰▰
-➠ User   : *${userName}*
-➠ Prefix : *[ / ]*
-➠ Time   : *${time}*
-➠ Date   : *${date}*
+    let menu = `<blockquote>▰▰▰▰▰▰▰▰▰▰
+➠ User   : <b>${userName}</b>
+➠ Prefix : <b>[ / ]</b>
+➠ Time   : <b>${time}</b>
+➠ Date   : <b>${date}</b>
 ______________________
 
 > ╢ WHATSAPP CONNECTION ♰
@@ -97,6 +97,7 @@ ______________________
     if (isAdmin) {
         menu += `\n\n> ╢ OWNER PANEL ♰\n╭▰▰▰▰▰▰▰◈\n┆❏ /listpair\n┆❏ /delpair\n╰▰▰▰▰▰▰▰◈`;
     }
+    menu += `</blockquote>`;
     return menu;
 };
 
@@ -114,7 +115,8 @@ bot.start(async (ctx) => {
     // Si c'est en privé, on affiche la photo et le menu complet
     if (ctx.chat.type === 'private') {
         await ctx.replyWithPhoto('https://files.catbox.moe/1ddhgm.jpg', {
-            caption: '▉ 𝐊𝐀𝐘𝐀 𝐁𝐎𝐓 ▉\n\nWelcome! Choose an option below to connect your WhatsApp or add the bot to your group.',
+            caption: '<blockquote>▉ 𝐊𝐀𝐘𝐀 𝐁𝐎𝐓 ▉\n\nWelcome! Choose an option below to connect your WhatsApp or add the bot to your group.</blockquote>',
+            parse_mode: 'HTML',
             reply_markup: { 
                 inline_keyboard: [
                     [{ text: '🚀 Start Menu (WhatsApp)', callback_data: 'start_bot' }],
@@ -126,28 +128,28 @@ bot.start(async (ctx) => {
         // Si c'est dans un groupe, on affiche l'image avec le menu complet en légende
         await ctx.replyWithPhoto('https://files.catbox.moe/1ddhgm.jpg', {
             caption: getMenu(ctx.from.first_name, isOwner(ctx)),
-            parse_mode: 'Markdown'
+            parse_mode: 'HTML'
         });
     }
 });
 
 
 bot.action('start_bot', async (ctx) => {
-    await ctx.editMessageCaption(getMenu(ctx.from.first_name, isOwner(ctx)), { parse_mode: 'Markdown' }).catch(async () => {
-        await ctx.reply(getMenu(ctx.from.first_name, isOwner(ctx)), { parse_mode: 'Markdown' });
+    await ctx.editMessageCaption(getMenu(ctx.from.first_name, isOwner(ctx)), { parse_mode: 'HTML' }).catch(async () => {
+        await ctx.reply(getMenu(ctx.from.first_name, isOwner(ctx)), { parse_mode: 'HTML' });
     });
 });
 
 bot.action('info_group', async (ctx) => {
-    const text = `🤖 *TELEGRAM GROUP SETUP*\n\n` +
+    const text = `<blockquote>🤖 <b>TELEGRAM GROUP SETUP</b>\n\n` +
                  `To use moderation commands (Anti-link, Welcome) in your group:\n\n` +
                  `1️⃣ Click the button below to add the bot.\n` +
-                 `2️⃣ Promote the bot as **Admin** with delete message rights.\n` +
-                 `3️⃣ Use \`/groupmenu\` inside the group to see all options!`;
+                 `2️⃣ Promote the bot as <b>Admin</b> with delete message rights.\n` +
+                 `3️⃣ Use <code>/groupmenu</code> inside the group to see all options!</blockquote>`;
 
     const botUsername = ctx.botInfo?.username || 'KayaMdBot';
     await ctx.reply(text, {
-        parse_mode: 'Markdown',
+        parse_mode: 'HTML',
         reply_markup: {
             inline_keyboard: [
                 [{ text: '➕ Add to my Group', url: `https://t.me/${botUsername}?startgroup=true` }]
@@ -158,16 +160,16 @@ bot.action('info_group', async (ctx) => {
 
 // /group fonctionne partout
 bot.command('group', async (ctx) => {
-    const text = `🤖 *TELEGRAM GROUP SETUP*\n\n` +
+    const text = `<blockquote>🤖 <b>TELEGRAM GROUP SETUP</b>\n\n` +
                  `To enable moderation and welcome features in your group:\n\n` +
                  `1. Add the bot to your group.\n` +
-                 `2. Make the bot an **Administrator**.\n` +
-                 `3. Send \`/groupmenu\` to view features.\n\n` +
-                 `Click below to add it directly:`;
+                 `2. Make the bot an <b>Administrator</b>.\n` +
+                 `3. Send <code>/groupmenu</code> to view features.\n\n` +
+                 `Click below to add it directly:</blockquote>`;
 
     const botUsername = ctx.botInfo?.username || 'KayaMdBot';
     await ctx.reply(text, {
-        parse_mode: 'Markdown',
+        parse_mode: 'HTML',
         reply_markup: {
             inline_keyboard: [
                 [{ text: '➕ Add to my Group', url: `https://t.me/${botUsername}?startgroup=true` }]
@@ -178,7 +180,7 @@ bot.command('group', async (ctx) => {
 
 // /ping fonctionne partout
 bot.command('ping', async (ctx) => {
-    ctx.reply('▉ 𝐊𝐀𝐘𝐀 𝐁𝐎𝐓 ▉\n\n✅ *Status:* Online', { parse_mode: 'Markdown' });
+    ctx.reply('<blockquote>▉ 𝐊𝐀𝐘𝐀 𝐁𝐎𝐓 ▉\n\n✅ <b>Status:</b> Online</blockquote>', { parse_mode: 'HTML' });
 });
 
 // /connect est STRICTEMENT réservé aux messages privés (DM)
@@ -187,7 +189,7 @@ bot.command('connect', async (ctx) => {
 
     const activeSessions = getActiveSessions();
     if (activeSessions.length >= 60) {
-        return ctx.reply('❌ *Error:* Server capacity reached (60/60). Please try again later.');
+        return ctx.reply('❌ <b>Error:</b> Server capacity reached (60/60). Please try again later.', { parse_mode: 'HTML' });
     }
 
     if (!(await checkChannels(ctx))) {
@@ -203,7 +205,7 @@ bot.command('connect', async (ctx) => {
     }
 
     const text = ctx.message.text.split(' ')[1];
-    if (!text) return ctx.reply('⚠️ Usage: `/connect 243xxxxxx`', { parse_mode: 'Markdown' });
+    if (!text) return ctx.reply('⚠️ Usage: <code>/connect 243xxxxxx</code>', { parse_mode: 'HTML' });
     
     const number = text.replace(/\D/g, '');
     if (number.length < 9) return ctx.reply('❌ Invalid number. Minimum 9 digits required.');
@@ -233,8 +235,8 @@ bot.command('connect', async (ctx) => {
     }
     
     if (cuObj) {
-        const pairingStyle = `▰▰▰▰▰▰▰▰▰▰\n> ╢ PAIRING CODE ♰\n╭▰▰▰▰▰▰▰◈\n┆🔑 Code: \`${cuObj.code}\`\n╰▰▰▰▰▰▰▰◈`;
-        ctx.reply(pairingStyle, { parse_mode: 'Markdown' });
+        const pairingStyle = `<blockquote>▰▰▰▰▰▰▰▰▰▰\n> ╢ PAIRING CODE ♰\n╭▰▰▰▰▰▰▰◈\n┆🔑 Code: <code>${cuObj.code}</code>\n╰▰▰▰▰▰▰▰◈</blockquote>`;
+        ctx.reply(pairingStyle, { parse_mode: 'HTML' });
     } else {
         ctx.reply('❌ Error: Pairing code could not be generated.');
     }
@@ -256,7 +258,7 @@ bot.command('listpair', async (ctx) => {
     const activeSessions = getActiveSessions();
     if (activeSessions.length === 0) return ctx.reply('No devices linked.');
 
-    let text = `> ╢ CONNECTED : ${activeSessions.length}/60 ♰\n`;
+    let text = `<blockquote>> ╢ CONNECTED : ${activeSessions.length}/60 ♰\n`;
     
     activeSessions.forEach((number, i) => {
         let userName = "Unknown";
@@ -276,10 +278,11 @@ bot.command('listpair', async (ctx) => {
             }
         } catch (e) {}
 
-        text += `┆❏ ${i + 1}. *${userName}* (${number}) [TeleID: ${teleId}]\n`;
+        text += `┆❏ ${i + 1}. <b>${userName}</b> (${number}) [TeleID: ${teleId}]\n`;
     });
     
-    ctx.reply(text, { parse_mode: 'Markdown' });
+    text += `</blockquote>`;
+    ctx.reply(text, { parse_mode: 'HTML' });
 });
 
 bot.command('delpair', async (ctx) => {
@@ -287,7 +290,7 @@ bot.command('delpair', async (ctx) => {
     if (!ensurePrivate(ctx)) return;
 
     const arg = ctx.message.text.split(' ')[1];
-    if (!arg) return ctx.reply('⚠️ Usage: /delpair [teleId or number]');
+    if (!arg) return ctx.reply('⚠️ Usage: <code>/delpair [teleId or number]</code>', { parse_mode: 'HTML' });
     
     let teleId = arg.replace(/\D/g, '');
     let foundNumber = null;
@@ -308,12 +311,12 @@ bot.command('delpair', async (ctx) => {
 
     if (foundNumber) {
         forceCleanupSession(foundNumber, teleId);
-        return ctx.reply(`✅ Session for ${foundNumber} disconnected successfully.`);
+        return ctx.reply(`✅ Session for <code>${foundNumber}</code> disconnected successfully.`, { parse_mode: 'HTML' });
     }
 
     if (fs.existsSync(path.join(pairingFolder, teleId))) {
         forceCleanupSession(teleId, "default");
-        return ctx.reply(`✅ Session ${teleId} disconnected successfully.`);
+        return ctx.reply(`✅ Session <code>${teleId}</code> disconnected successfully.`, { parse_mode: 'HTML' });
     }
 
     ctx.reply('❌ Session not found.');
