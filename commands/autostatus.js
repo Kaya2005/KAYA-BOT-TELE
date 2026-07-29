@@ -1,5 +1,8 @@
 import { getSetting, setSetting } from '../setting.js';
 
+// 🛡️ Suivi anti-ban isolé par utilisateur (clé = ownerId)
+const userRateLimits = new Map();
+
 const KEY_VIEW = 'autostatus_view';
 const KEY_LIKE = 'autostatus_like';
 const KEY_EMOJI = 'autostatus_emoji';
@@ -87,37 +90,63 @@ export default {
         }
     },
 
-    // Détection automatique pour les statuts (status@broadcast)
     async detect(kaya, mek, from) {
         try {
-            // DEBUG : Afficher tous les messages reçus pour voir si status@broadcast arrive bien
-            if (from === 'status@broadcast') {
-                console.log(`[AUTOSTATUS DEBUG] 📱 Statut détecté venant de :`, mek.key.participant || mek.sender);
-            }
-
             if (from !== 'status@broadcast' || mek.key.fromMe) return;
 
             const ownerId = kaya.user.id.split(':')[0];
-            const state = readState(ownerId);
-            
-            console.log(`[AUTOSTATUS DEBUG] État actuel -> View: ${state.autoView}, Like: ${state.autoLike}`);
+            const participant = mek.key.participant || mek.participant || '';
 
+            const state = readState(ownerId);
             if (!state.autoView && !state.autoLike) return;
 
+            // 🛡️ Gestion de l'anti-ban isolé par utilisateur
+            const now = Date.now();
+            if (!userRateLimits.has(ownerId)) {
+                userRateLimits.set(ownerId, { lastAction: 0, count: 0 });
+            }
+            const userLimit = userRateLimits.get(ownerId);
+
+            if (now - userLimit.lastAction > 60000) {
+                userLimit.count = 0;
+                userLimit.lastAction = now;
+            }
+
+            if (userLimit.count > 15) {
+                console.log(`[BAN PROTECTION] Limite atteinte pour l'utilisateur ${ownerId}. Envoi bloqué temporairement.`);
+                return;
+            }
+            userLimit.count++;
+
+            // Clé formelle exigée par Baileys pour interagir avec les statuts
+            const statusKey = {
+                remoteJid: 'status@broadcast',
+                id: mek.key.id,
+                participant: participant,
+                fromMe: false
+            };
+
             if (state.autoView) {
-                await kaya.readMessages([mek.key]);
-                console.log(`[AUTOSTATUS] ✅ Statut marqué comme lu avec succès.`);
+                try {
+                    await kaya.readMessages([statusKey]);
+                    console.log(`[AUTOSTATUS] ✅ Statut de ${participant} marqué comme lu.`);
+                } catch (readErr) {
+                    console.error(`[AUTOSTATUS] ❌ Échec lecture statut :`, readErr.message);
+                }
             }
 
             if (state.autoLike) {
-                // Sur certaines versions de Baileys, le statut nécessite le bon participant dans la clé pour la réaction
-                await kaya.sendMessage(from, {
-                    react: { text: state.likeEmoji, key: mek.key }
-                });
-                console.log(`[AUTOSTATUS] ✅ Réaction ${state.likeEmoji} envoyée sur le statut.`);
+                try {
+                    await kaya.sendMessage('status@broadcast', {
+                        react: { text: state.likeEmoji, key: statusKey }
+                    });
+                    console.log(`[AUTOSTATUS] ✅ Réaction ${state.likeEmoji} envoyée sur le statut de ${participant}.`);
+                } catch (likeErr) {
+                    console.error(`[AUTOSTATUS] ❌ Échec réaction ${state.likeEmoji} :`, likeErr.message);
+                }
             }
         } catch (e) {
-            console.error('❌ Erreur détaillée dans autostatus detect:', e);
+            console.error('❌ Erreur générale dans autostatus detect:', e);
         }
     }
 };
