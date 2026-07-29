@@ -202,9 +202,6 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
       
     await sleep(2000);   
 
-    // 💡 Détection fiable : si l'appareil n'est pas encore enregistré dans l'état Baileys
-    const isBrandNewDevice = !state.creds.registered;
-
     const kaya = makeWASocket({  
         logger: pino({ level: "silent" }), 
         printQRInTerminal: false,  
@@ -301,8 +298,10 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
                 tracker.isConnected = true;  
                 await sleep(4000);  // Délai de stabilisation du WebSocket
 
-                // Envoi du message uniquement lors de la toute première inscription
-                if (isBrandNewDevice) {
+                // 💡 Vérification infaillible via un fichier témoin (welcomed.json) dans le dossier de session
+                const welcomedFile = path.join(sessionPath, 'welcomed.json');
+                
+                if (!fs.existsSync(welcomedFile)) {
                     const statusFile = path.join(process.cwd(), 'utils', 'update_status.json');
                     let updateSent = false;
 
@@ -327,6 +326,11 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
                             console.error(`${logPrefix} ❌ Échec de l'envoi du message de connexion :`, e.message);
                         }
                     }
+
+                    // Marquer la session comme accueillie pour éviter les spams futurs
+                    try {
+                        fs.writeFileSync(welcomedFile, JSON.stringify({ welcomedAt: new Date().toISOString() }, null, 2));
+                    } catch (e) {}
                 }
             }  
         }  
