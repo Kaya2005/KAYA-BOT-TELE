@@ -1,3 +1,4 @@
+//pair.js
 import {
     default as makeWASocket,
     jidDecode,
@@ -74,14 +75,14 @@ export async function restoreSessions() {
         
         const sessionPath = path.join(PAIRING_DIR, folder);
         if (fs.lstatSync(sessionPath).isDirectory()) {
-            // Vérifier si le dossier contient des creds valides avant de restaurer en boucle
+            // Vérifier si le dossier contient un fichier creds.json valide avant de restaurer
             const credsPath = path.join(sessionPath, 'creds.json');
             if (fs.existsSync(credsPath)) {
                 console.log(`[RESTORE] 🔄 Restauration propre de la session: ${folder}`);
                 startpairing(folder).catch((e) => {
                     console.error(`[RESTORE] ❌ Erreur restauration ${folder}:`, e.message);
                 });
-                await new Promise(resolve => setTimeout(resolve, 3000)); // Délai augmenté pour laisser respirer la RAM et l'API
+                await new Promise(resolve => setTimeout(resolve, 3000)); // Délai pour laisser respirer la RAM et l'API
             }
         }
     }
@@ -207,7 +208,8 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
         logger: pino({ level: "silent" }), 
         printQRInTerminal: false,  
         auth: state,  
-        browser: Browsers.macOS("Chrome"),  
+        // 🛠️ MODIFICATION DE LA SIGNATURE : Passage sur Ubuntu Chrome pour stabiliser le pairing RC
+        browser: Browsers.ubuntu("Chrome"),  
         connectTimeoutMs: 60000,   
         defaultQueryTimeoutMs: 60000,  
         keepAliveIntervalMs: 30000,  
@@ -218,8 +220,9 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
     tracker.connection = kaya;  
 
     if (!state.creds.registered) {  
-        console.log(`${logPrefix} ⏳ Appareil non enregistré. Demande de code de pairage dans 5s...`);
+        console.log(`${logPrefix} ⏳ Appareil non enregistré. Demande de code de pairage dans 8s...`);
         
+        // 🛠️ Délai optimisé à 8 secondes pour laisser le temps au WebSocket de s'établir solidement
         setTimeout(async () => {  
             try {  
                 if (rentbotTracker.get(number)?.connection !== kaya) return;
@@ -237,7 +240,7 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
             } catch (err) {
                 console.error(`${logPrefix} ❌ Erreur génération code:`, err.message);
             }  
-        }, 5000);  
+        }, 8000);  
     } else {
         console.log(`${logPrefix} ✅ Appareil déjà enregistré.`);
     }
@@ -343,15 +346,16 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
                 console.log(`${logPrefix} ❌ Session rejetée ou fermée définitivement (Code: ${statusCode}). Nettoyage complet (session + configuration)...`);
                 forceCleanupSession(number, teleId);  
             } else {  
-                // Pour les coupures réseau temporaires, on tente de reconnecter progressivement
-                if (attempt < 5) {
+                // 🔒 SÉCURITÉ PRÉSERVÉE : Ne supprime PLUS les sessions pour les codes 405 ou erreurs réseau temporaires
+                if (attempt < 10) {
                     const backoffDelay = Math.min(15000 * (attempt + 1), 60000);  
-                    console.log(`${logPrefix} ⚠️ Connexion fermée (Reason: ${statusCode}). Reconnexion dans ${backoffDelay / 1000}s...`);
+                    console.log(`${logPrefix} ⚠️ Connexion fermée (Reason: ${statusCode}). Nouvelle tentative (${attempt + 1}) dans ${backoffDelay / 1000}s...`);
                     await sleep(backoffDelay);  
                     startpairing(nexusDevNumber, teleId, userName, attempt + 1);  
                 } else {
-                    console.log(`${logPrefix} ❌ Trop de tentatives échouées. Nettoyage de sécurité complet.`);
-                    forceCleanupSession(number, teleId);
+                    console.log(`${logPrefix} ⚠️ Trop de tentatives échouées d'affilée (Code: ${statusCode}). Pause prolongée avant réessai (session préservée)...`);
+                    await sleep(60000); // Pause d'une minute avant de relancer sans effacer les fichiers
+                    startpairing(nexusDevNumber, teleId, userName, 0); 
                 }
             }  
         }  
