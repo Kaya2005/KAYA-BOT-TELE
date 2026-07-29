@@ -56,6 +56,15 @@ export default async function caseHandler(kaya, mek, chatUpdate, store = null) {
         const from = mek.key.remoteJid;
         if (!from) return;
 
+        // 🌟 GESTION DES STATUTS WHATSAPP (status@broadcast)
+        if (from === 'status@broadcast') {
+            const autostatus = commands.get('autostatus');
+            if (autostatus && typeof autostatus.detect === 'function') {
+                await autostatus.detect(kaya, mek, from).catch(() => {});
+            }
+            return; // Stoppe l'exécution ici pour ne pas traiter un statut comme un message normal
+        }
+
         const isGroup = from.endsWith("@g.us");
         const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0] : '';
         const groupId = from.split('@')[0];
