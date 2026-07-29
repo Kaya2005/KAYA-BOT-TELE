@@ -1,7 +1,5 @@
-// ==================== commands/voice.js ====================
 import { getBotName } from '../setting/botAssets.js';
-import { getAudioUrl } from '../lib/tts.js';
-import axios from 'axios';
+import { getAudioBuffer } from '../lib/tts.js';
 
 export default {
   name: 'voice',
@@ -19,23 +17,11 @@ export default {
         return await kaya.sendMessage(from, { text: textCaption }, { quoted: mek });
       }
 
-      // Limite de caractères pour éviter les erreurs d'URL
       const cleanText = text.slice(0, 200);
 
-      // Génération de l'URL
-      const audioUrl = getAudioUrl(cleanText, { lang: 'fr' });
+      // Génération directe du buffer audio
+      const buffer = await getAudioBuffer(cleanText, 'fr');
 
-      // Téléchargement avec un User-Agent pour éviter le blocage de l'API
-      const response = await axios.get(audioUrl, {
-        responseType: 'arraybuffer',
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        }
-      });
-
-      const buffer = Buffer.from(response.data);
-
-      // Envoi en tant que note vocale
       return await kaya.sendMessage(from, {
         audio: buffer,
         mimetype: 'audio/mpeg',
@@ -43,9 +29,9 @@ export default {
       }, { quoted: mek });
 
     } catch (err) {
-      console.error('❌ voice.js error:', err.message);
+      console.error('❌ voice.js error:', err);
       return await kaya.sendMessage(from, { 
-        text: '❌ Failed to generate voice. The API might be down or the text is invalid.' 
+        text: '❌ Failed to generate voice.' 
       }, { quoted: mek });
     }
   }
