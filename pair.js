@@ -16,6 +16,8 @@ import handler, { commands } from "./case.js";
 import { connectionMessage, updateMessage } from "./setting/botAssets.js";
 // ✅ IMPORTATION DE LA SÉCURITÉ EXTERNE
 import { sendLimited } from './utils/kayaUtils.js';
+// 🚀 IMPORTATION DU MODE ONLINE
+import { startAlwaysOnline } from './commands/online.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -305,6 +307,9 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
             console.log(`${logPrefix} 🟢 Connexion réussie`);
             isReady = true;  
             tracker.status = 'connected';
+
+            // 🚀 Active automatiquement le mode online si configuré
+            startAlwaysOnline(kaya);
 
             if (teleId && teleId !== "default") {
                 const pairingFile = path.join(PAIRING_DIR, `pairing_${teleId}.json`);
