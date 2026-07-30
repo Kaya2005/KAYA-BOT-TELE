@@ -1,5 +1,5 @@
 import fetch from 'node-fetch';
-import { getSetting, setSetting } from '../setting.js'; // Ajustez le chemin selon votre structure
+import { getSetting, setSetting } from '../setting.js';
 
 export default {
     name: 'ai',
@@ -8,19 +8,17 @@ export default {
 
     async execute(kaya, mek, from, args, prefix) {
         try {
-            // 1. Récupération propre du numéro du bot (on enlève le suffixe de périphérique type :1@s.whatsapp.net)
-            const botJid = kaya.user?.id || "";
-            const cleanBotJid = botJid.split(':')[0]; // Sépare par le ':' pour ignorer l'ID de l'appareil
-            const ownerId = cleanBotJid.replace(/[^0-9]/g, '');
+            // 1. Récupération propre de l'ID du bot (identique à allprefix.js)
+            const botId = kaya.user?.id ? kaya.user.id.split(':')[0].replace(/[^0-9]/g, '') : '';
 
-            // 2. Identification de l'expéditeur du message
-            const sender = mek.key.participant || mek.key.remoteJid;
-            const senderNumber = sender.replace(/[^0-9]/g, '');
-            
-            // Vérifie si l'expéditeur est bien le propriétaire de cette session
-            const isOwner = senderNumber === ownerId;
+            // 2. Identification correcte de l'expéditeur (gère à la fois les groupes et les messages privés)
+            const senderJid = mek.sender || mek.key.participant || mek.key.remoteJid || '';
+            const senderId = senderJid.split(':')[0].replace(/[^0-9]/g, '');
 
-            // 3. Gestion de l'enregistrement de la clé par le propriétaire de la session
+            // 3. Vérification exacte si l'expéditeur est le propriétaire de la session
+            const isOwner = senderId === botId;
+
+            // 4. Gestion de l'enregistrement de la clé par le propriétaire de la session
             if (args[0] === 'setkey') {
                 if (!isOwner) {
                     return await kaya.sendMessage(from, { 
@@ -35,13 +33,13 @@ export default {
                     }, { quoted: mek });
                 }
                 
-                await setSetting(ownerId, 'ai_api_key', customKey);
+                await setSetting(botId, 'ai_api_key', customKey);
                 return await kaya.sendMessage(from, { 
                     text: `*✅ Clé API enregistrée avec succès pour votre bot !*` 
                 }, { quoted: mek });
             }
 
-            // 4. Gestion de la suppression de la clé
+            // 5. Gestion de la suppression de la clé
             if (args[0] === 'delkey') {
                 if (!isOwner) {
                     return await kaya.sendMessage(from, { 
@@ -49,14 +47,14 @@ export default {
                     }, { quoted: mek });
                 }
 
-                await setSetting(ownerId, 'ai_api_key', null);
+                await setSetting(botId, 'ai_api_key', null);
                 return await kaya.sendMessage(from, { 
                     text: `*🗑️ Clé API personnalisée supprimée.*` 
                 }, { quoted: mek });
             }
 
-            // 5. Vérification si la clé est configurée pour cette session
-            const ownerApiKey = getSetting(ownerId, 'ai_api_key', null);
+            // 6. Vérification si la clé est configurée pour cette session
+            const ownerApiKey = getSetting(botId, 'ai_api_key', null);
 
             if (!ownerApiKey) {
                 if (isOwner) {
