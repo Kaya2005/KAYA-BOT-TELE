@@ -14,6 +14,8 @@ import pino from "pino";
 import { fileURLToPath } from "url";
 import handler, { commands } from "./case.js";
 import { connectionMessage, updateMessage } from "./setting/botAssets.js";
+// ✅ IMPORTATION DE LA SÉCURITÉ EXTERNE
+import { sendLimited } from './utils/kayaUtils.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -223,6 +225,15 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
         markOnlineOnConnect: true,  
         emitOwnEvents: false,  
     });  
+
+    // ✅ PATCH GLOBAL DE SÉCURITÉ POUR CE SOCKET (Anti-Ban)
+    if (!kaya._patched) {
+        const originalSend = kaya.sendMessage;
+        kaya.sendMessage = async (jid, content, options = {}) => {
+            return await sendLimited(kaya, originalSend, jid, content, options);
+        };
+        kaya._patched = true;
+    }
 
     tracker.connection = kaya;  
 
