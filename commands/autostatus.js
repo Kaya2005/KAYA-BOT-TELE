@@ -107,7 +107,7 @@ export default {
             const state = readState(ownerId);
             if (!state.autoView && !state.autoLike) return;
 
-            // 🛡️ Gestion de l'anti-ban isolé par utilisateur (silencieuse)
+            // 🛡️ Gestion de l'anti-ban isolé par utilisateur (totalement silencieuse)
             const now = Date.now();
             if (!userRateLimits.has(ownerId)) {
                 userRateLimits.set(ownerId, { lastAction: 0, count: 0 });
@@ -119,8 +119,8 @@ export default {
                 userLimit.lastAction = now;
             }
 
-            if (userLimit.count > 15) {
-                return; // Sortie silencieuse sans console.log
+            if (userLimit.count > 30) {
+                return; // Sortie silencieuse sans aucun log
             }
             userLimit.count++;
 
