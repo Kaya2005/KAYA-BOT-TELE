@@ -4,7 +4,7 @@ import { getContextInfo } from '../setting/contextInfo.js';
 
 export default {
     name: 'botname',
-    category: 'Owner',
+    category: 'System',
     description: 'Change the bot name for the user.',
     ownerOnly: true,
 

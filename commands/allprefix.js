@@ -6,7 +6,7 @@ import { getBotName, sendWithBotImage } from '../setting/botAssets.js';
 export default {
   name: 'allprefix',
   description: 'Enable or disable multi-prefix mode for the bot',
-  category: 'Owner',
+  category: 'System',
   ownerOnly: true,
 
   async execute(kaya, mek, from, args, prefix) {

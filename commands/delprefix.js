@@ -5,7 +5,7 @@ export default {
     name: 'delprefix',
     aliases: ['prefixmode', 'noprefix'],
     description: 'Enable or disable prefix requirement',
-    category: 'Owner',
+    category: 'System',
     ownerOnly: true,
 
     async execute(kaya, mek, from, args, prefix) {
