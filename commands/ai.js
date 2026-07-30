@@ -89,8 +89,8 @@ export default {
                 text: '⏳ *Réflexion en cours...* 🤖' 
             }, { quoted: mek });
 
-            // Utilisation de gemini-pro (modèle stable et universellement pris en charge sur v1beta)
-            const apiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${ownerApiKey}`, {
+            // Utilisation de l'API stable (v1) avec gemini-1.5-flash
+            const apiResponse = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${ownerApiKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
