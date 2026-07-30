@@ -8,9 +8,10 @@ export default {
 
     async execute(kaya, mek, from, args, prefix) {
         try {
-            // 1. Récupération dynamique du propriétaire de CETTE session spécifique
+            // 1. Récupération propre du numéro du bot (on enlève le suffixe de périphérique type :1@s.whatsapp.net)
             const botJid = kaya.user?.id || "";
-            const ownerId = botJid.replace(/[^0-9]/g, '');
+            const cleanBotJid = botJid.split(':')[0]; // Sépare par le ':' pour ignorer l'ID de l'appareil
+            const ownerId = cleanBotJid.replace(/[^0-9]/g, '');
 
             // 2. Identification de l'expéditeur du message
             const sender = mek.key.participant || mek.key.remoteJid;
