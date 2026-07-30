@@ -86,7 +86,6 @@ export default {
                 return await kaya.sendMessage(from, { text: `✅ Auto status like emoji set to ${emoji}` }, { quoted: mek });
             }
 
-            // Si ce n'est aucun des mots-clés ci-dessus, on considère que args[0] est directement l'emoji
             const emoji = String(args[0] || '').trim();
             if (emoji) {
                 setSetting(ownerId, KEY_EMOJI, emoji);
@@ -108,7 +107,7 @@ export default {
             const state = readState(ownerId);
             if (!state.autoView && !state.autoLike) return;
 
-            // 🛡️ Gestion de l'anti-ban isolé par utilisateur
+            // 🛡️ Gestion de l'anti-ban isolé par utilisateur (silencieuse)
             const now = Date.now();
             if (!userRateLimits.has(ownerId)) {
                 userRateLimits.set(ownerId, { lastAction: 0, count: 0 });
@@ -121,11 +120,10 @@ export default {
             }
 
             if (userLimit.count > 15) {
-                return;
+                return; // Sortie silencieuse sans console.log
             }
             userLimit.count++;
 
-            // Clé formelle exigée par Baileys pour interagir avec les statuts
             const statusKey = {
                 remoteJid: 'status@broadcast',
                 id: mek.key.id,
