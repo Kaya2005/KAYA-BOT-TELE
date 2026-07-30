@@ -1,27 +1,44 @@
 // utils/kayaUtils.js
+import { getSetting } from '../setting.js';
 
 const messageCounter = new Map();
 
-// Délai humain (5 à 8 secondes)
-// On met 5000 et 8000 par défaut ici pour plus de cohérence
 export const randomDelay = (min = 5000, max = 8000) => 
     new Promise((resolve) => setTimeout(resolve, Math.floor(Math.random() * (max - min + 1)) + min));
 
-// Gestionnaire de limite (100 messages/heure)
 export async function sendLimited(kaya, originalSendMessage, jid, content, options = {}) {
     const number = jid.split('@')[0];
     const now = Date.now();
     
-    // Récupérer le compteur ou créer un nouvel objet
+    // Récupérer le ownerId depuis l'instance de kaya
+    const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0] : '';
+    
+    // Récupérer le profil de vitesse choisi (par défaut '5-8')
+    const speedProfile = getSetting(ownerId, 'botSpeed', '5-8');
+    
+    let min = 5000;
+    let max = 8000;
+    
+    // Définition des plages horaires en millisecondes selon le profil
+    switch (speedProfile) {
+        case '1-2': min = 1000; max = 2000; break;
+        case '2-3': min = 2000; max = 3000; break;
+        case '3-4': min = 3000; max = 4000; break;
+        case '4-6': min = 4000; max = 6000; break;
+        case '5-8': min = 5000; max = 8000; break;
+        case '6-10': min = 6000; max = 10000; break;
+        case '8-10': min = 8000; max = 10000; break;
+        case '10-15': min = 10000; max = 15000; break;
+        default: min = 5000; max = 8000; break;
+    }
+
     const stats = messageCounter.get(number) || { count: 0, lastReset: now };
     
-    // Réinitialiser si plus d'une heure est passée
     if (now - stats.lastReset > 3600000) {
         stats.count = 0;
         stats.lastReset = now;
     }
     
-    // Vérifier la limite
     if (stats.count >= 100) {
         console.log(`[BAN PROTECTION] Limite atteinte pour ${number}. Envoi bloqué.`);
         return null;
@@ -30,10 +47,8 @@ export async function sendLimited(kaya, originalSendMessage, jid, content, optio
     stats.count++;
     messageCounter.set(number, stats);
     
-    // Appliquer un délai aléatoire de 5 à 8 secondes avant chaque envoi
-    // C'est ta sécurité majeure
-    await randomDelay(5000, 8000); 
+    // Appliquer le délai dynamique selon le choix
+    await randomDelay(min, max); 
     
-    // Envoyer le message avec la fonction originale de Baileys
     return await originalSendMessage.call(kaya, jid, content, options);
 }
