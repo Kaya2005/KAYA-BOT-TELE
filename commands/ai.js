@@ -8,17 +8,17 @@ export default {
 
     async execute(kaya, mek, from, args, prefix) {
         try {
-            // 1. Récupération propre de l'ID du bot (identique à allprefix.js)
+            // 1. Récupération propre de l'ID du bot
             const botId = kaya.user?.id ? kaya.user.id.split(':')[0].replace(/[^0-9]/g, '') : '';
 
-            // 2. Identification correcte de l'expéditeur (gère à la fois les groupes et les messages privés)
+            // 2. Identification correcte de l'expéditeur
             const senderJid = mek.sender || mek.key.participant || mek.key.remoteJid || '';
             const senderId = senderJid.split(':')[0].replace(/[^0-9]/g, '');
 
-            // 3. Vérification exacte si l'expéditeur est le propriétaire de la session
+            // 3. Vérification si l'expéditeur est le propriétaire
             const isOwner = senderId === botId;
 
-            // 4. Gestion de l'enregistrement de la clé par le propriétaire de la session
+            // 4. Gestion de l'enregistrement de la clé
             if (args[0] === 'setkey') {
                 if (!isOwner) {
                     return await kaya.sendMessage(from, { 
@@ -53,12 +53,11 @@ export default {
                 }, { quoted: mek });
             }
 
-            // 6. Vérification si la clé est configurée pour cette session
+            // 6. Vérification si la clé est configurée
             const ownerApiKey = getSetting(botId, 'ai_api_key', null);
 
             if (!ownerApiKey) {
                 if (isOwner) {
-                    // Guide clair pour le propriétaire de la session
                     const guideText = `*⚠️ Clé API IA non configurée*\n\n` +
                         `En tant que propriétaire de ce bot, vous devez configurer une clé API pour activer l'assistant.\n\n` +
                         `🌐 *Comment générer votre clé API gratuitement (Google Gemini) :*\n` +
@@ -71,7 +70,6 @@ export default {
 
                     return await kaya.sendMessage(from, { text: guideText }, { quoted: mek });
                 } else {
-                    // Message pour les utilisateurs normaux
                     return await kaya.sendMessage(from, { 
                         text: `*❌ Le propriétaire n'a pas encore configuré son API IA.*` 
                     }, { quoted: mek });
@@ -91,8 +89,8 @@ export default {
                 text: '⏳ *Réflexion en cours...* 🤖' 
             }, { quoted: mek });
 
-            // Appel à l'API Google Gemini avec la clé propre à cette session
-            const apiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${ownerApiKey}`, {
+            // Utilisation de gemini-pro (modèle stable et universellement pris en charge sur v1beta)
+            const apiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${ownerApiKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
