@@ -7,7 +7,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { Telegraf } from 'telegraf';
 import { forceCleanupSession } from './pair.js'; 
-import { getActiveToken } from './token.js';
+import { BOT_TOKEN } from './token.js';
 
 // Importation des commandes et modules Telegram
 import setupWelcome from './commandtele/welcome.js';
@@ -103,8 +103,8 @@ ______________________
     return menu;
 };
 
-// 🚀 Utilisation de getActiveToken() pour récupérer dynamiquement le token valide et non utilisé depuis token.js
-const bot = new Telegraf(getActiveToken());
+// 🚀 Utilisation directe du token unique depuis token.js
+const bot = new Telegraf(BOT_TOKEN);
 
 // ================= CHARGEMENT DES MODULES TELEGRAM =================
 setupWelcome(bot);
