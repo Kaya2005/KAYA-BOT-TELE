@@ -12,8 +12,8 @@ export default {
 
   async execute(kaya, mek, from, args, prefix) {
     try {
-      const sender = mek.sender; // Récupération du sender
-      const botName = getBotName(sender); // Utilisation du sender pour le nom
+      const sender = mek.sender;
+      const botName = getBotName(sender);
       const text = args.join(' ').trim();
 
       if (!text || !text.includes('+')) {
@@ -24,21 +24,41 @@ export default {
 Usage: \`${prefix}emojimix 😎+🥰\`
 Separate two emojis with a *+* sign.
 `.trim();
-        // Mise à jour : ajout de 'sender' comme 3ème argument
         return await sendWithBotImage(kaya, from, sender, { caption });
       }
 
-      const [emoji1, emoji2] = text.split('+').map(e => e.trim());
-      const url = `https://tenor.googleapis.com/v2/featured?key=AIzaSyAyimkuYQYF_FXVALexPuGQctUWRURdCYQ&contentfilter=high&media_filter=png_transparent&component=proactive&collection=emoji_kitchen_v5&q=${encodeURIComponent(emoji1)}_${encodeURIComponent(emoji2)}`;
+      let [emoji1, emoji2] = text.split('+').map(e => e.trim());
 
-      const response = await fetch(url);
-      const data = await response.json();
+      // Fonction utilisant emojikitchen.dev pour récupérer l'URL de l'image
+      const fetchEmojiKitchen = async (e1, e2) => {
+        try {
+          const url = `https://emojikitchen.dev/api/v1/combine?left=${encodeURIComponent(e1)}&right=${encodeURIComponent(e2)}`;
+          const response = await fetch(url);
+          if (response.ok) {
+            const data = await response.json();
+            if (data && data.url) {
+              return data.url;
+            }
+          }
+        } catch (e) {
+          // Ignore l'erreur réseau pour tester l'ordre inversé
+        }
+        return null;
+      };
 
-      if (!data.results || data.results.length === 0) {
+      // 1. Essai dans l'ordre initial
+      let imageUrl = await fetchEmojiKitchen(emoji1, emoji2);
+
+      // 2. Si non trouvé, essai dans l'ordre inverse
+      if (!imageUrl) {
+        imageUrl = await fetchEmojiKitchen(emoji2, emoji1);
+      }
+
+      // 3. Si toujours rien, la combinaison n'existe pas
+      if (!imageUrl) {
         return await kaya.sendMessage(from, { text: '❌ These emojis cannot be mixed!' }, { quoted: mek });
       }
 
-      const imageUrl = data.results[0].url;
       const tmpDir = path.join(process.cwd(), 'tmp');
       if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
 
@@ -61,7 +81,7 @@ Separate two emojis with a *+* sign.
       const stickerBuffer = fs.readFileSync(outputFile);
       await kaya.sendMessage(from, { sticker: stickerBuffer }, { quoted: mek });
 
-      // Cleanup
+      // Nettoyage des fichiers temporaires
       if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
       if (fs.existsSync(outputFile)) fs.unlinkSync(outputFile);
 
