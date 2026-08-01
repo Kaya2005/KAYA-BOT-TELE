@@ -4,6 +4,15 @@
 
 const antilinkStates = new Map();
 
+// Structure de configuration par chat:
+// { enabled: boolean, mode: 'delete' | 'restrict', duration: number (en secondes) }
+function getConfig(chatId) {
+    if (!antilinkStates.has(chatId)) {
+        antilinkStates.set(chatId, { enabled: false, mode: 'delete', duration: 300 }); // 300s = 5 minutes par défaut
+    }
+    return antilinkStates.get(chatId);
+}
+
 async function checkAdmin(ctx) {
     if (!ctx.chat || ctx.chat.type === 'private') return true;
     
@@ -38,18 +47,26 @@ async function handleAntiLinkConfig(ctx) {
     }
 
     const chatId = ctx.chat.id;
-    const currentState = antilinkStates.get(chatId) ?? false;
-    const statusText = currentState ? "🟢 Enabled (ON)" : "🔴 Disabled (OFF)";
+    const config = getConfig(chatId);
+    
+    const statusText = config.enabled ? "🟢 Enabled (ON)" : "🔴 Disabled (OFF)";
+    const modeText = config.mode === 'restrict' ? `🛡️ Restrict (${Math.round(config.duration / 60)} min)` : "🗑️ Delete only";
 
-    const text = `<blockquote>⚙️ <b>AntiLink Module Management</b>\n\nCurrent Status: ${statusText}\n\nChoose an option:</blockquote>`;
+    const text = `<blockquote>⚙️ <b>AntiLink Module Management</b>\n\nCurrent Status: ${statusText}\nMode: ${modeText}\n\nChoose an option:</blockquote>`;
+    
     const keyboard = {
         parse_mode: 'HTML',
         reply_markup: {
             inline_keyboard: [
                 [
-                    { text: '✅ AntiLink ON', callback_data: 'antilink_on' },
-                    { text: '❌ AntiLink OFF', callback_data: 'antilink_off' }
-                ]
+                    { text: config.enabled ? '❌ Turn OFF' : '✅ Turn ON', callback_data: config.enabled ? 'antilink_off' : 'antilink_on' },
+                    { text: config.mode === 'restrict' ? '🔄 Mode: Delete' : '🔄 Mode: Restrict', callback_data: config.mode === 'restrict' ? 'antilink_mode_delete' : 'antilink_mode_restrict' }
+                ],
+                ...(config.mode === 'restrict' ? [[
+                    { text: '⏱️ 5m', callback_data: 'antilink_dur_300' },
+                    { text: '⏱️ 1h', callback_data: 'antilink_dur_3600' },
+                    { text: '⏱️ 24h', callback_data: 'antilink_dur_86400' }
+                ]] : [])
             ]
         }
     };
@@ -83,20 +100,54 @@ export default function setupAntiLink(bot) {
             }
 
             const action = ctx.match[1];
-            const chatId = ctx.chat.id;
-            const newState = action === 'on';
+            const config = getConfig(ctx.chat.id);
+            config.enabled = (action === 'on');
 
-            antilinkStates.set(chatId, newState);
-
-            const statusText = newState ? "<blockquote>🟢 The AntiLink module has been <b>ENABLED</b>.</blockquote>" : "<blockquote>🔴 The AntiLink module has been <b>DISABLED</b>.</blockquote>";
-
-            await ctx.answerCbQuery(newState ? "AntiLink enabled!" : "AntiLink disabled!");
-            await ctx.editMessageText(statusText, {
-                parse_mode: 'HTML',
-                reply_markup: { inline_keyboard: [] }
-            });
+            await ctx.answerCbQuery(config.enabled ? "AntiLink enabled!" : "AntiLink disabled!");
+            await handleAntiLinkConfig(ctx);
         } catch (err) {
             console.error("[ANTILINK ACTION ERROR]:", err);
+            await ctx.answerCbQuery("An error occurred.", { show_alert: true });
+        }
+    });
+
+    // Handling Mode Change (delete / restrict)
+    bot.action(/^antilink_mode_(delete|restrict)$/, async (ctx) => {
+        try {
+            if (!(await checkAdmin(ctx))) {
+                return await ctx.answerCbQuery("⚠️ Action restricted to administrators!", { show_alert: true });
+            }
+
+            const newMode = ctx.match[1];
+            const config = getConfig(ctx.chat.id);
+            config.mode = newMode;
+
+            await ctx.answerCbQuery(`Mode set to ${newMode}!`);
+            await handleAntiLinkConfig(ctx);
+        } catch (err) {
+            console.error("[ANTILINK MODE ERROR]:", err);
+            await ctx.answerCbQuery("An error occurred.", { show_alert: true });
+        }
+    });
+
+    // Handling Duration Change for Restriction
+    bot.action(/^antilink_dur_(\d+)$/, async (ctx) => {
+        try {
+            if (!(await checkAdmin(ctx))) {
+                return await ctx.answerCbQuery("⚠️ Action restricted to administrators!", { show_alert: true });
+            }
+
+            const duration = parseInt(ctx.match[1], 10);
+            const config = getConfig(ctx.chat.id);
+            config.duration = duration;
+
+            const mins = Math.round(duration / 60);
+            const timeLabel = mins >= 60 ? `${mins / 60}h` : `${mins}m`;
+
+            await ctx.answerCbQuery(`Duration set to ${timeLabel}!`);
+            await handleAntiLinkConfig(ctx);
+        } catch (err) {
+            console.error("[ANTILINK DURATION ERROR]:", err);
             await ctx.answerCbQuery("An error occurred.", { show_alert: true });
         }
     });
@@ -109,8 +160,8 @@ export default function setupAntiLink(bot) {
             }
 
             const chatId = ctx.chat.id;
-            const isEnabled = antilinkStates.get(chatId) ?? false;
-            if (!isEnabled) {
+            const config = getConfig(chatId);
+            if (!config.enabled) {
                 return next();
             }
 
@@ -139,18 +190,46 @@ export default function setupAntiLink(bot) {
                     return next();
                 }
 
+                // Delete the message containing the link
                 await ctx.deleteMessage().catch(() => {});
                 
-                // Tag cliquable de l'utilisateur qui a posté le lien + réponse directe à son message
                 const userId = ctx.from?.id;
-                const firstName = ctx.from?.first_name || 'Admin';
+                const firstName = ctx.from?.first_name || 'Utilisateur';
                 const userMention = userId ? `<a href="tg://user?id=${userId}">${firstName}</a>` : firstName;
 
-                const warning = await ctx.reply(`<blockquote>⚠️ ${userMention}, links are not allowed here!</blockquote>`, { 
+                // Restrict the user if the mode is set to 'restrict'
+                if (config.mode === 'restrict' && userId) {
+                    try {
+                        const untilDate = Math.floor(Date.now() / 1000) + config.duration;
+                        await ctx.telegram.restrictChatMember(chatId, userId, {
+                            permissions: {
+                                can_send_messages: false,
+                                can_send_media_messages: false,
+                                can_send_other_messages: false,
+                                can_add_web_page_previews: false
+                            },
+                            until_date: untilDate
+                        });
+                    } catch (restrictErr) {
+                        console.error("[ANTILINK] Error restricting user:", restrictErr);
+                    }
+                }
+
+                // Warning message formatting
+                const actionDesc = config.mode === 'restrict' 
+                    ? `links are not allowed here! You have been restricted for ${Math.round(config.duration / 60)} minute(s).` 
+                    : `links are not allowed here!`;
+
+                // Send persistent warning message with inline channel button
+                await ctx.reply(`<blockquote>⚠️ ${userMention}, ${actionDesc}</blockquote>`, { 
                     parse_mode: 'HTML',
-                    reply_to_message_id: ctx.message.message_id 
+                    reply_to_message_id: ctx.message.message_id,
+                    reply_markup: {
+                        inline_keyboard: [
+                            [{ text: '𝙺𝙰𝚈𝙰 𝙱𝙾𝚃 | 𝙲𝙰𝙽𝙰𝙻', url: 'https://t.me/kayatech2' }]
+                        ]
+                    }
                 });
-                setTimeout(() => ctx.telegram.deleteMessage(ctx.chat.id, warning.message_id).catch(() => {}), 4000);
                 
                 return;
             }
