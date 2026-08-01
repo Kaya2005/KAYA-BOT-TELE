@@ -4,11 +4,10 @@
 
 const antilinkStates = new Map();
 
-// Structure de configuration par chat:
-// { enabled: boolean, mode: 'delete' | 'restrict', duration: number (en secondes) }
+// Structure de configuration par chat (Activé par défaut à true pour survivre aux redémarrages)
 function getConfig(chatId) {
     if (!antilinkStates.has(chatId)) {
-        antilinkStates.set(chatId, { enabled: false, mode: 'delete', duration: 300 }); // 300s = 5 minutes par défaut
+        antilinkStates.set(chatId, { enabled: true, mode: 'delete', duration: 300 }); // 300s = 5 minutes par défaut
     }
     return antilinkStates.get(chatId);
 }
@@ -220,10 +219,9 @@ export default function setupAntiLink(bot) {
                     ? `links are not allowed here! You have been restricted for ${Math.round(config.duration / 60)} minute(s).` 
                     : `links are not allowed here!`;
 
-                // Send persistent warning message with inline channel button
+                // Send persistent warning message with inline channel button (sans reply_to_message_id car le msg est supprimé)
                 await ctx.reply(`<blockquote>⚠️ ${userMention}, ${actionDesc}</blockquote>`, { 
                     parse_mode: 'HTML',
-                    reply_to_message_id: ctx.message.message_id,
                     reply_markup: {
                         inline_keyboard: [
                             [{ text: '𝙺𝙰𝚈𝙰 𝙱𝙾𝚃 | 𝙲𝙰𝙽𝙰𝙻', url: 'https://t.me/kayatech2' }]
