@@ -4,9 +4,9 @@ import { getBotName, sendWithBotImage } from '../setting/botAssets.js';
 import { getContextInfo } from '../setting/contextInfo.js';
 
 export default {
-  name: 'System',
+  name: 'prefix',
   description: 'Change or display the bot prefix',
-  category: 'Owner',
+  category: 'System',
   ownerOnly: true,
 
   async execute(kaya, mek, from, args, prefix) {
