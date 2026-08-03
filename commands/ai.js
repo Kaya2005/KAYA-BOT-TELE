@@ -3,7 +3,7 @@ import { getSetting, setSetting } from '../setting.js';
 
 export default {
     name: 'ai',
-    description: '🤖 Pose une question à l\'intelligence artificielle (Gemini)',
+    description: '🤖 Pose une question à l\'intelligence artificielle (Groq)',
     category: 'IA',
 
     async execute(kaya, mek, from, args, prefix) {
@@ -29,13 +29,13 @@ export default {
                 const customKey = args[1];
                 if (!customKey) {
                     return await kaya.sendMessage(from, { 
-                        text: `*❌ Veuillez fournir votre clé API Google Gemini.*\n\nExemple : \`${prefix}ai setkey AIzaSy...\`` 
+                        text: `*❌ Veuillez fournir votre clé API Groq.*\n\nExemple : \`${prefix}ai setkey gsk_...\`` 
                     }, { quoted: mek });
                 }
                 
                 await setSetting(botId, 'ai_api_key', customKey);
                 return await kaya.sendMessage(from, { 
-                    text: `*✅ Clé API Google Gemini enregistrée avec succès pour votre bot !*` 
+                    text: `*✅ Clé API Groq enregistrée avec succès pour votre bot !*` 
                 }, { quoted: mek });
             }
 
@@ -58,20 +58,20 @@ export default {
 
             if (!ownerApiKey) {
                 if (isOwner) {
-                    const guideText = `*⚠️ Clé API Google Gemini non configurée*\n\n` +
-                        `En tant que propriétaire de ce bot, vous devez configurer une clé API Google Gemini pour activer l'assistant.\n\n` +
+                    const guideText = `*⚠️ Clé API Groq non configurée*\n\n` +
+                        `En tant que propriétaire, vous devez configurer une clé API Groq gratuite pour activer l'assistant.\n\n` +
                         `🌐 *Comment générer votre clé API gratuitement :*\n` +
-                        `1. Rendez-vous sur [Google AI Studio](https://aistudio.google.com/)\n` +
-                        `2. Connectez-vous avec votre compte Google.\n` +
-                        `3. Cliquez sur **"Get API key"** (Créer une clé API).\n` +
-                        `4. Copiez la clé générée.\n\n` +
+                        `1. Rendez-vous sur [Groq Console](https://console.groq.com/)\n` +
+                        `2. Connectez-vous (compte Google ou GitHub).\n` +
+                        `3. Allez dans **API Keys** et créez une nouvelle clé (\`gsk_...\`).\n` +
+                        `4. Copiez la clé.\n\n` +
                         `⚙️ *Enregistrez-la ensuite dans le bot avec la commande :*\n` +
                         `\`${prefix}ai setkey <votre_clé>\``;
 
                     return await kaya.sendMessage(from, { text: guideText }, { quoted: mek });
                 } else {
                     return await kaya.sendMessage(from, { 
-                        text: `*❌ Le propriétaire n'a pas encore configuré son API Google Gemini.*` 
+                        text: `*❌ Le propriétaire n'a pas encore configuré son API IA.*` 
                     }, { quoted: mek });
                 }
             }
@@ -89,25 +89,31 @@ export default {
                 text: '⏳ *Réflexion en cours...* 🤖' 
             }, { quoted: mek });
 
-            // Utilisation du modèle gemini-1.5-flash sur l'endpoint v1beta
-            const apiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${ownerApiKey}`, {
+            // Utilisation de l'API Groq (Modèle Llama 3.3)
+            const apiResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${ownerApiKey}`
+                },
                 body: JSON.stringify({
-                    contents: [{ parts: [{ text: text }] }]
+                    model: 'llama-3.3-70b-versatile',
+                    messages: [
+                        { role: 'user', content: text }
+                    ]
                 })
             });
 
             const json = await apiResponse.json();
             
             let answer = "";
-            if (json.candidates && json.candidates[0]?.content?.parts?.[0]?.text) {
-                answer = json.candidates[0].content.parts[0].text;
+            if (json.choices && json.choices[0]?.message?.content) {
+                answer = json.choices[0].message.content;
             } else {
                 answer = json.error?.message || "Désolé, une erreur est survenue lors de la communication avec l'IA.";
             }
 
-            const message = `🤖 *KAYA AI ASSISTANT (Gemini)*\n\n${answer}`;
+            const message = `🤖 *KAYA AI ASSISTANT (Groq)*\n\n${answer}`;
             await kaya.sendMessage(from, { text: message }, { quoted: mek });
 
         } catch (err) {
