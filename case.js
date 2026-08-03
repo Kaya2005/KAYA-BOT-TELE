@@ -74,7 +74,7 @@ export default async function caseHandler(kaya, mek, chatUpdate, store = null) {
         const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0] : '';
         const groupId = from.split('@')[0];
 
-        // 🔹 Extraction robuste et sécurisée du texte (Nécessaire pour les commandes et les filtres)
+        // 🔹 Extraction robuste et sécurisée du texte
         const type = getContentType(mek.message);
         let body = "";
         if (type === "conversation") {
@@ -144,12 +144,27 @@ export default async function caseHandler(kaya, mek, chatUpdate, store = null) {
             }
         }
 
-        // 🛑 OPTIMISATION MAJEURE : Si ce n'est PAS une commande ET qu'aucun utilitaire n'est actif, on ignore complètement !
-        if (!isCommand && !hasActiveUtility) {
+        // 🤖 VÉRIFICATION DU CHATBOT (Ignore les images, stickers, etc.)
+        const chatbotMode = getSetting(ownerId, 'chatbot_mode', 'off');
+        const isChatbotActive = chatbotMode !== 'off';
+        
+        if (!isCommand && isChatbotActive) {
+            const isMedia = ["imageMessage", "videoMessage", "stickerMessage", "documentMessage", "audioMessage"].includes(type);
+            // Si ce n'est pas un média et qu'il y a du texte brut (ou message simple)
+            if (!isMedia && body) {
+                const chatbotModule = commands.get("chatbot");
+                if (chatbotModule && typeof chatbotModule.listen === "function") {
+                    await chatbotModule.listen(kaya, mek, from, body, ownerId);
+                }
+            }
+        }
+
+        // 🛑 OPTIMISATION MAJEURE : Si ce n'est PAS une commande, qu'aucun utilitaire et que le chatbot n'est pas actif, on ignore !
+        if (!isCommand && !hasActiveUtility && !isChatbotActive) {
             return; 
         }
 
-        // 🔹 1. Simulation de présence HUMAINE (Fonctionne comme avant pour les commandes et utilitaires actifs)
+        // 🔹 1. Simulation de présence HUMAINE
         const lastPresence = presenceTracker.get(from) || 0;
         if (Math.random() > 0.4 && (Date.now() - lastPresence > 30000)) {
             if (getSetting(ownerId, 'typing', false)) {
@@ -171,7 +186,7 @@ export default async function caseHandler(kaya, mek, chatUpdate, store = null) {
         // ✅ 3. EXÉCUTION DES UTILITAIRES (Seulement s'ils sont activés)
         await executeUtilities(kaya, mek, from, body, ownerId, groupId);
 
-        // Si c'était juste un message pour les utilitaires et pas une commande, on s'arrête ici
+        // Si c'était juste un message pour les utilitaires ou le chatbot et pas une commande, on s'arrête ici
         if (!isCommand) return;
 
         // 🔹 4. Mode privé global (Bloque uniquement les commandes pour les non-propriétaires)
