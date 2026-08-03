@@ -89,8 +89,8 @@ export default {
                 text: '⏳ *Réflexion en cours...* 🤖' 
             }, { quoted: mek });
 
-            // Utilisation du modèle gemini-2.0-flash sur l'endpoint v1
-            const apiResponse = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${ownerApiKey}`, {
+            // Utilisation du modèle gemini-1.5-flash (plus stable sur les quotas gratuits)
+            const apiResponse = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${ownerApiKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
