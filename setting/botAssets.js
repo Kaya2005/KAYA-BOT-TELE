@@ -7,92 +7,82 @@ import { getSetting, setSetting } from '../setting.js';
 export const BOT_VERSION = '1';
 export const BOT_SLOGAN = '  `『 BY 𝐊𝐀𝐘𝐀²⁰²⁶』`';
 
-const botImageFile = path.join(process.cwd(), 'setting', 'botImage.json');
-const localFallbackImage = path.join(process.cwd(), 'setting', 'bot.jpg');
+const globalBotImageFile = path.join(process.cwd(), 'setting', 'botImage.json');
+const defaultGlobalImage = 'https://files.catbox.moe/cctme5.jpg';
 
 // Nom par défaut si rien n'est configuré
 export const DEFAULT_BOT_NAME = 'ƘƛƳƛ ƁƠƬ';
-
-// Image par défaut (Globale)
-let globalBotImagePath = 'https://files.catbox.moe/cctme5.jpg';
 
 const settingDir = path.join(process.cwd(), 'setting');
 if (!fs.existsSync(settingDir)) {
     fs.mkdirSync(settingDir, { recursive: true });
 }
 
-// Chargement de l'image globale depuis le fichier
-if (fs.existsSync(botImageFile)) {
-  try {
-    const data = JSON.parse(fs.readFileSync(botImageFile, 'utf-8'));
-    if (data?.url) globalBotImagePath = data.url;
-  } catch (e) {
-    console.error('❌ Failed to load global bot image:', e);
-  }
+/**
+ * Retourne le chemin de l'image locale propre à l'utilisateur (ownerId)
+ */
+export function getLocalBotImagePath(ownerId) {
+    const cleanOwnerId = (ownerId || '').replace(/[^0-9]/g, '');
+    if (!cleanOwnerId) return path.join(process.cwd(), 'setting', 'bot.jpg');
+    
+    const userDir = path.join('/home/container/Kaya-MD', 'userall', cleanOwnerId);
+    if (!fs.existsSync(userDir)) {
+        fs.mkdirSync(userDir, { recursive: true });
+    }
+    return path.join(userDir, 'bot.jpg');
 }
-
-// ===================== HELPERS =====================
 
 /**
- * Retourne le nom configuré pour l'utilisateur (jid)
+ * Retourne le nom configuré pour l'utilisateur
  */
-export function getBotName(jid) {
-  const senderId = jid.split('@')[0];
-  return getSetting(senderId, 'botName', DEFAULT_BOT_NAME);
-}
-
-// Définit l'image globale par défaut
-export function setBotImage(value) {
-  globalBotImagePath = value;
-  fs.writeFileSync(botImageFile, JSON.stringify({ url: value }, null, 2));
-}
-
-// Définit l'image pour un utilisateur spécifique
-export function setBotImageForUser(senderId, url) {
-  setSetting(senderId, 'userBotImage', url);
+export function getBotName(ownerId) {
+  const cleanId = ownerId.replace(/[^0-9]/g, '');
+  return getSetting(cleanId, 'botName', DEFAULT_BOT_NAME);
 }
 
 // ===================== PAYLOAD =====================
 
-export function getBotImagePayload(senderJid) {
-  const senderId = senderJid.split('@')[0];
+export function getBotImagePayload(ownerId) {
+  const cleanOwnerId = (ownerId || '').replace(/[^0-9]/g, '');
+  const localImage = getLocalBotImagePath(cleanOwnerId);
   
-  // 1. Priorité à l'image personnalisée de l'utilisateur
-  const userImage = getSetting(senderId, 'userBotImage', null);
-  const targetImage = userImage || globalBotImagePath;
+  // 1. 🔄 PRIORITÉ À L'IMAGE LOCALE DE L'UTILISATEUR
+  if (fs.existsSync(localImage)) {
+    return { type: 'buffer', value: fs.readFileSync(localImage) };
+  }
 
-  if (targetImage && targetImage.startsWith('http')) {
-    return { type: 'url', value: targetImage };
+  // 2. Image personnalisée par URL dans ses settings
+  const userImageUrl = getSetting(cleanOwnerId, 'userBotImage', null);
+  if (userImageUrl && userImageUrl.startsWith('http')) {
+    return { type: 'url', value: userImageUrl };
   }
   
-  // 2. Fallback local si l'URL est invalide ou manquante
-  if (fs.existsSync(localFallbackImage)) {
-    return { type: 'buffer', value: fs.readFileSync(localFallbackImage) };
-  }
-  return null;
+  // 3. Fallback global par défaut
+  return { type: 'url', value: defaultGlobalImage };
 }
 
 // ===================== UNIVERSAL IMAGE SENDER =====================
 
-export async function sendWithBotImage(kaya, chat, senderJid, content = {}, options = {}) {
-  const payload = getBotImagePayload(senderJid);
+export async function sendWithBotImage(kaya, chat, ownerId, content = {}, options = {}) {
+  const cleanOwnerId = (ownerId || '').replace(/[^0-9]/g, '');
+  const payload = getBotImagePayload(cleanOwnerId);
+
+  if (payload?.type === 'buffer') {
+    try {
+      await kaya.sendMessage(chat, { image: payload.value, ...content }, options);
+      return;
+    } catch (err) {
+      console.warn('⚠️ Local user image buffer failed, trying URL fallback');
+    }
+  }
 
   if (payload?.type === 'url') {
     try {
       await kaya.sendMessage(chat, { image: { url: payload.value }, ...content }, options);
       return; 
     } catch (err) {
-      console.warn('⚠️ Image URL failed, trying local fallback');
+      console.warn('⚠️ Image URL failed, sending text only');
     }
-  }
-
-  try {
-    if (!fs.existsSync(localFallbackImage)) throw new Error('Local fallback missing');
-    const buffer = fs.readFileSync(localFallbackImage);
-    await kaya.sendMessage(chat, { image: buffer, ...content }, options);
-    return;
-  } catch (err) {
-    console.warn('⚠️ Local image failed, sending text only');
   }
 
   if (content.caption) {
