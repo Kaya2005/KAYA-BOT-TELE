@@ -3,7 +3,7 @@ import { getSetting, setSetting } from '../setting.js';
 
 export default {
     name: 'ai',
-    description: '🤖 Pose une question à l\'intelligence artificielle (GPT)',
+    description: '🤖 Pose une question à l\'intelligence artificielle (Gemini)',
     category: 'IA',
 
     async execute(kaya, mek, from, args, prefix) {
@@ -29,13 +29,13 @@ export default {
                 const customKey = args[1];
                 if (!customKey) {
                     return await kaya.sendMessage(from, { 
-                        text: `*❌ Veuillez fournir votre clé API OpenAI.*\n\nExemple : \`${prefix}ai setkey sk-proj-...\`` 
+                        text: `*❌ Veuillez fournir votre clé API Google Gemini.*\n\nExemple : \`${prefix}ai setkey AIzaSy...\`` 
                     }, { quoted: mek });
                 }
                 
                 await setSetting(botId, 'ai_api_key', customKey);
                 return await kaya.sendMessage(from, { 
-                    text: `*✅ Clé API OpenAI enregistrée avec succès pour votre bot !*` 
+                    text: `*✅ Clé API Google Gemini enregistrée avec succès pour votre bot !*` 
                 }, { quoted: mek });
             }
 
@@ -58,20 +58,20 @@ export default {
 
             if (!ownerApiKey) {
                 if (isOwner) {
-                    const guideText = `*⚠️ Clé API OpenAI non configurée*\n\n` +
-                        `En tant que propriétaire de ce bot, vous devez configurer une clé API OpenAI pour activer l'assistant.\n\n` +
-                        `🌐 *Comment générer votre clé API OpenAI :*\n` +
-                        `1. Rendez-vous sur [OpenAI Platform](https://platform.openai.com/)\n` +
-                        `2. Connectez-vous avec votre compte.\n` +
-                        `3. Allez dans la section **API Keys** et créez une nouvelle clé.\n` +
-                        `4. Copiez la clé générée (commençant par \`sk-\`).\n\n` +
+                    const guideText = `*⚠️ Clé API Google Gemini non configurée*\n\n` +
+                        `En tant que propriétaire de ce bot, vous devez configurer une clé API Google Gemini pour activer l'assistant.\n\n` +
+                        `🌐 *Comment générer votre clé API gratuitement :*\n` +
+                        `1. Rendez-vous sur [Google AI Studio](https://aistudio.google.com/)\n` +
+                        `2. Connectez-vous avec votre compte Google.\n` +
+                        `3. Cliquez sur **"Get API key"** (Créer une clé API).\n` +
+                        `4. Copiez la clé générée.\n\n` +
                         `⚙️ *Enregistrez-la ensuite dans le bot avec la commande :*\n` +
                         `\`${prefix}ai setkey <votre_clé>\``;
 
                     return await kaya.sendMessage(from, { text: guideText }, { quoted: mek });
                 } else {
                     return await kaya.sendMessage(from, { 
-                        text: `*❌ Le propriétaire n'a pas encore configuré son API OpenAI.*` 
+                        text: `*❌ Le propriétaire n'a pas encore configuré son API Google Gemini.*` 
                     }, { quoted: mek });
                 }
             }
@@ -89,31 +89,25 @@ export default {
                 text: '⏳ *Réflexion en cours...* 🤖' 
             }, { quoted: mek });
 
-            // Utilisation de l'API OpenAI (Chat Completions)
-            const apiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+            // Utilisation du modèle gemini-2.0-flash sur l'endpoint v1
+            const apiResponse = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${ownerApiKey}`, {
                 method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${ownerApiKey}`
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    model: 'gpt-4o-mini', // Modèle utilisé (vous pouvez aussi mettre 'gpt-3.5-turbo' ou 'gpt-4o')
-                    messages: [
-                        { role: 'user', content: text }
-                    ]
+                    contents: [{ parts: [{ text: text }] }]
                 })
             });
 
             const json = await apiResponse.json();
             
             let answer = "";
-            if (json.choices && json.choices[0]?.message?.content) {
-                answer = json.choices[0].message.content;
+            if (json.candidates && json.candidates[0]?.content?.parts?.[0]?.text) {
+                answer = json.candidates[0].content.parts[0].text;
             } else {
                 answer = json.error?.message || "Désolé, une erreur est survenue lors de la communication avec l'IA.";
             }
 
-            const message = `🤖 *KAYA AI ASSISTANT (GPT)*\n\n${answer}`;
+            const message = `🤖 *KAYA AI ASSISTANT (Gemini)*\n\n${answer}`;
             await kaya.sendMessage(from, { text: message }, { quoted: mek });
 
         } catch (err) {
