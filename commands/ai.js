@@ -3,75 +3,75 @@ import { getSetting, setSetting } from '../setting.js';
 
 export default {
     name: 'ai',
-    description: '🤖 Pose une question à l\'intelligence artificielle (Groq)',
-    category: 'IA',
+    description: '🤖 Ask a question to the artificial intelligence (Groq)',
+    category: 'AI',
 
     async execute(kaya, mek, from, args, prefix) {
         try {
-            // 1. Récupération propre de l'ID du bot
+            // 1. Clean retrieval of the bot ID
             const botId = kaya.user?.id ? kaya.user.id.split(':')[0].replace(/[^0-9]/g, '') : '';
 
-            // 2. Identification correcte de l'expéditeur
+            // 2. Correct identification of the sender
             const senderJid = mek.sender || mek.key.participant || mek.key.remoteJid || '';
             const senderId = senderJid.split(':')[0].replace(/[^0-9]/g, '');
 
-            // 3. Vérification si l'expéditeur est le propriétaire
+            // 3. Check if the sender is the owner
             const isOwner = senderId === botId;
 
-            // 4. Gestion de l'enregistrement de la clé
+            // 4. Handle key registration
             if (args[0] === 'setkey') {
                 if (!isOwner) {
                     return await kaya.sendMessage(from, { 
-                        text: `*❌ Seul le propriétaire de ce bot peut configurer la clé API.*` 
+                        text: `*❌ Only the owner of this bot can configure the API key.*` 
                     }, { quoted: mek });
                 }
 
                 const customKey = args[1];
                 if (!customKey) {
                     return await kaya.sendMessage(from, { 
-                        text: `*❌ Veuillez fournir votre clé API Groq.*\n\nExemple : \`${prefix}ai setkey gsk_...\`` 
+                        text: `*❌ Please provide your Groq API key.*\n\nExample: \`${prefix}ai setkey gsk_...\`` 
                     }, { quoted: mek });
                 }
                 
                 await setSetting(botId, 'ai_api_key', customKey);
                 return await kaya.sendMessage(from, { 
-                    text: `*✅ Clé API Groq enregistrée avec succès pour votre bot !*` 
+                    text: `*✅ Groq API key successfully registered for your bot!*` 
                 }, { quoted: mek });
             }
 
-            // 5. Gestion de la suppression de la clé
+            // 5. Handle key deletion
             if (args[0] === 'delkey') {
                 if (!isOwner) {
                     return await kaya.sendMessage(from, { 
-                        text: `*❌ Seul le propriétaire de ce bot peut supprimer cette configuration.*` 
+                        text: `*❌ Only the owner of this bot can delete this configuration.*` 
                     }, { quoted: mek });
                 }
 
                 await setSetting(botId, 'ai_api_key', null);
                 return await kaya.sendMessage(from, { 
-                    text: `*🗑️ Clé API personnalisée supprimée.*` 
+                    text: `*🗑️ Custom API key deleted.*` 
                 }, { quoted: mek });
             }
 
-            // 6. Vérification si la clé est configurée
+            // 6. Check if the key is configured
             const ownerApiKey = getSetting(botId, 'ai_api_key', null);
 
             if (!ownerApiKey) {
                 if (isOwner) {
-                    const guideText = `*⚠️ Clé API Groq non configurée*\n\n` +
-                        `En tant que propriétaire, vous devez configurer une clé API Groq gratuite pour activer l'assistant.\n\n` +
-                        `🌐 *Comment générer votre clé API gratuitement :*\n` +
-                        `1. Rendez-vous sur [Groq Console](https://console.groq.com/)\n` +
-                        `2. Connectez-vous (compte Google ou GitHub).\n` +
-                        `3. Allez dans **API Keys** et créez une nouvelle clé (\`gsk_...\`).\n` +
-                        `4. Copiez la clé.\n\n` +
-                        `⚙️ *Enregistrez-la ensuite dans le bot avec la commande :*\n` +
-                        `\`${prefix}ai setkey <votre_clé>\``;
+                    const guideText = `*⚠️ Groq API Key Not Configured*\n\n` +
+                        `As the owner, you must configure a free Groq API key to activate the assistant.\n\n` +
+                        `🌐 *How to generate your free API key:*\n` +
+                        `1. Go to [Groq Console](https://console.groq.com/)\n` +
+                        `2. Log in (Google or GitHub account).\n` +
+                        `3. Go to **API Keys** and create a new key (\`gsk_...\`).\n` +
+                        `4. Copy the key.\n\n` +
+                        `⚙️ *Save it in the bot using the command:*\n` +
+                        `\`${prefix}ai setkey <your_key>\``;
 
                     return await kaya.sendMessage(from, { text: guideText }, { quoted: mek });
                 } else {
                     return await kaya.sendMessage(from, { 
-                        text: `*❌ Le propriétaire n'a pas encore configuré son API IA.*` 
+                        text: `*❌ The owner has not configured their AI API yet.*` 
                     }, { quoted: mek });
                 }
             }
@@ -80,16 +80,11 @@ export default {
 
             if (!text) {
                 return await kaya.sendMessage(from, { 
-                    text: `*❌ Utilisation incorrecte.*\n\nExemple : \`${prefix}ai C'est quoi Node.js ?\`` 
+                    text: `*❌ Incorrect usage.*\n\nExample: \`${prefix}ai What is Node.js?\`` 
                 }, { quoted: mek });
             }
 
-            // Message de chargement
-            await kaya.sendMessage(from, { 
-                text: '⏳ *Réflexion en cours...* 🤖' 
-            }, { quoted: mek });
-
-            // Utilisation de l'API Groq (Modèle Llama 3.3)
+            // Use Groq API (Llama 3.3 Model)
             const apiResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                 method: 'POST',
                 headers: { 
@@ -110,15 +105,14 @@ export default {
             if (json.choices && json.choices[0]?.message?.content) {
                 answer = json.choices[0].message.content;
             } else {
-                answer = json.error?.message || "Désolé, une erreur est survenue lors de la communication avec l'IA.";
+                answer = json.error?.message || "Sorry, an error occurred while communicating with the AI.";
             }
 
-            const message = `🤖 *KAYA AI ASSISTANT (Groq)*\n\n${answer}`;
-            await kaya.sendMessage(from, { text: message }, { quoted: mek });
+            await kaya.sendMessage(from, { text: answer }, { quoted: mek });
 
         } catch (err) {
-            console.error('❌ Erreur dans ai.js :', err);
-            await kaya.sendMessage(from, { text: '⚠️ Une erreur est survenue lors de la communication avec l’intelligence artificielle.' }, { quoted: mek });
+            console.error('❌ Error in ai.js :', err);
+            await kaya.sendMessage(from, { text: '⚠️ An error occurred while communicating with the artificial intelligence.' }, { quoted: mek });
         }
     }
 };
