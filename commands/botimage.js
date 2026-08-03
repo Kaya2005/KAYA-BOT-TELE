@@ -6,7 +6,7 @@ import { getContextInfo } from '../setting/contextInfo.js';
 export default {
     name: 'botimage',
     alias: ['setbotimage', 'changeimage'],
-    description: 'Modifie l\'image de votre propre bot en répondant à une image',
+    description: 'Changes your own bot\'s image by replying to an image',
     category: 'System',
     ownerOnly: true,
 
@@ -18,11 +18,11 @@ export default {
             const isQuotedImage = quoted && (quoted.mtype === 'imageMessage' || quoted.type === 'imageMessage');
 
             if (!isQuotedImage) {
-                const text = `❌ Veuillez répondre à une **image** avec la commande :\n*${prefix}botimage*`;
+                const text = `❌ Please reply to an **image** with the command:\n*${prefix}botimage*`;
                 return await kaya.sendMessage(from, { text }, { quoted: mek });
             }
 
-            await kaya.sendMessage(from, { text: "⏳ Téléchargement et mise à jour de votre image personnalisée..." }, { quoted: mek });
+            await kaya.sendMessage(from, { text: "⏳ Downloading and updating your custom image..." }, { quoted: mek });
 
             const stream = await downloadMediaMessage(
                 { message: { imageMessage: quoted } }, 
@@ -32,20 +32,20 @@ export default {
             );
 
             if (!stream) {
-                return await kaya.sendMessage(from, { text: "❌ Échec du téléchargement de l'image." }, { quoted: mek });
+                return await kaya.sendMessage(from, { text: "❌ Failed to download the image." }, { quoted: mek });
             }
 
-            // Récupère le chemin spécifique de l'utilisateur et sauvegarde l'image
+            // Retrieves the user's specific path and saves the image
             const userImagePath = getLocalBotImagePath(ownerId);
             fs.writeFileSync(userImagePath, stream);
 
-            const caption = `▉ \`${botName}\` ▉\n▰▰▰▰▰▰▰▰▰▰▰▰▰\n*✅ IMAGE MISE À JOUR*\n*➡️ Votre nouvelle image de bot a été enregistrée avec succès !*`;
+            const caption = `▉ \`${botName}\` ▉\n▰▰▰▰▰▰▰▰▰▰▰▰▰\n*✅ IMAGE UPDATED*\n*➡️ Your new bot image has been successfully saved!*`;
 
             return await sendWithBotImage(kaya, from, ownerId, { caption, contextInfo: getContextInfo(ownerId) });
 
         } catch (err) {
             console.error('❌ botimage.js error:', err);
-            return await kaya.sendMessage(from, { text: `❌ Une erreur est survenue : ${err.message}` }, { quoted: mek });
+            return await kaya.sendMessage(from, { text: `❌ An error occurred: ${err.message}` }, { quoted: mek });
         }
     }
 };
