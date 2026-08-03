@@ -30,6 +30,26 @@ export default {
             const option = args[0]?.toLowerCase();
             const targetScope = args[1]?.toLowerCase();
 
+            // Handle setkey directly inside chatbot
+            if (option === 'setkey') {
+                const customKey = args[1];
+                if (!customKey) {
+                    const caption = `▉ \`${botName}\` ▉\n▰▰▰▰▰▰▰▰▰▰▰▰▰\n*❌ Please provide your Groq API key.*\n\nExample: \`${prefix}chatbot setkey gsk_...\``;
+                    return await sendWithBotImage(kaya, from, mek.sender, { caption, contextInfo: getContextInfo(mek.sender) }, { quoted: mek });
+                }
+                
+                await setSetting(botId, 'ai_api_key', customKey);
+                const caption = `▉ \`${botName}\` ▉\n▰▰▰▰▰▰▰▰▰▰▰▰▰\n*✅ Groq API key successfully registered for ${botName}!*`;
+                return await sendWithBotImage(kaya, from, mek.sender, { caption, contextInfo: getContextInfo(mek.sender) }, { quoted: mek });
+            }
+
+            // Handle delkey directly inside chatbot
+            if (option === 'delkey') {
+                await setSetting(botId, 'ai_api_key', null);
+                const caption = `▉ \`${botName}\` ▉\n▰▰▰▰▰▰▰▰▰▰▰▰▰\n*🗑️ Custom API key deleted.*`;
+                return await sendWithBotImage(kaya, from, mek.sender, { caption, contextInfo: getContextInfo(mek.sender) }, { quoted: mek });
+            }
+
             if (!['on', 'off', 'group'].includes(option)) {
                 const usageText = `▉ \`${botName}\` ▉\n▰▰▰▰▰▰▰▰▰▰▰▰▰\n*🤖 CHATBOT CONFIGURATION*\n\n` +
                           `Usage:\n` +
@@ -38,8 +58,10 @@ export default {
                           `• \`${prefix}chatbot group all\` (Enable in ALL groups)\n` +
                           `• \`${prefix}chatbot group\` (Enable in this specific group only)\n` +
                           `• \`${prefix}chatbot group off\` (Disable in this specific group)\n` +
-                          `• \`${prefix}chatbot off\` (Disable completely)\n\n` +
-                          `*Note:* Requires a Groq API key registered via \`${prefix}ai setkey\` if not already done.`;
+                          `• \`${prefix}chatbot off\` (Disable completely)\n` +
+                          `• \`${prefix}chatbot setkey <key>\` (Configure Groq API key)\n` +
+                          `• \`${prefix}chatbot delkey\` (Delete Groq API key)\n\n` +
+                          `*Note:* Requires a Groq API key registered via \`${prefix}chatbot setkey\` if not already done.`;
 
                 return await sendWithBotImage(kaya, from, mek.sender, { caption: usageText, contextInfo: getContextInfo(mek.sender) }, { quoted: mek });
             }
@@ -62,7 +84,7 @@ export default {
                         `3. Go to **API Keys** and create a new key (\`gsk_...\`).\n` +
                         `4. Copy the key.\n\n` +
                         `⚙️ *Save it in the bot using the command:*\n` +
-                        `\`${prefix}ai setkey <your_key>\``;
+                        `\`${prefix}chatbot setkey <your_key>\``;
 
                     return await sendWithBotImage(kaya, from, mek.sender, { caption: guideText, contextInfo: getContextInfo(mek.sender) }, { quoted: mek });
                 }
