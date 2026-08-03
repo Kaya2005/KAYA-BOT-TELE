@@ -74,7 +74,82 @@ export default async function caseHandler(kaya, mek, chatUpdate, store = null) {
         const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0] : '';
         const groupId = from.split('@')[0];
 
-        // 🔹 1. Simulation de présence HUMAINE
+        // 🔹 Extraction robuste et sécurisée du texte (Nécessaire pour les commandes et les filtres)
+        const type = getContentType(mek.message);
+        let body = "";
+        if (type === "conversation") {
+            body = mek.message.conversation || "";
+        } else if (type === "extendedTextMessage") {
+            body = mek.message.extendedTextMessage?.text || mek.message.extendedTextMessage?.contextInfo?.externalAdReply?.body || "";
+        } else if (type === "imageMessage") {
+            body = mek.message.imageMessage?.caption || "";
+        } else if (type === "videoMessage") {
+            body = mek.message.videoMessage?.caption || "";
+        }
+
+        // 🔍 VÉRIFICATION PRÉALABLE : Est-ce une commande valide ?
+        let isCommand = false;
+        let commandName = "";
+        let prefix = "";
+        let args = [];
+
+        if (body) {
+            const trimmedBody = body.trim();
+            const splitArgs = trimmedBody.split(/ +/);
+            const firstWord = splitArgs[0]?.toLowerCase();
+
+            const userPrefix = getSetting(ownerId, 'prefix', '.');
+            const isAllPrefixEnabled = Boolean(getSetting(ownerId, 'allPrefix', true));
+            const noPrefixEnabled = getSetting(ownerId, 'noPrefix', false);
+            
+            if (noPrefixEnabled) {
+                if (commands.has(firstWord)) {
+                    prefix = '';
+                    args = splitArgs;
+                    commandName = firstWord;
+                    isCommand = true;
+                }
+            } else {
+                if (trimmedBody.startsWith(userPrefix)) {
+                    prefix = userPrefix;
+                    args = trimmedBody.slice(prefix.length).trim().split(/ +/);
+                    const rawCmd = args[0]?.toLowerCase();
+                    if (rawCmd && commands.has(rawCmd)) {
+                        commandName = rawCmd;
+                        isCommand = true;
+                    }
+                } else if (isAllPrefixEnabled && /^[°•π÷×¶∆£¢€¥®™+✓_=|~!?@#%^&.©^]/.test(trimmedBody)) {
+                    const match = trimmedBody.match(/^[°•π÷×¶∆£¢€¥®™+✓_=|~!?@#%^&.©^]/);
+                    if (match) {
+                        prefix = match[0];
+                        args = trimmedBody.slice(prefix.length).trim().split(/ +/);
+                        const rawCmd = args[0]?.toLowerCase();
+                        if (rawCmd && commands.has(rawCmd)) {
+                            commandName = rawCmd;
+                            isCommand = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        // 🛡️ VÉRIFICATION DES UTILITAIRES ACTIFS (Anti-Link, Anti-Bot, Anti-Spam, etc.)
+        const utilsList = ["antibot", "antilink", "antitag", "antispam", "antistatus", "antimention"];
+        let hasActiveUtility = false;
+
+        for (const utilName of utilsList) {
+            if (getSetting(ownerId, utilName, false, groupId)) {
+                hasActiveUtility = true;
+                break;
+            }
+        }
+
+        // 🛑 OPTIMISATION MAJEURE : Si ce n'est PAS une commande ET qu'aucun utilitaire n'est actif, on ignore complètement !
+        if (!isCommand && !hasActiveUtility) {
+            return; 
+        }
+
+        // 🔹 1. Simulation de présence HUMAINE (Fonctionne comme avant pour les commandes et utilitaires actifs)
         const lastPresence = presenceTracker.get(from) || 0;
         if (Math.random() > 0.4 && (Date.now() - lastPresence > 30000)) {
             if (getSetting(ownerId, 'typing', false)) {
@@ -93,23 +168,11 @@ export default async function caseHandler(kaya, mek, chatUpdate, store = null) {
             await autoReact.listen(kaya, mek, from).catch(() => {});
         }
 
-        if (getSetting(ownerId, `banned_${sender}`, false)) return;
-
-        // 🔹 Extraction robuste et sécurisée du texte (Évite les plantages sur les types sans texte/légende)
-        const type = getContentType(mek.message);
-        let body = "";
-        if (type === "conversation") {
-            body = mek.message.conversation || "";
-        } else if (type === "extendedTextMessage") {
-            body = mek.message.extendedTextMessage?.text || mek.message.extendedTextMessage?.contextInfo?.externalAdReply?.body || "";
-        } else if (type === "imageMessage") {
-            body = mek.message.imageMessage?.caption || "";
-        } else if (type === "videoMessage") {
-            body = mek.message.videoMessage?.caption || "";
-        }
-
-        // ✅ 3. EXÉCUTION DES UTILITAIRES (Anti-Link, Anti-Status, etc.) EN PRIORITÉ
+        // ✅ 3. EXÉCUTION DES UTILITAIRES (Seulement s'ils sont activés)
         await executeUtilities(kaya, mek, from, body, ownerId, groupId);
+
+        // Si c'était juste un message pour les utilitaires et pas une commande, on s'arrête ici
+        if (!isCommand) return;
 
         // 🔹 4. Mode privé global (Bloque uniquement les commandes pour les non-propriétaires)
         if (!mek.key.fromMe) {
@@ -121,51 +184,14 @@ export default async function caseHandler(kaya, mek, chatUpdate, store = null) {
             if (!isPairCommand) {
                 if (privateMode || (blockInbox && !isGroup)) {
                     const status = await checkAdminOrOwner(kaya, from, sender);
-                    if (!status.isBotOwner) return; // Stoppe ici si c'est une commande d'un non-owner en mode privé
+                    if (!status.isBotOwner) return; 
                 }
             }
         }
 
-        if (!body) return;
+        if (getSetting(ownerId, `banned_${sender}`, false)) return;
 
-        const trimmedBody = body.trim();
-        const splitArgs = trimmedBody.split(/ +/);
-        const firstWord = splitArgs[0]?.toLowerCase();
-
-        const userPrefix = getSetting(ownerId, 'prefix', '.');
-        const isAllPrefixEnabled = Boolean(getSetting(ownerId, 'allPrefix', true));
-        const noPrefixEnabled = getSetting(ownerId, 'noPrefix', false); // 👈 Vérifie si le mode sans préfixe est actif
-        
-        let prefix = '';
-        let args = [];
-
-        // 🔹 GESTION STRICTE DU PRÉFIXE OU DU MODE SANS PRÉFIXE
-        if (noPrefixEnabled) {
-            // Si le mode sans préfixe est ACTIF : on refuse tout ce qui a un préfixe et on vérifie directement le mot
-            if (commands.has(firstWord)) {
-                prefix = '';
-                args = splitArgs;
-            } else {
-                return; // Ignore si ce n'est pas une commande directe (bloque les .menu, etc.)
-            }
-        } else {
-            // Mode normal avec préfixes
-            if (trimmedBody.startsWith(userPrefix)) {
-                prefix = userPrefix;
-                args = trimmedBody.slice(prefix.length).trim().split(/ +/);
-            } else if (isAllPrefixEnabled && /^[°•π÷×¶∆£¢€¥®™+✓_=|~!?@#%^&.©^]/.test(trimmedBody)) {
-                const match = trimmedBody.match(/^[°•π÷×¶∆£¢€¥®™+✓_=|~!?@#%^&.©^]/);
-                if (match) {
-                    prefix = match[0];
-                    args = trimmedBody.slice(prefix.length).trim().split(/ +/);
-                } else {
-                    return;
-                }
-            } else {
-                return;
-            }
-        }
-
+        // On enlève la commande du tableau des arguments
         const rawCommand = args.shift();
         if (!rawCommand) return;
         const command = rawCommand.toLowerCase();
