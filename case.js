@@ -9,6 +9,8 @@ import checkAdminOrOwner from "./setting/checkAdminOrOwner.js";
 import { getSetting } from "./setting.js";
 // ✅ IMPORTATION DE LA SÉCURITÉ EXTERNE
 import { sendLimited, randomDelay } from './utils/kayaUtils.js';
+// ✅ IMPORTATION DU STOCKAGE ANTI-DELETE
+import { storeMessage } from "./commands/antidelete.js";
 
 const __dirname = path.resolve();
 export const commands = new Map();
@@ -51,6 +53,9 @@ export default async function caseHandler(kaya, mek, chatUpdate, store = null) {
 
         // 🛡️ SÉCURITÉ : Vérification stricte que l'objet message et sa clé existent avant de lire .id
         if (!mek || !mek.message || !mek.key || !mek.key.id || mek.key.id.startsWith("BAE5")) return;
+
+        // ✅ ENREGISTREMENT DU MESSAGE POUR L'ANTI-DELETE (Transmet kaya pour vérifier si l'option est active)
+        storeMessage(kaya, mek);
 
         const sender = mek.sender;
         const from = mek.key.remoteJid;

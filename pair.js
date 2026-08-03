@@ -18,6 +18,8 @@ import { connectionMessage, updateMessage } from "./setting/botAssets.js";
 import { sendLimited } from './utils/kayaUtils.js';
 // 🚀 IMPORTATION DU MODE ONLINE
 import { startAlwaysOnline } from './commands/online.js';
+// 🛡️ IMPORTATION DE L'ANTI-DELETE
+import { handleAntiDelete } from './commands/antidelete.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -158,6 +160,7 @@ export function forceCleanupSession(number, teleId = "default") {
                 tracker.connection.ev.removeAllListeners("connection.update");
                 tracker.connection.ev.removeAllListeners("creds.update");
                 tracker.connection.ev.removeAllListeners("messages.upsert");
+                tracker.connection.ev.removeAllListeners("messages.update");
                 tracker.connection.ev.removeAllListeners("group-participants.update");
                 tracker.connection.end(); 
             } catch (e) {} 
@@ -184,6 +187,7 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
                 tracker.connection.ev.removeAllListeners("connection.update");
                 tracker.connection.ev.removeAllListeners("creds.update");
                 tracker.connection.ev.removeAllListeners("messages.upsert");
+                tracker.connection.ev.removeAllListeners("messages.update");
                 tracker.connection.ev.removeAllListeners("group-participants.update");
                 tracker.connection.ws.close(); 
                 tracker.connection.end(); 
@@ -286,6 +290,16 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
             await handler(kaya, mek, chatUpdate);   
         } catch (err) {}  
     });  
+
+    // ✅ ÉCOUTEUR ANTI-DELETE AJOUTÉ
+    kaya.ev.on("messages.update", async (updates) => {
+        if (!isReady) return;
+        try {
+            await handleAntiDelete(kaya, updates);
+        } catch (err) {
+            console.error("[ANTI-DELETE EVENT ERROR]:", err);
+        }
+    });
 
     kaya.ev.on("group-participants.update", async (update) => {
         if (!isReady) return;

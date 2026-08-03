@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "description": "KAYA BOT",
   "type": "module",
+  "imports": {
+    "#db": "./lib/db.js",
+    "#serialize": "./lib/serialize.js"
+  },
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
