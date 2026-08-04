@@ -150,7 +150,6 @@ export default async function caseHandler(kaya, mek, chatUpdate, store = null) {
         
         if (!isCommand && isChatbotActive) {
             const isMedia = ["imageMessage", "videoMessage", "stickerMessage", "documentMessage", "audioMessage"].includes(type);
-            // Si ce n'est pas un média et qu'il y a du texte brut (ou message simple)
             if (!isMedia && body) {
                 const chatbotModule = commands.get("chatbot");
                 if (chatbotModule && typeof chatbotModule.listen === "function") {
@@ -159,7 +158,7 @@ export default async function caseHandler(kaya, mek, chatUpdate, store = null) {
             }
         }
 
-        // 🛑 OPTIMISATION MAJEURE : Si ce n'est PAS une commande, qu'aucun utilitaire et que le chatbot n'est pas actif, on ignore !
+        // 🛑 OPTIMISATION MAJEURE : Si ce n'est PAS une commande, qu'aucun utilitaire et que le chatbot ne réagit pas, on ignore !
         if (!isCommand && !hasActiveUtility && !isChatbotActive) {
             return; 
         }
@@ -183,13 +182,17 @@ export default async function caseHandler(kaya, mek, chatUpdate, store = null) {
             await autoReact.listen(kaya, mek, from).catch(() => {});
         }
 
-        // ✅ 3. EXÉCUTION DES UTILITAIRES (Seulement s'ils sont activés)
+        // ✅ 3. EXÉCUTION DES UTILITAIRES
         await executeUtilities(kaya, mek, from, body, ownerId, groupId);
 
-        // Si c'était juste un message pour les utilitaires ou le chatbot et pas une commande, on s'arrête ici
         if (!isCommand) return;
 
-        // 🔹 4. Mode privé global (Bloque uniquement les commandes pour les non-propriétaires)
+        // 🔍 ÉVALUATION DES PRIVILÈGES (Owner ou Sudo)
+        const status = await checkAdminOrOwner(kaya, from, sender);  
+        const sudoList = getSetting(ownerId, 'sudo_list', []);
+        const isSudo = sudoList.includes(sender);
+
+        // 🔹 4. Mode privé global (Bloque les non-propriétaires ET non-sudo)
         if (!mek.key.fromMe) {
             const privateMode = getSetting(ownerId, 'privateMode', false);
             const blockInbox = getSetting(ownerId, 'blockInbox', false);
@@ -198,28 +201,28 @@ export default async function caseHandler(kaya, mek, chatUpdate, store = null) {
 
             if (!isPairCommand) {
                 if (privateMode || (blockInbox && !isGroup)) {
-                    const status = await checkAdminOrOwner(kaya, from, sender);
-                    if (!status.isBotOwner) return; 
+                    if (!status.isBotOwner && !isSudo) return; 
                 }
             }
         }
 
         if (getSetting(ownerId, `banned_${sender}`, false)) return;
 
-        // On enlève la commande du tableau des arguments
         const rawCommand = args.shift();
         if (!rawCommand) return;
         const command = rawCommand.toLowerCase();
         const cmd = commands.get(command);
         if (!cmd) return;
 
-        const status = await checkAdminOrOwner(kaya, from, mek.sender);  
-        if (cmd.ownerOnly && !status.isBotOwner) return await kaya.sendMessage(from, { text: "Owner only." }, { quoted: mek });  
+        // 👑 Restriction Owner/Sudo
+        if (cmd.ownerOnly && !status.isBotOwner && !isSudo) {
+            return await kaya.sendMessage(from, { text: "Owner or Sudo only." }, { quoted: mek });  
+        }
         if (cmd.group && !isGroup) return await kaya.sendMessage(from, { text: "Group only." }, { quoted: mek });  
         if (cmd.admin && !status.isAdmin) return await kaya.sendMessage(from, { text: "Admin only." }, { quoted: mek });  
 
-        // ✅ SÉCURITÉ ANTI-FLOOD : 5 secondes d'attente entre chaque commande (Exemption pour le Owner)
-        if (!status.isBotOwner) {
+        // ✅ SÉCURITÉ ANTI-FLOOD (Exemption pour le Owner et les utilisateurs Sudo)
+        if (!status.isBotOwner && !isSudo) {
             const lastCommandTime = cooldownTracker.get(sender) || 0;
             if (Date.now() - lastCommandTime < 5000) { 
                 console.log(chalk.yellow(`[ANTI-FLOOD] Commande ${command} ignorée pour ${sender}`));
@@ -228,8 +231,8 @@ export default async function caseHandler(kaya, mek, chatUpdate, store = null) {
             cooldownTracker.set(sender, Date.now());
         }
 
-        // Délai humain pour les utilisateurs, court pour le propriétaire
-        if (status.isBotOwner) {
+        // Délai rapide pour le propriétaire et les Sudo, normal pour les utilisateurs classiques
+        if (status.isBotOwner || isSudo) {
             await new Promise(r => setTimeout(r, 500)); 
         } else {
             await randomDelay(1000, 2500); 
@@ -245,7 +248,7 @@ export default async function caseHandler(kaya, mek, chatUpdate, store = null) {
 
         console.log(chalk.black(chalk.bgWhite("[ CMD ]")), chalk.green(command), "from", chalk.blue(mek.pushName || from));  
 
-        // 🛡️ EXÉCUTION SÉCURISÉE DE LA COMMANDE (Anti-Crash Global)
+        // 🛡️ EXÉCUTION SÉCURISÉE DE LA COMMANDE
         try {
             if (typeof cmd.execute === "function") {
                 await cmd.execute(kaya, mek, from, args, prefix);
