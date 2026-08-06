@@ -5,8 +5,10 @@ node_modules/
 .env
 token.js
 
-# Dossiers de données, sessions et utilitaires locaux
+# Dossiers de données, sessions et fichiers temporaires
 richstore/
 userall/
-utils/
 tmp/
+
+# Fichier temporaire de mise à jour (on garde le dossier utils/ pour ne pas perdre les scripts comme kayaUtils.js)
+utils/update_status.json

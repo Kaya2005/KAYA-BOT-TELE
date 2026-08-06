@@ -1,3 +1,4 @@
+// ==================== pair.js ====================
 import {
     default as makeWASocket,
     jidDecode,
@@ -13,7 +14,9 @@ import path from "path";
 import pino from "pino";
 import { fileURLToPath } from "url";
 import handler, { commands } from "./case.js";
-import { connectionMessage, updateMessage } from "./setting/botAssets.js";
+import { connectionMessage, updateMessage, getBotName, sendWithBotImage } from "./setting/botAssets.js";
+import { getContextInfo } from "./setting/contextInfo.js";
+import { getSetting, setSetting } from "./setting.js";
 // ✅ IMPORTATION DE LA SÉCURITÉ EXTERNE
 import { sendLimited } from './utils/kayaUtils.js';
 // 🚀 IMPORTATION DU MODE ONLINE
@@ -167,6 +170,35 @@ export function forceCleanupSession(number, teleId = "default") {
         }
         rentbotTracker.delete(cleanNumber);
     }
+}
+
+/**
+ * Fonction dédiée pour envoyer le message de connexion ou de mise à jour avec l'image du bot
+ */
+async function sendConnectionOrUpdateMessage(kaya, ownerCleanId, statusFile) {
+    const botName = getBotName(ownerCleanId);
+    let messageText = '';
+
+    if (fs.existsSync(statusFile)) {
+        try {
+            const updateData = JSON.parse(fs.readFileSync(statusFile, 'utf-8'));
+            fs.unlinkSync(statusFile);
+            messageText = updateMessage(updateData, botName);
+        } catch (err) {
+            console.error(`❌ Erreur lecture update_status.json :`, err.message);
+            if (fs.existsSync(statusFile)) fs.unlinkSync(statusFile);
+        }
+    }
+
+    if (!messageText) {
+        messageText = connectionMessage(botName);
+    }
+
+    // Envoi via l'image configurée du bot
+    await sendWithBotImage(kaya, ownerCleanId + "@s.whatsapp.net", ownerCleanId, {
+        caption: messageText,
+        contextInfo: getContextInfo(ownerCleanId)
+    });
 }
 
 export default async function startpairing(nexusDevNumber, teleId = "default", userName = "Client WhatsApp", attempt = 0) {
@@ -336,36 +368,27 @@ export default async function startpairing(nexusDevNumber, teleId = "default", u
                 tracker.isConnected = true;  
                 await sleep(4000);  
 
-                const welcomedFile = path.join(sessionPath, 'welcomed.json');
+                const statusFile = path.join(process.cwd(), 'utils', 'update_status.json');
                 
-                if (!fs.existsSync(welcomedFile)) {
-                    const statusFile = path.join(process.cwd(), 'utils', 'update_status.json');
-                    let updateSent = false;
-
-                    if (fs.existsSync(statusFile)) {
-                        try {
-                            const updateData = JSON.parse(fs.readFileSync(statusFile, 'utf-8'));
-                            fs.unlinkSync(statusFile);
-
-                            await kaya.sendMessage(number + "@s.whatsapp.net", { text: updateMessage(updateData) });
-                            updateSent = true;
-                        } catch (err) {
-                            console.error(`${logPrefix} ❌ Erreur lecture update_status.json :`, err.message);
-                            if (fs.existsSync(statusFile)) fs.unlinkSync(statusFile);
-                        }
-                    }
-
-                    if (!updateSent) {
-                        try {
-                            await kaya.sendMessage(number + "@s.whatsapp.net", { text: connectionMessage() });
-                        } catch (e) {
-                            console.error(`${logPrefix} ❌ Échec envoi message connexion :`, e.message);
-                        }
-                    }
-
+                // 1. S'il y a une mise à jour en attente (ex: après un git pull), on l'envoie toujours
+                if (fs.existsSync(statusFile)) {
                     try {
-                        fs.writeFileSync(welcomedFile, JSON.stringify({ welcomedAt: new Date().toISOString() }, null, 2));
-                    } catch (e) {}
+                        await sendConnectionOrUpdateMessage(kaya, number, statusFile);
+                    } catch (e) {
+                        console.error(`${logPrefix} ❌ Échec envoi message MAJ :`, e.message);
+                    }
+                } 
+                // 2. Sinon, on vérifie si c'est la toute première connexion à vie (enregistrée dans les settings)
+                else {
+                    const isWelcomed = getSetting(number, 'botWelcomedOnce', false);
+                    if (!isWelcomed) {
+                        try {
+                            await sendConnectionOrUpdateMessage(kaya, number, statusFile);
+                            await setSetting(number, 'botWelcomedOnce', true);
+                        } catch (e) {
+                            console.error(`${logPrefix} ❌ Échec envoi message initial :`, e.message);
+                        }
+                    }
                 }
             }  
         }  
