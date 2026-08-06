@@ -1,4 +1,6 @@
-// utils/kayaUtils.js
+// ==========================================
+// FICHIER : ./utils/kayaUtils.js
+// ==========================================
 import { getSetting } from '../setting.js';
 
 const messageCounter = new Map();
@@ -39,9 +41,22 @@ export async function sendLimited(kaya, originalSendMessage, jid, content, optio
         stats.lastReset = now;
     }
     
+    // Si la limite d'envois est atteinte
     if (stats.count >= 100) {
-        console.log(`[BAN PROTECTION] Limite atteinte pour ${number}. Envoi bloqué.`);
-        return null;
+        console.log(`[BAN PROTECTION] Limite atteinte pour ${number}. Pause de 60 secondes activée.`);
+        try {
+            // Signal à l'utilisateur de la pause anti-spam
+            await originalSendMessage.call(kaya, jid, { 
+                text: "🛡️ *[ANTI-SPAM PROTECTION]*\nLimite de messages atteinte. Le bot fait une pause de 60 secondes pour éviter un blocage par WhatsApp." 
+            }, {});
+        } catch (e) {}
+
+        // Pause de 60 secondes
+        await new Promise(resolve => setTimeout(resolve, 60000));
+        
+        // Réinitialisation partielle du compteur pour repartir prudemment
+        stats.count = 50; 
+        stats.lastReset = Date.now();
     }
     
     stats.count++;
@@ -50,5 +65,24 @@ export async function sendLimited(kaya, originalSendMessage, jid, content, optio
     // Appliquer le délai dynamique selon le choix
     await randomDelay(min, max); 
     
-    return await originalSendMessage.call(kaya, jid, content, options);
+    try {
+        return await originalSendMessage.call(kaya, jid, content, options);
+    } catch (err) {
+        // Interception des erreurs de rate limit (rate-overlimit / 429)
+        if (String(err).includes('rate-overlimit') || String(err).includes('429')) {
+            console.log(`[RATE LIMIT] Alerte rate-overlimit détectée pour ${number}. Pause de 60s...`);
+            try {
+                await originalSendMessage.call(kaya, jid, { 
+                    text: "⚠️ *[RATE LIMIT DETECTED]*\nWhatsApp restreint temporairement les envois. Le bot applique une pause de sécurité de 60 secondes..." 
+                }, {});
+            } catch (e) {}
+            
+            // Pause de 60 secondes de refroidissement
+            await new Promise(resolve => setTimeout(resolve, 60000));
+            
+            // Tentative de ré-envoi après la pause
+            return await originalSendMessage.call(kaya, jid, content, options);
+        }
+        throw err;
+    }
 }
