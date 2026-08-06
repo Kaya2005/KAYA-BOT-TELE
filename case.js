@@ -54,12 +54,18 @@ export default async function caseHandler(kaya, mek, chatUpdate, store = null) {
         // 🛡️ SÉCURITÉ : Vérification stricte que l'objet message et sa clé existent avant de lire .id
         if (!mek || !mek.message || !mek.key || !mek.key.id || mek.key.id.startsWith("BAE5")) return;
 
-        // ✅ ENREGISTREMENT DU MESSAGE POUR L'ANTI-DELETE (Transmet kaya pour vérifier si l'option est active)
-        storeMessage(kaya, mek);
-
         const sender = mek.sender;
         const from = mek.key.remoteJid;
         if (!from) return;
+
+        const isGroup = from.endsWith("@g.us");
+        const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0] : '';
+        const groupId = from.split('@')[0];
+
+        // ✅ ENREGISTREMENT DU MESSAGE POUR L'ANTI-DELETE (Seulement si l'option est activée)
+        if (getSetting(ownerId, 'antidelete', false, isGroup ? groupId : null)) {
+            storeMessage(kaya, mek);
+        }
 
         // 🌟 GESTION DES STATUTS WHATSAPP (status@broadcast)
         if (from === 'status@broadcast') {
@@ -69,10 +75,6 @@ export default async function caseHandler(kaya, mek, chatUpdate, store = null) {
             }
             return; // Stoppe l'exécution ici pour ne pas traiter un statut comme un message normal
         }
-
-        const isGroup = from.endsWith("@g.us");
-        const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0] : '';
-        const groupId = from.split('@')[0];
 
         // 🔹 Extraction robuste et sécurisée du texte
         const type = getContentType(mek.message);
