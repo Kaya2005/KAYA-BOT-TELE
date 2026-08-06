@@ -15,12 +15,7 @@ export default function setupGroupMenu(bot) {
 ______________________
 
 > ╢ GROUP & MODERATION ♰
-╭▰▰▰▰▰▰▰◈
-┆❏ /group 
-┆❏ /groupmenu
-┆❏ /welcome 
-┆❏ /antilink 
-╰▰▰▰▰▰▰▰◈</blockquote>`;
+Appuie sur les boutons ci-dessous pour interagir et configurer les options du groupe ! 🚀</blockquote>`;
 
             const botUsername = ctx.botInfo?.username || 'KayaMdBot';
 
@@ -31,10 +26,19 @@ ______________________
                 reply_markup: {
                     inline_keyboard: [
                         [
-                            { text: '👋 Welcome Config', callback_data: 'menu_welcome' },
-                            { text: '🛡️ AntiLink Config', callback_data: 'menu_antilink' }
+                            { text: '📋 /group', callback_data: 'cmd_group' },
+                            { text: '🏠 /groupmenu', callback_data: 'cmd_groupmenu' }
                         ],
-                        [{ text: '➕ Add Bot to Group', url: `https://t.me/${botUsername}?startgroup=true` }]
+                        [
+                            { text: '👋 /welcome', callback_data: 'menu_welcome' },
+                            { text: '🛡️ /antilink', callback_data: 'menu_antilink' }
+                        ],
+                        [
+                            { text: '🤖 /chatbot', callback_data: 'menu_chatbot' }
+                        ],
+                        [
+                            { text: '➕ Add Bot to Group', url: `https://t.me/${botUsername}?startgroup=true` }
+                        ]
                     ]
                 }
             });
@@ -45,5 +49,21 @@ ______________________
                 reply_to_message_id: ctx.message?.message_id 
             });
         }
+    });
+
+    // Actions interactives pour les boutons du menu
+    bot.action('cmd_group', async (ctx) => {
+        await ctx.answerCbQuery();
+        await ctx.reply('<blockquote>📋 <b>Commande /group</b>\n\nPermet de voir les instructions rapides pour ajouter et configurer le bot dans ton groupe Telegram.</blockquote>', { parse_mode: 'HTML' });
+    });
+
+    bot.action('cmd_groupmenu', async (ctx) => {
+        await ctx.answerCbQuery();
+        await ctx.reply('<blockquote>🏠 <b>Commande /groupmenu</b>\n\nAffiche le panneau de contrôle interactif complet du groupe.</blockquote>', { parse_mode: 'HTML' });
+    });
+
+    bot.action('menu_chatbot', async (ctx) => {
+        await ctx.answerCbQuery();
+        await ctx.reply('<blockquote>🤖 <b>Configuration du Chatbot IA (Ado)</b>\n\nPour l\'activer ou le désactiver dans ton groupe, tape :\n• <code>/chatbot on</code>\n• <code>/chatbot off</code>\n\nUne fois activé, mentionne le bot ou réponds à l\'un de ses messages pour discuter naturellement avec lui !</blockquote>', { parse_mode: 'HTML' });
     });
 }
