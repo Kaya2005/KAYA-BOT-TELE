@@ -1,3 +1,4 @@
+// ==================== botimage.js ====================
 import fs from 'fs';
 import { downloadMediaMessage } from '@whiskeysockets/baileys';
 import { getBotName, sendWithBotImage, getLocalBotImagePath } from '../setting/botAssets.js';
@@ -12,7 +13,12 @@ export default {
 
     async execute(kaya, mek, from, args, prefix) {
         try {
-            const ownerId = kaya.user.id.split(':')[0];
+            // Récupération sécurisée de l'ID du propriétaire du bot
+            const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0] : '';
+            if (!ownerId) {
+                return await kaya.sendMessage(from, { text: "❌ Erreur : Impossible de récupérer l'ID du propriétaire du bot." }, { quoted: mek });
+            }
+
             const botName = getBotName(ownerId);
             const quoted = mek.quoted;
             const isQuotedImage = quoted && (quoted.mtype === 'imageMessage' || quoted.type === 'imageMessage');
@@ -35,7 +41,7 @@ export default {
                 return await kaya.sendMessage(from, { text: "❌ Failed to download the image." }, { quoted: mek });
             }
 
-            // Retrieves the user's specific path and saves the image
+            // Enregistrement de l'image dans le dossier de l'owner
             const userImagePath = getLocalBotImagePath(ownerId);
             fs.writeFileSync(userImagePath, stream);
 
