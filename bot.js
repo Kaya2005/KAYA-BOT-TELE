@@ -13,6 +13,7 @@ import { BOT_TOKEN } from './token.js';
 import setupWelcome from './commandtele/welcome.js';
 import setupAntiLink from './commandtele/antilink.js';
 import setupGroupMenu from './commandtele/groupmenu.js';
+import setupChatbot from './commandtele/chatbot.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -110,6 +111,7 @@ const bot = new Telegraf(BOT_TOKEN);
 setupWelcome(bot);
 setupAntiLink(bot);
 setupGroupMenu(bot);
+setupChatbot(bot);
 
 // ================= COMMANDES =================
 // /start fonctionne partout (groupes et privé)
