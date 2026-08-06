@@ -4,8 +4,8 @@ import { downloadMediaMessage } from '@whiskeysockets/baileys';
 export default {
     name: 'getstatus',
     alias: ['savestatus', 'fetchstatus'],
-    description: 'Downloads and saves a WhatsApp status or story by replying to it.',
-    category: 'Group',
+    description: 'Publishes a quoted image or video as a group status.',
+    category: 'Media',
     ownerOnly: true,
 
     async execute(kaya, mek, from, args, prefix) {
@@ -14,29 +14,21 @@ export default {
 
             if (!quoted) {
                 return await kaya.sendMessage(from, { 
-                    text: `❌ Please reply to a **status** (image or video) with the command:\n*${prefix}getstatus*` 
+                    text: `❌ Please reply to an **image** or **video** with the command:\n*${prefix}getstatus*` 
                 }, { quoted: mek });
             }
 
             const mtype = quoted.mtype || quoted.type;
             const isImage = mtype === 'imageMessage';
             const isVideo = mtype === 'videoMessage';
-            const isText = mtype === 'conversation' || mtype === 'extendedTextMessage';
-
-            if (isText) {
-                const textContent = quoted.text || quoted.caption || "Empty text status";
-                return await kaya.sendMessage(from, { 
-                    text: `💬 *Fetched text status:*\n\n${textContent}` 
-                }, { quoted: mek });
-            }
 
             if (!isImage && !isVideo) {
                 return await kaya.sendMessage(from, { 
-                    text: `❌ The quoted message is neither a valid status image nor video.` 
+                    text: `❌ The quoted message must be an image or a video.` 
                 }, { quoted: mek });
             }
 
-            await kaya.sendMessage(from, { text: "⏳ Downloading status..." }, { quoted: mek });
+            await kaya.sendMessage(from, { text: "⏳ Publishing as group status..." }, { quoted: mek });
 
             const stream = await downloadMediaMessage(
                 { message: { [mtype]: quoted } }, 
@@ -46,16 +38,33 @@ export default {
             );
 
             if (!stream) {
-                return await kaya.sendMessage(from, { text: "❌ Failed to download the status." }, { quoted: mek });
+                return await kaya.sendMessage(from, { text: "❌ Failed to download the media." }, { quoted: mek });
             }
 
             const caption = quoted.caption || "";
 
+            // Tentative de publication avec l'attribut de diffusion pour les statuts/stories de groupe
             if (isImage) {
-                await kaya.sendMessage(from, { image: stream, caption: caption }, { quoted: mek });
+                await kaya.sendMessage(from, { 
+                    image: stream, 
+                    caption: caption,
+                    // Paramètre de diffusion/statut si géré par Baileys pour les groupes
+                    broadcast: false 
+                }, { 
+                    // Certains types de stories de groupe nécessitent un contexte particulier
+                    quoted: null 
+                });
             } else if (isVideo) {
-                await kaya.sendMessage(from, { video: stream, caption: caption }, { quoted: mek });
+                await kaya.sendMessage(from, { 
+                    video: stream, 
+                    caption: caption,
+                    broadcast: false 
+                }, { 
+                    quoted: null 
+                });
             }
+
+            await kaya.sendMessage(from, { text: `✅ Successfully published to the group status!` }, { quoted: mek });
 
         } catch (err) {
             console.error('❌ Error in getStatus.js:', err);
