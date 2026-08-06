@@ -26,8 +26,19 @@ const saveDb = (filePath, data) => {
     fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
 };
 
+// Fonction utilitaire pour vérifier si l'utilisateur est admin
+async function checkAdmin(ctx) {
+    if (ctx.chat.type === 'private') return true; // En privé c'est bon
+    try {
+        const member = await ctx.telegram.getChatMember(ctx.chat.id, ctx.from.id);
+        return ['creator', 'administrator'].includes(member.status);
+    } catch {
+        return false;
+    }
+}
+
 export default function setupChatbot(bot) {
-    // Commande pour configurer la clé API Groq (Réservé aux admins du bot)
+    // Commande pour configurer la clé API Groq
     bot.command('setgroqkey', async (ctx) => {
         const text = ctx.message.text.split(' ')[1];
         if (!text) {
@@ -37,26 +48,14 @@ export default function setupChatbot(bot) {
         return ctx.reply('<blockquote>✅ Clé API Groq enregistrée avec succès pour le chatbot Telegram !</blockquote>', { parse_mode: 'HTML' });
     });
 
-    // Commande pour activer ou désactiver le chatbot dans un groupe (Réservé aux administrateurs du groupe)
+    // Commande textuelle : /chatbot on ou /chatbot off
     bot.command('chatbot', async (ctx) => {
         if (ctx.chat.type === 'private') {
             return ctx.reply('<blockquote>❌ Cette commande s\'utilise uniquement dans un groupe.</blockquote>', { parse_mode: 'HTML' });
         }
         
-        // 🛡️ Vérification des privilèges administrateur
-        try {
-            const member = await ctx.telegram.getChatMember(ctx.chat.id, ctx.from.id);
-            if (!['creator', 'administrator'].includes(member.status)) {
-                return ctx.reply('<blockquote>❌ Seuls les administrateurs du groupe peuvent activer ou désactiver le chatbot.</blockquote>', { 
-                    parse_mode: 'HTML', 
-                    reply_to_message_id: ctx.message?.message_id 
-                });
-            }
-        } catch (e) {
-            return ctx.reply('<blockquote>❌ Impossible de vérifier vos privilèges d\'administrateur.</blockquote>', { 
-                parse_mode: 'HTML', 
-                reply_to_message_id: ctx.message?.message_id 
-            });
+        if (!(await checkAdmin(ctx))) {
+            return ctx.reply('<blockquote>❌ Seuls les administrateurs du groupe peuvent configurer le chatbot.</blockquote>', { parse_mode: 'HTML', reply_to_message_id: ctx.message?.message_id });
         }
 
         const chatId = String(ctx.chat.id);
@@ -78,11 +77,49 @@ export default function setupChatbot(bot) {
             return ctx.reply('<blockquote>🤖 Chatbot désactivé pour ce groupe.</blockquote>', { parse_mode: 'HTML' });
         } else {
             const status = db.includes(chatId) ? '✅ Activé' : '❌ Désactivé';
-            return ctx.reply(`<blockquote>🤖 <b>État du Chatbot :</b> ${status}\n\nUtilise <code>/chatbot on</code> ou <code>/chatbot off</code> pour le configurer (Réservé aux admins).</blockquote>`, { parse_mode: 'HTML' });
+            return ctx.reply(`<blockquote>🤖 <b>État du Chatbot :</b> ${status}\n\nUtilise <code>/chatbot on</code> ou <code>/chatbot off</code>.</blockquote>`, { parse_mode: 'HTML' });
         }
     });
 
-    // Écouteur pour intercepter les messages du groupe et répondre via l'API Groq avec un style ado
+    // Actions des boutons interactifs (Activer / Désactiver via le menu)
+    bot.action('chatbot_on', async (ctx) => {
+        await ctx.answerCbQuery();
+        if (ctx.chat?.type === 'private') {
+            return ctx.reply('<blockquote>❌ Cette action doit être faite depuis un groupe.</blockquote>', { parse_mode: 'HTML' });
+        }
+        if (!(await checkAdmin(ctx))) {
+            return ctx.reply('<blockquote>❌ Réservé aux administrateurs du groupe.</blockquote>', { parse_mode: 'HTML' });
+        }
+
+        const chatId = String(ctx.chat.id);
+        const db = loadDb(dbPath, []);
+        if (!db.includes(chatId)) {
+            db.push(chatId);
+            saveDb(dbPath, db);
+        }
+        await ctx.reply('<blockquote>✅ Chatbot IA activé avec succès pour ce groupe !</blockquote>', { parse_mode: 'HTML' });
+    });
+
+    bot.action('chatbot_off', async (ctx) => {
+        await ctx.answerCbQuery();
+        if (ctx.chat?.type === 'private') {
+            return ctx.reply('<blockquote>❌ Cette action doit être faite depuis un groupe.</blockquote>', { parse_mode: 'HTML' });
+        }
+        if (!(await checkAdmin(ctx))) {
+            return ctx.reply('<blockquote>❌ Réservé aux administrateurs du groupe.</blockquote>', { parse_mode: 'HTML' });
+        }
+
+        const chatId = String(ctx.chat.id);
+        const db = loadDb(dbPath, []);
+        const index = db.indexOf(chatId);
+        if (index > -1) {
+            db.splice(index, 1);
+            saveDb(dbPath, db);
+        }
+        await ctx.reply('<blockquote>❌ Chatbot IA désactivé pour ce groupe.</blockquote>', { parse_mode: 'HTML' });
+    });
+
+    // Écouteur des messages du groupe pour répondre via l'API Groq
     bot.on('text', async (ctx, next) => {
         try {
             if (ctx.chat.type === 'private') return next();
@@ -95,7 +132,6 @@ export default function setupChatbot(bot) {
             const botUsername = ctx.botInfo?.username;
             const text = message.text || '';
             
-            // Vérifie si le bot est tagué (@username) ou s'il s'agit d'une réponse directe à son message
             const isTagged = botUsername && text.includes(`@${botUsername}`);
             const isReplyToBot = message.reply_to_message && message.reply_to_message.from?.id === ctx.botInfo?.id;
 
@@ -107,7 +143,7 @@ export default function setupChatbot(bot) {
                 const apiKey = keyData.key;
 
                 if (!apiKey) {
-                    await ctx.reply('<blockquote>⚠️ L\'administrateur n\'a pas encore configuré la clé API Groq avec <code>/setgroqkey</code>.</blockquote>', { parse_mode: 'HTML', reply_to_message_id: message.message_id });
+                    await ctx.reply('<blockquote>⚠️ L\'administrateur n\'a pas configuré la clé API Groq avec <code>/setgroqkey</code>.</blockquote>', { parse_mode: 'HTML', reply_to_message_id: message.message_id });
                     return;
                 }
 
