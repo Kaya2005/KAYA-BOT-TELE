@@ -231,8 +231,20 @@ export default async function caseHandler(kaya, mek, chatUpdate, store = null) {
         }
         cooldownTracker.set(sender, Date.now());
 
-        // ✅ DÉLAI D'EXÉCUTION (Le délai normal s'applique désormais à tout le monde)
-        await randomDelay(1000, 2500); 
+        // ✅ DÉLAI D'EXÉCUTION DYNAMIQUE BASÉ SUR LE PROFIL DE VITESSE
+        const speedProfile = getSetting(ownerId, 'botSpeed', '5-8');
+        let dMin = 3000, dMax = 6000;
+        switch (speedProfile) {
+            case '1-2': dMin = 1000; dMax = 2000; break;
+            case '2-3': dMin = 2000; dMax = 3000; break;
+            case '3-4': dMin = 3000; dMax = 4000; break;
+            case '4-6': dMin = 4000; dMax = 6000; break;
+            case '5-8': dMin = 5000; dMax = 8000; break;
+            case '6-10': dMin = 6000; dMax = 10000; break;
+            case '8-10': dMin = 8000; dMax = 10000; break;
+            case '10-15': dMin = 10000; dMax = 15000; break;
+        }
+        await randomDelay(dMin, dMax); 
 
         if (cmd.botAdmin) {  
             const metadata = await kaya.groupMetadata(from).catch(() => null);
