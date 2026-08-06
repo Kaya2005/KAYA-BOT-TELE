@@ -34,7 +34,7 @@ Appuie sur les boutons ci-dessous pour interagir et configurer les options du gr
                             { text: '🛡️ /antilink', callback_data: 'menu_antilink' }
                         ],
                         [
-                            { text: '🤖 /chatbot', callback_data: 'menu_chatbot' }
+                            { text: '🤖 Configurer Chatbot (IA)', callback_data: 'menu_chatbot' }
                         ],
                         [
                             { text: '➕ Add Bot to Group', url: `https://t.me/${botUsername}?startgroup=true` }
@@ -62,8 +62,25 @@ Appuie sur les boutons ci-dessous pour interagir et configurer les options du gr
         await ctx.reply('<blockquote>🏠 <b>Commande /groupmenu</b>\n\nAffiche le panneau de contrôle interactif complet du groupe.</blockquote>', { parse_mode: 'HTML' });
     });
 
+    // 🤖 Bouton interactif pour configurer le Chatbot directement
     bot.action('menu_chatbot', async (ctx) => {
         await ctx.answerCbQuery();
-        await ctx.reply('<blockquote>🤖 <b>Configuration du Chatbot IA (Ado)</b>\n\nPour l\'activer ou le désactiver dans ton groupe, tape :\n• <code>/chatbot on</code>\n• <code>/chatbot off</code>\n\nUne fois activé, mentionne le bot ou réponds à l\'un de ses messages pour discuter naturellement avec lui !</blockquote>', { parse_mode: 'HTML' });
+        const isGroup = ctx.chat?.type !== 'private';
+        
+        const text = `<blockquote>🤖 <b>PANEL CHATBOT IA (MODE ADO)</b>\n\n` +
+                     `Tu peux l'activer ou le désactiver directement ici ou via la commande <code>/chatbot on</code> / <code>/chatbot off</code> dans ton groupe.\n\n` +
+                     `Une fois actif, mentionne le bot (@${ctx.botInfo?.username}) ou réponds à l'un de ses messages pour qu'il te réponde naturellement !</blockquote>`;
+
+        await ctx.reply(text, {
+            parse_mode: 'HTML',
+            reply_markup: {
+                inline_keyboard: [
+                    [
+                        { text: '✅ Activer Chatbot', callback_data: 'chatbot_on' },
+                        { text: '❌ Désactiver Chatbot', callback_data: 'chatbot_off' }
+                    ]
+                ]
+            }
+        });
     });
 }
