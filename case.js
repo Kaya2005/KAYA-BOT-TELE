@@ -73,7 +73,7 @@ export default async function caseHandler(kaya, mek, chatUpdate, store = null) {
             if (autostatus && typeof autostatus.detect === 'function') {
                 await autostatus.detect(kaya, mek, from).catch(() => {});
             }
-            return; // Stoppe l'exécution ici pour ne pas traiter un statut comme un message normal
+            return; 
         }
 
         // 🔹 Extraction robuste et sécurisée du texte
@@ -223,22 +223,16 @@ export default async function caseHandler(kaya, mek, chatUpdate, store = null) {
         if (cmd.group && !isGroup) return await kaya.sendMessage(from, { text: "Group only." }, { quoted: mek });  
         if (cmd.admin && !status.isAdmin) return await kaya.sendMessage(from, { text: "Admin only." }, { quoted: mek });  
 
-        // ✅ SÉCURITÉ ANTI-FLOOD (Exemption pour le Owner et les utilisateurs Sudo)
-        if (!status.isBotOwner && !isSudo) {
-            const lastCommandTime = cooldownTracker.get(sender) || 0;
-            if (Date.now() - lastCommandTime < 5000) { 
-                console.log(chalk.yellow(`[ANTI-FLOOD] Commande ${command} ignorée pour ${sender}`));
-                return; 
-            }
-            cooldownTracker.set(sender, Date.now());
+        // ✅ SÉCURITÉ ANTI-FLOOD (Désormais appliqué à TOUT LE MONDE, y compris l'Owner)
+        const lastCommandTime = cooldownTracker.get(sender) || 0;
+        if (Date.now() - lastCommandTime < 5000) { 
+            console.log(chalk.yellow(`[ANTI-FLOOD] Commande ${command} ignorée pour ${sender}`));
+            return; 
         }
+        cooldownTracker.set(sender, Date.now());
 
-        // Délai rapide pour le propriétaire et les Sudo, normal pour les utilisateurs classiques
-        if (status.isBotOwner || isSudo) {
-            await new Promise(r => setTimeout(r, 500)); 
-        } else {
-            await randomDelay(1000, 2500); 
-        }
+        // ✅ DÉLAI D'EXÉCUTION (Le délai normal s'applique désormais à tout le monde)
+        await randomDelay(1000, 2500); 
 
         if (cmd.botAdmin) {  
             const metadata = await kaya.groupMetadata(from).catch(() => null);
