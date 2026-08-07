@@ -74,12 +74,12 @@ async function launchBot() {
 
   process.on('uncaughtException', (err) => {
     if (ignoredErrors.some((e) => String(err).includes(e))) return;
-    console.error(err);
+    console.error(err?.message || err);
   });
 
   process.on('unhandledRejection', (reason) => {
     if (ignoredErrors.some((e) => String(reason).includes(e))) return;
-    console.error(reason);
+    console.error(reason?.message || reason);
   });
 
   // RÉACTIVATION DES LOGS POUR DÉBOGUER
