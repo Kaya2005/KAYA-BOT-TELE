@@ -17,24 +17,61 @@ export default {
     const groupId = from.split('@')[0];
     const ownerId = kaya.user.id.split(':')[0];
     
-    if (!["on", "off", "delete", "warn", "kick", "status"].includes(action)) {
-        return await kaya.sendMessage(from, { 
-            text: `🛡️ *ANTIBOT MENU*\n\n${prefix}antibot on (Default: warn)\n${prefix}antibot delete\n${prefix}antibot warn\n${prefix}antibot kick\n${prefix}antibot off\n${prefix}antibot status` 
-        }, { quoted: mek });
+    // Si l'utilisateur clique sur un bouton interactif, l'argument peut passer par selectedButtonId
+    const selectedAction = action || mek.msg?.nativeFlowResponseMessage?.paramsJson ? JSON.parse(mek.msg.nativeFlowResponseMessage.paramsJson).id : null;
+
+    const currentAction = selectedAction || action;
+
+    if (!["on", "off", "delete", "warn", "kick", "status"].includes(currentAction)) {
+        // Envoi du message avec des boutons interactifs Baileys 7.x
+        const buttonMessage = {
+            viewOnce: true,
+            interactiveMessage: {
+                header: { title: "🛡️ PROTECTION ANTIBOT", subtitle: "Gestion de la sécurité", hasMediaAttachment: false },
+                body: { text: `Sélectionnez une option ci-dessous pour configurer l'anti-bot de votre groupe :` },
+                footer: { text: global.botName || "KAYA-MD" },
+                nativeFlowMessage: {
+                    buttons: [
+                        {
+                            name: "quick_reply",
+                            buttonParamsJson: JSON.stringify({ display_text: "✅ Activer (Warn)", id: `${prefix}antibot on` })
+                        },
+                        {
+                            name: "quick_reply",
+                            buttonParamsJson: JSON.stringify({ display_text: "🚫 Mode Kick", id: `${prefix}antibot kick` })
+                        },
+                        {
+                            name: "quick_reply",
+                            buttonParamsJson: JSON.stringify({ display_text: "🗑️ Mode Delete", id: `${prefix}antibot delete` })
+                        },
+                        {
+                            name: "quick_reply",
+                            buttonParamsJson: JSON.stringify({ display_text: "📊 Statut", id: `${prefix}antibot status` })
+                        },
+                        {
+                            name: "quick_reply",
+                            buttonParamsJson: JSON.stringify({ display_text: "❌ Désactiver", id: `${prefix}antibot off` })
+                        }
+                    ]
+                }
+            }
+        };
+
+        return await kaya.sendMessage(from, buttonMessage, { quoted: mek });
     }
 
-    if (action === "status") {
+    if (currentAction === "status") {
         const isEnabled = getSetting(ownerId, "antibot", false, groupId);
         const mode = getSetting(ownerId, "antibotMode", "warn", groupId);
         return await kaya.sendMessage(from, { text: !isEnabled ? "❌ Anti-bot is Disabled" : `✅ Anti-bot is Enabled\nMode: *${mode.toUpperCase()}*` }, { quoted: mek });
     }
 
-    if (action === "off") {
+    if (currentAction === "off") {
       setSetting(ownerId, "antibot", false, groupId);
       return await kaya.sendMessage(from, { text: "❌ Anti-bot disabled." }, { quoted: mek });
     }
 
-    const mode = action === "on" ? "warn" : action;
+    const mode = currentAction === "on" ? "warn" : currentAction;
     setSetting(ownerId, "antibot", true, groupId);
     setSetting(ownerId, "antibotMode", mode, groupId);
     
