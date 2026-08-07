@@ -11,60 +11,46 @@ export function startAutoCleanup() {
             const now = Date.now();
             let deletedCount = 0;
 
-            // 1. Nettoyage des fichiers temporaires à la racine
+            // 1. Nettoyage sécurisé des fichiers temporaires à la racine (tmp_, webp générés)
             const files = fs.readdirSync(targetDir);
             files.forEach(file => {
-                // Cible les fichiers tmp_ ou les webp générés (out_)
                 if (file.startsWith('tmp_') || (file.startsWith('out_') && file.endsWith('.webp'))) {
                     const filePath = path.join(targetDir, file);
                     try {
                         const stats = fs.statSync(filePath);
-                        // Supprime le fichier s'il a plus de 15 minutes (pour éviter de couper un traitement en cours)
                         const fileAgeMinutes = (now - stats.mtimeMs) / (1000 * 60);
                         
+                        // Supprime s'il a plus de 15 minutes
                         if (fileAgeMinutes > 15) {
                             fs.unlinkSync(filePath);
                             deletedCount++;
                         }
-                    } catch (err) {
-                        // Ignore si le fichier est introuvable ou verrouillé par un processus actif
-                    }
+                    } catch (err) {}
                 }
             });
 
-            if (deletedCount > 0) {
-                console.log(`🧹 [CLEANUP] ${deletedCount} fichiers temporaires nettoyés.`);
-            }
-
-            // 2. Nettoyage des sessions WhatsApp (Garde uniquement creds.json et metadata.json)
+            // 2. Nettoyage des fichiers de requêtes de pairage orphelins (sans toucher aux sessions Signal)
             if (fs.existsSync(PAIRING_DIR)) {
-                const folders = fs.readdirSync(PAIRING_DIR);
-                let sessionFilesDeleted = 0;
-
-                folders.forEach(folder => {
-                    const sessionPath = path.join(PAIRING_DIR, folder);
-                    try {
-                        if (fs.lstatSync(sessionPath).isDirectory()) {
-                            const sessionFiles = fs.readdirSync(sessionPath);
-                            sessionFiles.forEach(file => {
-                                // On supprime tout SAUF creds.json et metadata.json
-                                if (file !== 'creds.json' && file !== 'metadata.json') {
-                                    const filePath = path.join(sessionPath, file);
-                                    if (fs.statSync(filePath).isFile()) {
-                                        fs.unlinkSync(filePath);
-                                        sessionFilesDeleted++;
-                                    }
-                                }
-                            });
-                        }
-                    } catch (e) {
-                        // Ignore si un fichier/dossier est verrouillé ou inaccessible
+                const pairingFiles = fs.readdirSync(PAIRING_DIR);
+                pairingFiles.forEach(file => {
+                    if (file.startsWith('request_') || file.startsWith('pairing_')) {
+                        const filePath = path.join(PAIRING_DIR, file);
+                        try {
+                            const stats = fs.statSync(filePath);
+                            const fileAgeHours = (now - stats.mtimeMs) / (1000 * 60 * 60);
+                            
+                            // Supprime les fichiers de pairing bloqués de plus de 2 heures
+                            if (fileAgeHours > 2) {
+                                fs.unlinkSync(filePath);
+                                deletedCount++;
+                            }
+                        } catch (e) {}
                     }
                 });
+            }
 
-                if (sessionFilesDeleted > 0) {
-                    console.log(`🧹 [CLEANUP] Nettoyage des sessions : ${sessionFilesDeleted} fichiers inutiles purgés (creds.json et metadata.json préservés).`);
-                }
+            if (deletedCount > 0) {
+                console.log(`🧹 [CLEANUP] ${deletedCount} fichiers temporaires ou orphelins purgés.`);
             }
 
         } catch (err) {
