@@ -76,10 +76,24 @@ export default async function caseHandler(kaya, mek, chatUpdate, store = null) {
             return; 
         }
 
-        // 🔹 Extraction robuste et sécurisée du texte
+        // 🔹 Extraction robuste et sécurisée du texte (avec support des boutons interactifs Baileys 7.x)
         const type = getContentType(mek.message);
         let body = "";
-        if (type === "conversation") {
+        
+        // Interception des clics sur les boutons interactifs
+        if (type === "interactiveResponseMessage") {
+            const paramsJson = mek.message.interactiveResponseMessage?.nativeFlowResponseMessage?.paramsJson;
+            if (paramsJson) {
+                try {
+                    const parsed = JSON.parse(paramsJson);
+                    body = parsed.id || "";
+                } catch (e) {}
+            }
+        } else if (type === "templateButtonReplyMessage") {
+            body = mek.message.templateButtonReplyMessage?.selectedId || "";
+        } else if (type === "buttonsResponseMessage") {
+            body = mek.message.buttonsResponseMessage?.selectedButtonId || "";
+        } else if (type === "conversation") {
             body = mek.message.conversation || "";
         } else if (type === "extendedTextMessage") {
             body = mek.message.extendedTextMessage?.text || mek.message.extendedTextMessage?.contextInfo?.externalAdReply?.body || "";
