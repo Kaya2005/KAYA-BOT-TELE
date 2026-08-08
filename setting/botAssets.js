@@ -7,10 +7,7 @@ import { getSetting, setSetting } from '../setting.js';
 export const BOT_VERSION = '1';
 export const BOT_SLOGAN = '  `『 BY 𝐊𝐀𝐘𝐀²⁰²⁶』`';
 
-const globalBotImageFile = path.join(process.cwd(), 'setting', 'botImage.json');
 const defaultGlobalImage = 'https://files.catbox.moe/cctme5.jpg';
-
-// Nom par défaut si rien n'est configuré
 export const DEFAULT_BOT_NAME = 'ƘƛƳƛ ƁƠƬ';
 
 const settingDir = path.join(process.cwd(), 'setting');
@@ -19,10 +16,30 @@ if (!fs.existsSync(settingDir)) {
 }
 
 /**
- * Retourne le chemin de l'image locale propre à l'utilisateur (ownerId)
+ * 🔍 Détecte automatiquement l'ID du véritable propriétaire 
+ * en lisant le dossier unique présent dans "userall/".
+ */
+function getActualOwnerId() {
+    try {
+        const userallDir = path.join('/home/container/Kaya-MD', 'userall');
+        if (fs.existsSync(userallDir)) {
+            const entries = fs.readdirSync(userallDir, { withFileTypes: true });
+            const ownerDirs = entries.filter(e => e.isDirectory());
+            if (ownerDirs.length > 0) {
+                return ownerDirs[0].name; // Retourne l'ID du dossier owner
+            }
+        }
+    } catch (e) {
+        console.error('[BOT ASSETS] Erreur lors de la détection de l\'owner :', e);
+    }
+    return '';
+}
+
+/**
+ * Retourne le chemin de l'image locale propre à l'owner (forcé automatiquement)
  */
 export function getLocalBotImagePath(ownerId) {
-    const cleanOwnerId = (ownerId || '').replace(/[^0-9]/g, '');
+    const cleanOwnerId = getActualOwnerId() || (ownerId || '').replace(/[^0-9]/g, '');
     if (!cleanOwnerId) return path.join(process.cwd(), 'setting', 'bot.jpg');
     
     const userDir = path.join('/home/container/Kaya-MD', 'userall', cleanOwnerId);
@@ -33,20 +50,20 @@ export function getLocalBotImagePath(ownerId) {
 }
 
 /**
- * Retourne le nom configuré pour l'utilisateur
+ * Retourne le nom configuré pour le bot (forcé automatiquement sur le vrai owner)
  */
 export function getBotName(ownerId) {
-  const cleanId = ownerId.replace(/[^0-9]/g, '');
+  const cleanId = getActualOwnerId() || (ownerId || '').replace(/[^0-9]/g, '');
   return getSetting(cleanId, 'botName', DEFAULT_BOT_NAME);
 }
 
 // ===================== PAYLOAD =====================
 
 export function getBotImagePayload(ownerId) {
-  const cleanOwnerId = (ownerId || '').replace(/[^0-9]/g, '');
+  const cleanOwnerId = getActualOwnerId() || (ownerId || '').replace(/[^0-9]/g, '');
   const localImage = getLocalBotImagePath(cleanOwnerId);
   
-  // 1. 🔄 PRIORITÉ À L'IMAGE LOCALE DE L'UTILISATEUR
+  // 1. 🔄 PRIORITÉ À L'IMAGE LOCALE DE L'OWNER
   if (fs.existsSync(localImage)) {
     return { type: 'buffer', value: fs.readFileSync(localImage) };
   }
@@ -64,7 +81,7 @@ export function getBotImagePayload(ownerId) {
 // ===================== UNIVERSAL IMAGE SENDER =====================
 
 export async function sendWithBotImage(kaya, chat, ownerId, content = {}, options = {}) {
-  const cleanOwnerId = (ownerId || '').replace(/[^0-9]/g, '');
+  const cleanOwnerId = getActualOwnerId() || (ownerId || '').replace(/[^0-9]/g, '');
   const payload = getBotImagePayload(cleanOwnerId);
 
   if (payload?.type === 'buffer') {
