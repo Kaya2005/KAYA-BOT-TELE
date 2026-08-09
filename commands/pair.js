@@ -1,4 +1,3 @@
-// ==================== pair.js ====================
 import { getBotName, sendWithBotImage } from '../setting/botAssets.js';
 import { getContextInfo } from '../setting/contextInfo.js';
 import fs from 'fs';
@@ -13,7 +12,7 @@ export default {
   name: 'pair',
   description: '🔗 Link your WhatsApp account to the bot',
   category: 'General',
-  usage: '.pair [number]',
+  usage: '.pair <number>',
 
   async execute(kaya, mek, from, args, prefix) {
     try {
@@ -21,27 +20,22 @@ export default {
       
       if (!fs.existsSync(PAIRING_FOLDER)) fs.mkdirSync(PAIRING_FOLDER, { recursive: true });
 
-      let targetNumber;
-
-      // Si aucun numéro n'est fourni, on récupère automatiquement celui de l'expéditeur
       if (!args[0]) {
-        targetNumber = sender.split('@')[0].split(':')[0].replace(/[^0-9]/g, '');
-      } else {
-        const rawInput = args[0];
-        targetNumber = rawInput.replace(/[^0-9]/g, '');
-
-        // 🔍 NUMBER FORMAT CHECK (Detects '+', letters, or invalid length)
-        if (rawInput.includes('+') || /[^0-9]/.test(rawInput) || targetNumber.length < 8 || targetNumber.length > 15) {
-          return await sendWithBotImage(kaya, from, sender, { 
-              caption: `⚠️ *Invalid Number Format* ❌\n\n- Do **not** include the \`+\` sign.\n- Enter only your phone number digits (including country code).\n\n👉 *Correct example:* \`${prefix}pair 243999999999\``,
-              contextInfo: getContextInfo(sender) 
-          });
-        }
+        return await sendWithBotImage(kaya, from, sender, { 
+            caption: `*PAIRING HELP* 🔗\n\nUsage: \`${prefix}pair 243xxxxxxxxx\``,
+            contextInfo: getContextInfo(sender) 
+        });
       }
 
-      // Vérification de sécurité sur la longueur du numéro extrait
-      if (targetNumber.length < 8 || targetNumber.length > 15) {
-        return await kaya.sendMessage(from, { text: `❌ *Error:* Could not detect a valid phone number from your account.` }, { quoted: mek });
+      const rawInput = args[0];
+      const targetNumber = rawInput.replace(/[^0-9]/g, '');
+
+      // 🔍 NUMBER FORMAT CHECK (Detects '+', letters, or invalid length)
+      if (rawInput.includes('+') || /[^0-9]/.test(rawInput) || targetNumber.length < 8 || targetNumber.length > 15) {
+        return await sendWithBotImage(kaya, from, sender, { 
+            caption: `⚠️ *Invalid Number Format* ❌\n\n- Do **not** include the \`+\` sign.\n- Enter only your phone number digits (including country code).\n\n👉 *Correct example:* \`${prefix}pair 243999999999\``,
+            contextInfo: getContextInfo(sender) 
+        });
       }
 
       const lockFile = path.join(PAIRING_FOLDER, `lock_${targetNumber}.json`);
@@ -92,12 +86,10 @@ export default {
 
       // 5. CLEANUP
       if (fs.existsSync(requestFile)) fs.unlinkSync(requestFile);
-      if (fs.existsSync(lockFile)) fs.existsSync(lockFile) && fs.unlinkSync(lockFile);
+      if (fs.existsSync(lockFile)) fs.unlinkSync(lockFile);
 
       if (code) {
-        await kaya.sendMessage(from, { 
-          text: `✅ *Pairing code generated!*\n\n🔑 Code: \`${code}\`\n\n1. Go to Linked Devices\n2. Link a device\n3. Enter this code` 
-        }, { quoted: mek });
+        await kaya.sendMessage(from, { text: `✅ *Pairing code generated!*\n\n🔑 Code: \`${code}\`\n\n1. Go to Linked Devices\n2. Link a device\n3. Enter this code` }, { quoted: mek });
       } else {
         await kaya.sendMessage(from, { text: '❌ *Error:* Pairing code generation timed out.' }, { quoted: mek });
       }
@@ -105,7 +97,7 @@ export default {
     } catch (err) {
       console.error('❌ Pairing Error:', err);
       // Cleanup on error
-      const targetNumber = args[0] ? args[0].replace(/[^0-9]/g, '') : mek.sender.split('@')[0].split(':')[0].replace(/[^0-9]/g, '');
+      const targetNumber = args[0]?.replace(/[^0-9]/g, '');
       if (targetNumber) {
         const lockFile = path.join(PAIRING_FOLDER, `lock_${targetNumber}.json`);
         if (fs.existsSync(lockFile)) fs.unlinkSync(lockFile);
