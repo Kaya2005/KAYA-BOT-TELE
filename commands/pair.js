@@ -92,35 +92,11 @@ export default {
 
       // 5. CLEANUP
       if (fs.existsSync(requestFile)) fs.unlinkSync(requestFile);
-      if (fs.existsSync(lockFile)) fs.unlinkSync(lockFile);
+      if (fs.existsSync(lockFile)) fs.existsSync(lockFile) && fs.unlinkSync(lockFile);
 
       if (code) {
-        // Envoi avec bouton interactif "Copier" (compatible Baileys v7)
-        await kaya.sendMessage(from, {
-          viewOnce: true,
-          interactiveMessage: {
-            header: {
-              title: "🔑 Pairing Code Generated",
-              hasMediaAttachment: false
-            },
-            body: {
-              text: `Voici votre code de jumelage :\n\n\`${code}\`\n\nCliquez sur le bouton ci-dessous pour copier le code.`
-            },
-            footer: {
-              text: "Kaya Bot Pairing Service"
-            },
-            nativeFlowMessage: {
-              buttons: [
-                {
-                  name: "cta_copy",
-                  buttonParamsJson: JSON.stringify({
-                    display_text: "Copier le code",
-                    copy_code: code
-                  })
-                }
-              ]
-            }
-          }
+        await kaya.sendMessage(from, { 
+          text: `✅ *Pairing code generated!*\n\n🔑 Code: \`${code}\`\n\n1. Go to Linked Devices\n2. Link a device\n3. Enter this code` 
         }, { quoted: mek });
       } else {
         await kaya.sendMessage(from, { text: '❌ *Error:* Pairing code generation timed out.' }, { quoted: mek });
