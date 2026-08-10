@@ -118,7 +118,7 @@ setupChatbot(bot);
 bot.start(async (ctx) => {
     // Si c'est en privé, on affiche la photo et le menu complet
     if (ctx.chat.type === 'private') {
-        await ctx.replyWithPhoto('https://files.catbox.moe/cctme5.jpg', {
+        await ctx.replyWithPhoto('https://files.catbox.moe/lo0p98.png', {
             caption: '<blockquote>▉ 𝐊𝐀𝐘𝐀 𝐁𝐎𝐓 ▉\n\nWelcome! Choose an option below to connect your WhatsApp or add the bot to your group.</blockquote>',
             parse_mode: 'HTML',
             reply_to_message_id: ctx.message?.message_id,
@@ -131,7 +131,7 @@ bot.start(async (ctx) => {
         });
     } else {
         // Si c'est dans un groupe, on affiche l'image avec le menu complet en légende
-        await ctx.replyWithPhoto('https://files.catbox.moe/1ddhgm.jpg', {
+        await ctx.replyWithPhoto('https://files.catbox.moe/lo0p98.png', {
             caption: getMenu(ctx.from.first_name, isOwner(ctx)),
             parse_mode: 'HTML',
             reply_to_message_id: ctx.message?.message_id
