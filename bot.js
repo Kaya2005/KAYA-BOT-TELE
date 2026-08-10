@@ -30,7 +30,6 @@ const isOwner = (ctx) => {
     } catch { return false; }
 };
 
-// 🔒 Vérifie si le chat est privé (uniquement pour les commandes sensibles comme /connect)
 const ensurePrivate = (ctx) => {
     if (isOwner(ctx)) return true;
     if (!ctx.chat || ctx.chat.type !== 'private') {
@@ -61,7 +60,6 @@ const checkChannels = async (ctx) => {
     return true;
 };
 
-// 🛠️ Fonction utilitaire pour récupérer toutes les vraies sessions WhatsApp actives
 const getActiveSessions = () => {
     if (!fs.existsSync(pairingFolder)) return [];
     return fs.readdirSync(pairingFolder, { withFileTypes: true })
@@ -104,21 +102,27 @@ ______________________
     return menu;
 };
 
-// 🚀 Utilisation directe du token unique depuis token.js
+// 🚀 Initialisation
 const bot = new Telegraf(BOT_TOKEN);
 
-// ================= CHARGEMENT DES MODULES TELEGRAM =================
 setupWelcome(bot);
 setupAntiLink(bot);
 setupGroupMenu(bot);
 setupChatbot(bot);
 
 // ================= COMMANDES =================
-// /start fonctionne partout (groupes et privé)
 bot.start(async (ctx) => {
-    // Si c'est en privé, on affiche la photo et le menu complet
+    const logoPath = path.join(__dirname, 'setting', 'logo.png');
+
+    // Vérification de sécurité pour le fichier
+    if (!fs.existsSync(logoPath)) {
+        return ctx.reply("❌ Erreur : L'image logo.png est introuvable dans le dossier 'setting'.");
+    }
+
+    const photo = { source: fs.readFileSync(logoPath) };
+
     if (ctx.chat.type === 'private') {
-        await ctx.replyWithPhoto('https://files.catbox.moe/lo0p98.png', {
+        await ctx.replyWithPhoto(photo, {
             caption: '<blockquote>▉ 𝐊𝐀𝐘𝐀 𝐁𝐎𝐓 ▉\n\nWelcome! Choose an option below to connect your WhatsApp or add the bot to your group.</blockquote>',
             parse_mode: 'HTML',
             reply_to_message_id: ctx.message?.message_id,
@@ -130,15 +134,13 @@ bot.start(async (ctx) => {
             }
         });
     } else {
-        // Si c'est dans un groupe, on affiche l'image avec le menu complet en légende
-        await ctx.replyWithPhoto('https://files.catbox.moe/lo0p98.png', {
+        await ctx.replyWithPhoto(photo, {
             caption: getMenu(ctx.from.first_name, isOwner(ctx)),
             parse_mode: 'HTML',
             reply_to_message_id: ctx.message?.message_id
         });
     }
 });
-
 
 bot.action('start_bot', async (ctx) => {
     await ctx.editMessageCaption(getMenu(ctx.from.first_name, isOwner(ctx)), { parse_mode: 'HTML' }).catch(async () => {
@@ -165,7 +167,6 @@ bot.action('info_group', async (ctx) => {
     });
 });
 
-// /group fonctionne partout
 bot.command('group', async (ctx) => {
     const text = `<blockquote>🤖 <b>TELEGRAM GROUP SETUP</b>\n\n` +
                  `To enable moderation and welcome features in your group:\n\n` +
@@ -186,7 +187,6 @@ bot.command('group', async (ctx) => {
     });
 });
 
-// /ping fonctionne partout
 bot.command('ping', async (ctx) => {
     ctx.reply('<blockquote>▉ 𝐊𝐀𝐘𝐀 𝐁𝐎𝐓 ▉\n\n✅ <b>Status:</b> Online</blockquote>', { 
         parse_mode: 'HTML',
@@ -194,7 +194,6 @@ bot.command('ping', async (ctx) => {
     });
 });
 
-// /connect est STRICTEMENT réservé aux messages privés (DM)
 bot.command('connect', async (ctx) => {
     if (!ensurePrivate(ctx)) return;
 
