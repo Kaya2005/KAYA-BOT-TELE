@@ -1,9 +1,11 @@
 // ==========================================
-// FICHIER : ./utils/kayaUtils.js
+// FILE: ./utils/kayaUtils.js
 // ==========================================
 import { getSetting } from '../setting.js';
 
 const messageCounter = new Map();
+// ✅ Global tracker to prevent warning message spam
+let lastWarningTime = 0; 
 
 export const randomDelay = (min = 5000, max = 8000) => 
     new Promise((resolve) => setTimeout(resolve, Math.floor(Math.random() * (max - min + 1)) + min));
@@ -12,16 +14,16 @@ export async function sendLimited(kaya, originalSendMessage, jid, content, optio
     const number = jid.split('@')[0];
     const now = Date.now();
     
-    // Récupérer le ownerId depuis l'instance de kaya
+    // Retrieve ownerId from the kaya instance
     const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0] : '';
     
-    // Récupérer le profil de vitesse choisi (par défaut '5-8')
+    // Retrieve the chosen speed profile (default '5-8')
     const speedProfile = getSetting(ownerId, 'botSpeed', '5-8');
     
     let min = 5000;
     let max = 8000;
     
-    // Définition des plages horaires en millisecondes selon le profil
+    // Define time ranges in milliseconds based on the profile
     switch (speedProfile) {
         case '1-2': min = 1000; max = 2000; break;
         case '2-3': min = 2000; max = 3000; break;
@@ -41,20 +43,24 @@ export async function sendLimited(kaya, originalSendMessage, jid, content, optio
         stats.lastReset = now;
     }
     
-    // Si la limite d'envois est atteinte
+    // If send limit is reached
     if (stats.count >= 100) {
-        console.log(`[BAN PROTECTION] Limite atteinte pour ${number}. Pause de 60 secondes activée.`);
-        try {
-            // Signal à l'utilisateur de la pause anti-spam
-            await originalSendMessage.call(kaya, jid, { 
-                text: "🛡️ *[ANTI-SPAM PROTECTION]*\nLimite de messages atteinte. Le bot fait une pause de 60 secondes pour éviter un blocage par WhatsApp." 
-            }, {});
-        } catch (e) {}
+        console.log(`[BAN PROTECTION] Limit reached for ${number}. 60-second pause activated.`);
+        
+        // Anti-flood check for warning
+        if (Date.now() - lastWarningTime > 60000) {
+            lastWarningTime = Date.now();
+            try {
+                await originalSendMessage.call(kaya, jid, { 
+                    text: "🛡️ *[ANTI-SPAM PROTECTION]*\nMessage limit reached. The bot is taking a 60-second pause to avoid being blocked by WhatsApp." 
+                }, {});
+            } catch (e) {}
+        }
 
-        // Pause de 60 secondes
+        // 60-second pause
         await new Promise(resolve => setTimeout(resolve, 60000));
         
-        // Réinitialisation partielle du compteur pour repartir prudemment
+        // Partial counter reset
         stats.count = 50; 
         stats.lastReset = Date.now();
     }
@@ -62,25 +68,30 @@ export async function sendLimited(kaya, originalSendMessage, jid, content, optio
     stats.count++;
     messageCounter.set(number, stats);
     
-    // Appliquer le délai dynamique selon le choix
+    // Apply dynamic delay
     await randomDelay(min, max); 
     
     try {
         return await originalSendMessage.call(kaya, jid, content, options);
     } catch (err) {
-        // Interception des erreurs de rate limit (rate-overlimit / 429)
+        // Intercept rate limit errors (rate-overlimit / 429)
         if (String(err).includes('rate-overlimit') || String(err).includes('429')) {
-            console.log(`[RATE LIMIT] Alerte rate-overlimit détectée pour ${number}. Pause de 60s...`);
-            try {
-                await originalSendMessage.call(kaya, jid, { 
-                    text: "⚠️ *[RATE LIMIT DETECTED]*\nWhatsApp restreint temporairement les envois. Le bot applique une pause de sécurité de 60 secondes..." 
-                }, {});
-            } catch (e) {}
+            console.log(`[RATE LIMIT] Rate-overlimit alert detected for ${number}. 60s pause...`);
             
-            // Pause de 60 secondes de refroidissement
+            // Anti-flood check for warning
+            if (Date.now() - lastWarningTime > 60000) {
+                lastWarningTime = Date.now();
+                try {
+                    await originalSendMessage.call(kaya, jid, { 
+                        text: "⚠️ *[RATE LIMIT DETECTED]*\nWhatsApp is temporarily restricting sending. The bot is applying a 60-second safety pause..." 
+                    }, {});
+                } catch (e) {}
+            }
+            
+            // 60-second cooldown pause
             await new Promise(resolve => setTimeout(resolve, 60000));
             
-            // Tentative de ré-envoi après la pause
+            // Retry sending after pause
             return await originalSendMessage.call(kaya, jid, content, options);
         }
         throw err;
