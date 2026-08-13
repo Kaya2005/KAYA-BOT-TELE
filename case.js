@@ -11,6 +11,8 @@ import { getSetting } from "./setting.js";
 import { sendLimited, randomDelay } from './utils/kayaUtils.js';
 // ✅ IMPORTATION DU STOCKAGE ANTI-DELETE
 import { storeMessage } from "./commands/antidelete.js";
+// ✅ IMPORTATION DU MENU INTERACTIF
+import { handleMenuInteraction } from "./commands/menu.js";
 
 const __dirname = path.resolve();
 export const commands = new Map();
@@ -80,7 +82,6 @@ export default async function caseHandler(kaya, mek, chatUpdate, store = null) {
         const type = getContentType(mek.message);
         let body = "";
         
-        // Interception des clics sur les boutons interactifs
         if (type === "interactiveResponseMessage") {
             const paramsJson = mek.message.interactiveResponseMessage?.nativeFlowResponseMessage?.paramsJson;
             if (paramsJson) {
@@ -102,6 +103,9 @@ export default async function caseHandler(kaya, mek, chatUpdate, store = null) {
         } else if (type === "videoMessage") {
             body = mek.message.videoMessage?.caption || "";
         }
+
+        // ✅ Synchronisation de mek.text
+        mek.text = body;
 
         // 🔍 VÉRIFICATION PRÉALABLE : Est-ce une commande valide ?
         let isCommand = false;
@@ -147,6 +151,12 @@ export default async function caseHandler(kaya, mek, chatUpdate, store = null) {
                     }
                 }
             }
+        }
+
+        // ✅ GESTION DU MENU INTERACTIF (Reply par chiffre ou raccourci direct type groupmenu)
+        if (body) {
+            const isMenuHandled = await handleMenuInteraction(kaya, mek, from, args, prefix);
+            if (isMenuHandled) return; 
         }
 
         // 🛡️ VÉRIFICATION DES UTILITAIRES ACTIFS (Anti-Link, Anti-Bot, Anti-Spam, etc.)
