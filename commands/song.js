@@ -9,9 +9,6 @@ const USER_AGENTS = [
   'okhttp/4.9.3'
 ];
 
-/**
- * Effectue des tentatives de requêtes HTTP avec User-Agents rotatifs
- */
 async function fetchWithRetry(url, maxRetries = 2, timeout = 12000) {
   let lastError;
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -42,11 +39,7 @@ function isYoutubeUrl(text) {
   return patterns.some(pattern => pattern.test(text));
 }
 
-/**
- * Recherche YouTube avec Fallback vers `yt-search`
- */
 async function searchYoutube(query) {
-  // 1. Essai avec l'API principale
   try {
     const apiUrl = `https://backend1.tioo.eu.org/yts?q=${encodeURIComponent(query)}`;
     const response = await fetchWithRetry(apiUrl, 2, 10000);
@@ -63,7 +56,6 @@ async function searchYoutube(query) {
     console.warn('[SONG SEARCH] Échec API Principale, tentative avec yt-search...');
   }
 
-  // 2. Fallback avec le module yt-search
   const search = await yts(query);
   if (!search.videos.length) {
     throw new Error('Aucun résultat trouvé pour cette recherche.');
@@ -76,14 +68,10 @@ async function searchYoutube(query) {
   };
 }
 
-/**
- * Téléchargement Audio avec Système Multi-API (Principale + Secours)
- */
 async function downloadAudioWithFallback(videoUrl) {
   const encodedUrl = encodeURIComponent(videoUrl);
 
   const apis = [
-    // 🥇 1. API Principale (tioo.eu.org)
     {
       name: 'Tioo Backend',
       url: `https://backend1.tioo.eu.org/YouTube?url=${encodedUrl}`,
@@ -92,7 +80,6 @@ async function downloadAudioWithFallback(videoUrl) {
         title: data?.title
       })
     },
-    // 🥈 2. Secours 1 (Vreden)
     {
       name: 'Vreden API',
       url: `https://api.vreden.web.id/api/ytmp3?url=${encodedUrl}`,
@@ -101,7 +88,6 @@ async function downloadAudioWithFallback(videoUrl) {
         title: data?.result?.title
       })
     },
-    // 🥉 3. Secours 2 (Dreaded)
     {
       name: 'Dreaded API',
       url: `https://api.dreaded.site/api/ytdl/audio?url=${encodedUrl}`,
@@ -110,7 +96,6 @@ async function downloadAudioWithFallback(videoUrl) {
         title: data?.title
       })
     },
-    // 🏅 4. Secours 3 (Official Hector Workers)
     {
       name: 'Hector Worker',
       url: `https://yt-dl.officialhectormanuel.workers.dev/?url=${encodedUrl}`,
@@ -127,7 +112,7 @@ async function downloadAudioWithFallback(videoUrl) {
       const result = api.extract(response.data);
 
       if (result?.audioUrl && result.audioUrl.startsWith('http')) {
-        return result; // API fonctionnelle trouvée !
+        return result;
       }
     } catch (err) {
       console.warn(`[SONG API WARN] Échec sur ${api.name}: ${err.message}`);
@@ -146,7 +131,6 @@ export default {
   async execute(kaya, mek, from, args, prefix) {
     const input = args.join(' ').trim();
     
-    // Récupération propre de l'ownerId
     const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0].split('@')[0] : '';
     const botName = getBotName(ownerId);
 
@@ -170,17 +154,23 @@ export default {
 
       await kaya.sendMessage(from, { react: { text: '⏳', key: mek.key } });
 
-      // Récupération de l'audio via l'API principale ou un secours
       const downloadData = await downloadAudioWithFallback(targetUrl);
       const finalTitle = downloadData.title || videoTitle;
       const cleanTitle = finalTitle.replace(/[^a-zA-Z0-9-_\.]/g, '_');
 
-      // Envoi du fichier sur WhatsApp
+      // 📥 Étape clé : Téléchargement du Buffer audio direct pour éviter les erreurs de lecture
+      const audioBuffer = await axios.get(downloadData.audioUrl, {
+        responseType: 'arraybuffer',
+        headers: { 'User-Agent': USER_AGENTS[0] },
+        timeout: 30000
+      });
+
+      // 📤 Envoi propre du fichier binaire avec le bon MIME type
       await kaya.sendMessage(from, {
-        audio: { url: downloadData.audioUrl },
-        mimetype: 'audio/mp4',
+        audio: Buffer.from(audioBuffer.data),
+        mimetype: 'audio/mpeg',
         fileName: `${cleanTitle}.mp3`,
-        caption: `🎵 *${finalTitle}*\n\n> *Powered by ${botName}*`
+        ptt: false
       }, { quoted: mek });
 
       await kaya.sendMessage(from, { react: { text: '✅', key: mek.key } });
