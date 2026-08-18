@@ -5,7 +5,7 @@ import axios from 'axios';
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 export default {
-    name: 'song',
+    name: 'play',
     description: 'Download song from YouTube',
     category: 'Download',
 
