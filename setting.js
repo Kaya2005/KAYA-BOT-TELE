@@ -1,26 +1,35 @@
 // setting.js
 import fs from "fs";
 import path from "path";
-import { writeFile } from "fs/promises"; // ✅ Importation pour l'écriture asynchrone
+import { writeFile } from "fs/promises";
 
-// 🚀 CACHE EN MÉMOIRE (La clé est "ownerId:groupId" ou juste "ownerId")
+// 🚀 CACHE EN MÉMOIRE
 const cache = new Map();
 
 /**
+ * Extrait un ID numérique propre (ex: "243xxxx:12@s.whatsapp.net" -> "243xxxx")
+ */
+function cleanId(id) {
+    if (!id) return '';
+    return String(id).split('@')[0].split(':')[0].replace(/[^0-9]/g, '');
+}
+
+/**
  * Génère le chemin du fichier de configuration.
- * Supporte la hiérarchie : userall/{ownerId}/{groupId}/settings.json
  */
 function getSettingsPath(ownerId, groupId = null, createIfMissing = false) {
-    // Nettoyage : les IDs sont nettoyés des caractères non numériques
-    const cleanOwnerId = ownerId.replace(/[^0-9]/g, '');
+    const cleanOwnerId = cleanId(ownerId);
     
+    // 🛡️ Sécurité : Si l'ID est vide, on empêche l'écriture dans la racine
+    if (!cleanOwnerId) {
+        return null;
+    }
+
     let baseDir;
     if (groupId) {
-        // Chemin imbriqué pour les réglages de groupe : userall/{ownerId}/{groupId}/
-        const cleanGroupId = groupId.replace(/[^0-9]/g, '');
+        const cleanGroupId = cleanId(groupId);
         baseDir = path.join('/home/container/Kaya-MD', "userall", cleanOwnerId, cleanGroupId);
     } else {
-        // Chemin racine pour les réglages personnels : userall/{ownerId}/
         baseDir = path.join('/home/container/Kaya-MD', "userall", cleanOwnerId);
     }
     
@@ -35,12 +44,16 @@ function getSettingsPath(ownerId, groupId = null, createIfMissing = false) {
  * Récupère un réglage
  */
 export function getSetting(ownerId, key, defaultValue = false, groupId = null) {
-    const cacheKey = groupId ? `${ownerId}:${groupId}` : ownerId;
+    const cleanOwnerId = cleanId(ownerId);
+    if (!cleanOwnerId) return defaultValue;
+
+    const cleanGroupId = groupId ? cleanId(groupId) : null;
+    const cacheKey = cleanGroupId ? `${cleanOwnerId}:${cleanGroupId}` : cleanOwnerId;
     
     if (!cache.has(cacheKey)) {
         try {
             const filePath = getSettingsPath(ownerId, groupId, false);
-            if (fs.existsSync(filePath)) {
+            if (filePath && fs.existsSync(filePath)) {
                 const data = JSON.parse(fs.readFileSync(filePath, "utf8") || "{}");
                 cache.set(cacheKey, data);
             } else {
@@ -57,26 +70,29 @@ export function getSetting(ownerId, key, defaultValue = false, groupId = null) {
 }
 
 /**
- * Enregistre un réglage (Asynchrone pour ne pas ralentir le bot)
+ * Enregistre un réglage (Asynchrone)
  */
 export async function setSetting(ownerId, key, value, groupId = null) {
+    const cleanOwnerId = cleanId(ownerId);
+    if (!cleanOwnerId) return;
+
     try {
-        const cacheKey = groupId ? `${ownerId}:${groupId}` : ownerId;
+        const cleanGroupId = groupId ? cleanId(groupId) : null;
+        const cacheKey = cleanGroupId ? `${cleanOwnerId}:${cleanGroupId}` : cleanOwnerId;
         
-        // S'assurer que le cache est initialisé
         if (!cache.has(cacheKey)) {
             getSetting(ownerId, key, false, groupId);
         }
 
-        const settings = cache.get(cacheKey);
+        const settings = cache.get(cacheKey) || {};
         settings[key] = value;
         
-        // Mise à jour du cache en mémoire
         cache.set(cacheKey, settings);
         
-        // Écriture sur le disque de manière ASYNCHRONE
         const filePath = getSettingsPath(ownerId, groupId, true); 
-        await writeFile(filePath, JSON.stringify(settings, null, 2));
+        if (filePath) {
+            await writeFile(filePath, JSON.stringify(settings, null, 2));
+        }
         
     } catch (e) {
         console.error(`[SETTING] Erreur sauvegarde ${ownerId}:`, e);
