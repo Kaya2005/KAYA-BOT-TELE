@@ -3,9 +3,9 @@ import path from 'path';
 import { getContextInfo } from '../setting/contextInfo.js';
 import checkAdminOrOwner from '../setting/checkAdminOrOwner.js';
 import { getSetting, setSetting } from '../setting.js';
-import { randomDelay } from '../utils/kayaUtils.js';
 
 const welcomeCache = new Set();
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 export default {
     name: 'welcome',
@@ -44,7 +44,7 @@ export default {
             }
             if (action === "status") {
                 const isLocalEnabled = getSetting(ownerId, 'welcomeEnabled', false, groupId);
-                const isAll = getSetting(ownerId, 'welcomeAll', 'on');
+                const isAll = getSetting(ownerId, 'welcomeAll', 'off'); // Désactivé par défaut ici aussi
 
                 return kaya.sendMessage(from, { text: `📊 *WELCOME STATUS*\n\nLocal: ${isLocalEnabled ? "ON" : "OFF"}\nGlobal (All): ${isAll.toUpperCase()}`, contextInfo: getContextInfo(mek.sender) }, { quoted: mek });
             }
@@ -59,30 +59,38 @@ export default {
             const groupId = from.split('@')[0];
             const ownerId = kaya.user.id.split(':')[0];
             
-            const isAll = getSetting(ownerId, 'welcomeAll', 'on');
+            // 🔍 Récupération avec 'off' comme valeur par défaut
+            const isAll = getSetting(ownerId, 'welcomeAll', 'off');
             let isEnabled = false;
 
             if (isAll === 'on') {
                 isEnabled = true;
             } else {
+                // Se fie au réglage local du groupe (désactivé par défaut 'false')
                 isEnabled = getSetting(ownerId, 'welcomeEnabled', false, groupId);
             }
 
             if (!isEnabled) return;
-
-            // 🛡️ Human-like random delay before processing
-            await randomDelay(5000, 12000);
 
             const metadata = await kaya.groupMetadata(from).catch(() => ({}));
             const groupName = metadata.subject || "this group";
             const memberCount = metadata.participants ? metadata.participants.length : 0;
             const creationDate = metadata.creation ? new Date(metadata.creation * 1000).toLocaleDateString() : "Unknown";
 
+            let ppUrl;
+            try {
+                ppUrl = await kaya.profilePictureUrl(from, 'image');
+            } catch {
+                ppUrl = 'https://telegra.ph/file/24fa902ead26340f3df2c.png';
+            }
+
             for (let user of update.participants) {
                 const userId = typeof user === 'string' ? user : user.id;
                 if (welcomeCache.has(userId)) continue;
                 welcomeCache.add(userId);
-                setTimeout(() => welcomeCache.delete(userId), 60000);
+                setTimeout(() => welcomeCache.delete(userId), 30000);
+
+                await delay(2000);
 
                 const msg = `▉ \`WELCOME\` ▉
 ▰▰▰▰▰▰▰▰▰▰
@@ -90,16 +98,16 @@ export default {
 ➠ Welcome to: ${groupName}
 ➠ Total Members: ${memberCount}
 ➠ Group Created: ${creationDate}
+______________________
+https://t.me/kayatech2
 ▰▰▰▰▰▰▰▰▰▰`.trim();
 
                 await kaya.sendMessage(from, { 
-                    text: msg, 
+                    image: { url: ppUrl },
+                    caption: msg, 
                     mentions: [userId],
                     contextInfo: getContextInfo(ownerId + '@s.whatsapp.net') 
                 });
-
-                // 🛡️ Anti-flood pause between multiple participants joining at once
-                await randomDelay(4000, 9000);
             }
         } catch (e) { /* silent */ }
     }
