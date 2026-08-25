@@ -44,7 +44,7 @@ export default {
             }
             if (action === "status") {
                 const isLocalEnabled = getSetting(ownerId, 'welcomeEnabled', false, groupId);
-                const isAll = getSetting(ownerId, 'welcomeAll', 'off'); // Désactivé par défaut ici aussi
+                const isAll = getSetting(ownerId, 'welcomeAll', 'on');
 
                 return kaya.sendMessage(from, { text: `📊 *WELCOME STATUS*\n\nLocal: ${isLocalEnabled ? "ON" : "OFF"}\nGlobal (All): ${isAll.toUpperCase()}`, contextInfo: getContextInfo(mek.sender) }, { quoted: mek });
             }
@@ -59,14 +59,12 @@ export default {
             const groupId = from.split('@')[0];
             const ownerId = kaya.user.id.split(':')[0];
             
-            // 🔍 Récupération avec 'off' comme valeur par défaut
-            const isAll = getSetting(ownerId, 'welcomeAll', 'off');
+            const isAll = getSetting(ownerId, 'welcomeAll', 'on');
             let isEnabled = false;
 
             if (isAll === 'on') {
                 isEnabled = true;
             } else {
-                // Se fie au réglage local du groupe (désactivé par défaut 'false')
                 isEnabled = getSetting(ownerId, 'welcomeEnabled', false, groupId);
             }
 
@@ -76,13 +74,10 @@ export default {
             const groupName = metadata.subject || "this group";
             const memberCount = metadata.participants ? metadata.participants.length : 0;
             const creationDate = metadata.creation ? new Date(metadata.creation * 1000).toLocaleDateString() : "Unknown";
+            const now = new Date().toLocaleDateString();
 
-            let ppUrl;
-            try {
-                ppUrl = await kaya.profilePictureUrl(from, 'image');
-            } catch {
-                ppUrl = 'https://telegra.ph/file/24fa902ead26340f3df2c.png';
-            }
+            const logoPath = path.join(process.cwd(), 'setting', 'logo.png');
+            const logoBuffer = fs.existsSync(logoPath) ? fs.readFileSync(logoPath) : null;
 
             for (let user of update.participants) {
                 const userId = typeof user === 'string' ? user : user.id;
@@ -90,24 +85,38 @@ export default {
                 welcomeCache.add(userId);
                 setTimeout(() => welcomeCache.delete(userId), 30000);
 
-                await delay(2000);
+                const randomDelay = Math.floor(Math.random() * 1000) + 4000;
+                await delay(randomDelay);
 
-                const msg = `▉ \`WELCOME\` ▉
-▰▰▰▰▰▰▰▰▰▰
-➠ User: @${userId.split("@")[0]}
-➠ Welcome to: ${groupName}
-➠ Total Members: ${memberCount}
-➠ Group Created: ${creationDate}
-______________________
-https://t.me/kayatech2
+                const username = `@${userId.split("@")[0]}`;
+                const groupSize = memberCount;
+
+                const msg = `▰▰▰▰▰▰▰▰▰▰
+├ 👤 Welcome ${username}
+├ 🎓 Group: *${groupName}*
+├ 👥 Members: ${groupSize}
+├ 🏗️ Created on: ${creationDate}
+├ 📆 Date: ${now}
+├ 📜 \`Rules\` :
+│  ┗ No forbidden links ❌
+│  ┗ No adult content 🔞
+│  ┗ No spamming 🚫
+╰────────────────⬣
 ▰▰▰▰▰▰▰▰▰▰`.trim();
 
-                await kaya.sendMessage(from, { 
-                    image: { url: ppUrl },
-                    caption: msg, 
+                const sendPayload = {
+                    caption: msg,
                     mentions: [userId],
-                    contextInfo: getContextInfo(ownerId + '@s.whatsapp.net') 
-                });
+                    contextInfo: getContextInfo(ownerId + '@s.whatsapp.net')
+                };
+
+                if (logoBuffer) {
+                    sendPayload.image = logoBuffer;
+                } else {
+                    sendPayload.text = msg;
+                }
+
+                await kaya.sendMessage(from, sendPayload);
             }
         } catch (e) { /* silent */ }
     }
