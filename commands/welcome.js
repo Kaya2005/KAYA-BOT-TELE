@@ -7,6 +7,12 @@ import { getSetting, setSetting } from '../setting.js';
 const welcomeCache = new Set();
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+// --- SYSTÈME ANTI-BAN / RATE LIMIT ---
+let welcomeCount = 0;
+let pauseUntil = 0;
+const MAX_WELCOMES = 10;             // Limite de messages avant pause
+const PAUSE_DURATION = 10 * 60 * 1000; // Pause de 10 minutes (en millisecondes)
+
 export default {
     name: 'welcome',
     alias: ['bienvenue', 'wel'],
@@ -55,6 +61,9 @@ export default {
         try {
             if (update.action !== "add" && update.action !== "invite") return;
             
+            // Vérification de la pause anti-ban
+            if (Date.now() < pauseUntil) return;
+
             const from = update.id;
             const groupId = from.split('@')[0];
             const ownerId = kaya.user.id.split(':')[0];
@@ -80,6 +89,9 @@ export default {
             const logoBuffer = fs.existsSync(logoPath) ? fs.readFileSync(logoPath) : null;
 
             for (let user of update.participants) {
+                // Re-vérifie si la pause s'est déclenchée en cours de boucle
+                if (Date.now() < pauseUntil) break;
+
                 const userId = typeof user === 'string' ? user : user.id;
                 if (welcomeCache.has(userId)) continue;
                 welcomeCache.add(userId);
@@ -91,6 +103,10 @@ export default {
                 const username = `@${userId.split("@")[0]}`;
                 const groupSize = memberCount;
 
+                // 50% de chance d'insérer le lien Telegram sur sa propre ligne
+                const showTelegram = Math.random() < 0.5;
+                const telegramLine = showTelegram ? "\nhttps://t.me/kayatech2" : "";
+
                 const msg = `▰▰▰▰▰▰▰▰▰▰
 ├ 👤 Welcome ${username}
 ├ 🎓 Group: *${groupName}*
@@ -101,7 +117,7 @@ export default {
 │  ┗ No forbidden links ❌
 │  ┗ No adult content 🔞
 │  ┗ No spamming 🚫
-╰────────────────⬣
+╰────────────────⬣${telegramLine}
 ▰▰▰▰▰▰▰▰▰▰`.trim();
 
                 const sendPayload = {
@@ -117,6 +133,15 @@ export default {
                 }
 
                 await kaya.sendMessage(from, sendPayload);
+
+                // Compteur et déclenchement de la pause après 10 envois
+                welcomeCount++;
+                if (welcomeCount >= MAX_WELCOMES) {
+                    welcomeCount = 0;
+                    pauseUntil = Date.now() + PAUSE_DURATION; // Pause de 10 min
+                    console.log(`⚠️ Limite de ${MAX_WELCOMES} welcomes atteinte. Pause anti-ban de 10 minutes.`);
+                    break;
+                }
             }
         } catch (e) { /* silent */ }
     }
