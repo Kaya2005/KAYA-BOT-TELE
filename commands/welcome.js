@@ -50,7 +50,7 @@ export default {
             }
             if (action === "status") {
                 const isLocalEnabled = getSetting(ownerId, 'welcomeEnabled', false, groupId);
-                const isAll = getSetting(ownerId, 'welcomeAll', 'on');
+                const isAll = getSetting(ownerId, 'welcomeAll', 'on'); // Par défaut 'on'
 
                 return kaya.sendMessage(from, { text: `📊 *WELCOME STATUS*\n\nLocal: ${isLocalEnabled ? "ON" : "OFF"}\nGlobal (All): ${isAll.toUpperCase()}`, contextInfo: getContextInfo(mek.sender) }, { quoted: mek });
             }
@@ -68,6 +68,7 @@ export default {
             const groupId = from.split('@')[0];
             const ownerId = kaya.user.id.split(':')[0];
             
+            // Modification ici : 'on' par défaut si aucune valeur n'est enregistrée
             const isAll = getSetting(ownerId, 'welcomeAll', 'on');
             let isEnabled = false;
 
@@ -103,10 +104,6 @@ export default {
                 const username = `@${userId.split("@")[0]}`;
                 const groupSize = memberCount;
 
-                // 50% de chance d'insérer le lien Telegram sur sa propre ligne
-                const showTelegram = Math.random() < 0.5;
-                const telegramLine = showTelegram ? "\nhttps://t.me/kayatech2" : "";
-
                 const msg = `▰▰▰▰▰▰▰▰▰▰
 ├ 👤 Welcome ${username}
 ├ 🎓 Group: *${groupName}*
@@ -117,7 +114,8 @@ export default {
 │  ┗ No forbidden links ❌
 │  ┗ No adult content 🔞
 │  ┗ No spamming 🚫
-╰────────────────⬣${telegramLine}
+╰────────────────⬣
+https://t.me/kayatech2
 ▰▰▰▰▰▰▰▰▰▰`.trim();
 
                 const sendPayload = {
