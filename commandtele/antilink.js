@@ -1,15 +1,62 @@
 // ==========================================
 // FILE : commandtele/antilink.js
 // ==========================================
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-const antilinkStates = new Map();
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const dbFolder = path.join(__dirname, '../database/antilink');
 
-// Structure de configuration par chat (Activé par défaut à true pour survivre aux redémarrages)
+// Garantir que le dossier existe
+if (!fs.existsSync(dbFolder)) {
+    fs.mkdirSync(dbFolder, { recursive: true });
+}
+
+// Cache en mémoire RAM pour des performances maximales
+const memoryCache = new Map();
+
+// Obtenir le chemin du fichier JSON propre à un groupe
+function getGroupFilePath(chatId) {
+    return path.join(dbFolder, `${chatId}.json`);
+}
+
+// Charge ou crée la configuration d'un groupe
 function getConfig(chatId) {
-    if (!antilinkStates.has(chatId)) {
-        antilinkStates.set(chatId, { enabled: true, mode: 'delete', duration: 300 }); // 300s = 5 minutes par défaut
+    // 1. Retour direct si en mémoire
+    if (memoryCache.has(chatId)) {
+        return memoryCache.get(chatId);
     }
-    return antilinkStates.get(chatId);
+
+    const filePath = getGroupFilePath(chatId);
+
+    // 2. Lecture depuis le fichier du groupe s'il existe
+    if (fs.existsSync(filePath)) {
+        try {
+            const data = fs.readFileSync(filePath, 'utf8');
+            const config = JSON.parse(data);
+            memoryCache.set(chatId, config);
+            return config;
+        } catch (err) {
+            console.error(`[ANTILINK DB READ ERROR] ${chatId}:`, err);
+        }
+    }
+
+    // 3. Configuration par défaut
+    const defaultConfig = { enabled: true, mode: 'delete', duration: 300 };
+    saveConfig(chatId, defaultConfig);
+    return defaultConfig;
+}
+
+// Sauvegarde la configuration du groupe dans son fichier dédié
+function saveConfig(chatId, config) {
+    memoryCache.set(chatId, config);
+    try {
+        const filePath = getGroupFilePath(chatId);
+        fs.writeFileSync(filePath, JSON.stringify(config, null, 2), 'utf8');
+    } catch (err) {
+        console.error(`[ANTILINK DB SAVE ERROR] ${chatId}:`, err);
+    }
 }
 
 async function checkAdmin(ctx) {
@@ -29,7 +76,7 @@ async function checkAdmin(ctx) {
     }
 }
 
-// Shared function to display the configuration panel
+// Panneau de configuration AntiLink
 async function handleAntiLinkConfig(ctx) {
     if (!ctx.chat || !['supergroup', 'group'].includes(ctx.chat.type)) {
         return ctx.reply("<blockquote>This command can only be used in a group.</blockquote>", { 
@@ -81,17 +128,17 @@ async function handleAntiLinkConfig(ctx) {
 }
 
 export default function setupAntiLink(bot) {
-    // Triggered by command (/antilink) and plain text (antilink)
+    // Triggers par commande et texte brut
     bot.command('antilink', handleAntiLinkConfig);
     bot.hears(/^antilink$/i, handleAntiLinkConfig);
 
-    // Triggered via groupmenu button
+    // Trigger via bouton du menu principal
     bot.action('menu_antilink', async (ctx) => {
         await ctx.answerCbQuery();
         await handleAntiLinkConfig(ctx);
     });
 
-    // Handling ON / OFF clicks
+    // Clics ON / OFF
     bot.action(/^antilink_(on|off)$/, async (ctx) => {
         try {
             if (!(await checkAdmin(ctx))) {
@@ -99,8 +146,11 @@ export default function setupAntiLink(bot) {
             }
 
             const action = ctx.match[1];
-            const config = getConfig(ctx.chat.id);
+            const chatId = ctx.chat.id;
+            const config = getConfig(chatId);
+            
             config.enabled = (action === 'on');
+            saveConfig(chatId, config);
 
             await ctx.answerCbQuery(config.enabled ? "AntiLink enabled!" : "AntiLink disabled!");
             await handleAntiLinkConfig(ctx);
@@ -110,7 +160,7 @@ export default function setupAntiLink(bot) {
         }
     });
 
-    // Handling Mode Change (delete / restrict)
+    // Changement de Mode (delete / restrict)
     bot.action(/^antilink_mode_(delete|restrict)$/, async (ctx) => {
         try {
             if (!(await checkAdmin(ctx))) {
@@ -118,8 +168,11 @@ export default function setupAntiLink(bot) {
             }
 
             const newMode = ctx.match[1];
-            const config = getConfig(ctx.chat.id);
+            const chatId = ctx.chat.id;
+            const config = getConfig(chatId);
+            
             config.mode = newMode;
+            saveConfig(chatId, config);
 
             await ctx.answerCbQuery(`Mode set to ${newMode}!`);
             await handleAntiLinkConfig(ctx);
@@ -129,7 +182,7 @@ export default function setupAntiLink(bot) {
         }
     });
 
-    // Handling Duration Change for Restriction
+    // Changement de durée de restriction
     bot.action(/^antilink_dur_(\d+)$/, async (ctx) => {
         try {
             if (!(await checkAdmin(ctx))) {
@@ -137,8 +190,11 @@ export default function setupAntiLink(bot) {
             }
 
             const duration = parseInt(ctx.match[1], 10);
-            const config = getConfig(ctx.chat.id);
+            const chatId = ctx.chat.id;
+            const config = getConfig(chatId);
+            
             config.duration = duration;
+            saveConfig(chatId, config);
 
             const mins = Math.round(duration / 60);
             const timeLabel = mins >= 60 ? `${mins / 60}h` : `${mins}m`;
@@ -151,7 +207,7 @@ export default function setupAntiLink(bot) {
         }
     });
 
-    // Monitoring links
+    // Surveillance des liens
     bot.on('message', async (ctx, next) => {
         try {
             if (!ctx.chat || !['supergroup', 'group'].includes(ctx.chat.type)) {
@@ -160,11 +216,8 @@ export default function setupAntiLink(bot) {
 
             const chatId = ctx.chat.id;
             const config = getConfig(chatId);
-            if (!config.enabled) {
-                return next();
-            }
-
-            if (!ctx.message || !ctx.message.text) {
+            
+            if (!config.enabled || !ctx.message || !ctx.message.text) {
                 return next();
             }
 
@@ -189,14 +242,14 @@ export default function setupAntiLink(bot) {
                     return next();
                 }
 
-                // Delete the message containing the link
+                // Suppression du message contenant le lien
                 await ctx.deleteMessage().catch(() => {});
                 
                 const userId = ctx.from?.id;
                 const firstName = ctx.from?.first_name || 'Utilisateur';
                 const userMention = userId ? `<a href="tg://user?id=${userId}">${firstName}</a>` : firstName;
 
-                // Restrict the user if the mode is set to 'restrict'
+                // Restriction de l'utilisateur si mode 'restrict'
                 if (config.mode === 'restrict' && userId) {
                     try {
                         const untilDate = Math.floor(Date.now() / 1000) + config.duration;
@@ -214,12 +267,11 @@ export default function setupAntiLink(bot) {
                     }
                 }
 
-                // Warning message formatting
+                // Message d'avertissement
                 const actionDesc = config.mode === 'restrict' 
                     ? `links are not allowed here! You have been restricted for ${Math.round(config.duration / 60)} minute(s).` 
                     : `links are not allowed here!`;
 
-                // Send persistent warning message with inline channel button (sans reply_to_message_id car le msg est supprimé)
                 await ctx.reply(`<blockquote>⚠️ ${userMention}, ${actionDesc}</blockquote>`, { 
                     parse_mode: 'HTML',
                     reply_markup: {
