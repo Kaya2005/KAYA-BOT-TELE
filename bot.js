@@ -20,7 +20,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // ================= CONSTANTS & PATHS =================
 const adminFilePath = path.join(__dirname, './database/admintele.json');
 const pairingFolder = path.join(__dirname, './richstore/pairing');
-const REQUIRED_CHANNELS = ['-1004453499318', '@kayatech2'];
+const REQUIRED_CHANNELS = ['-1004453499318', '@kayatech2', '@society243'];
+const PRIVATE_GROUP_LINK = 'https://t.me/+WLdroZnDmstjMWNk';
 
 // ================= HELPERS =================
 const isOwner = (ctx) => {
@@ -39,7 +40,8 @@ const ensurePrivate = (ctx) => {
             reply_to_message_id: ctx.message?.message_id,
             reply_markup: {
                 inline_keyboard: [
-                    [{ text: '💬 Open Bot in Private', url: `https://t.me/${botUsername}` }]
+                    [{ text: '💬 Open Bot in Private', url: `https://t.me/${botUsername}` }],
+                    [{ text: '🔒 Groupe Privé', url: PRIVATE_GROUP_LINK }]
                 ]
             }
         });
@@ -114,7 +116,6 @@ setupChatbot(bot);
 bot.start(async (ctx) => {
     const logoPath = path.join(__dirname, 'setting', 'logo.png');
 
-    // Vérification de sécurité pour le fichier
     if (!fs.existsSync(logoPath)) {
         return ctx.reply("❌ Erreur : L'image logo.png est introuvable dans le dossier 'setting'.");
     }
@@ -129,6 +130,7 @@ bot.start(async (ctx) => {
             reply_markup: { 
                 inline_keyboard: [
                     [{ text: '🚀 Start Menu (WhatsApp)', callback_data: 'start_bot' }],
+                    [{ text: '🔒 Rejoindre le Groupe Privé', url: PRIVATE_GROUP_LINK }],
                     [{ text: '➕ Add Bot to Group', callback_data: 'info_group' }]
                 ] 
             }
@@ -137,14 +139,33 @@ bot.start(async (ctx) => {
         await ctx.replyWithPhoto(photo, {
             caption: getMenu(ctx.from.first_name, isOwner(ctx)),
             parse_mode: 'HTML',
-            reply_to_message_id: ctx.message?.message_id
+            reply_to_message_id: ctx.message?.message_id,
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: '🔒 Groupe Privé', url: PRIVATE_GROUP_LINK }]
+                ]
+            }
         });
     }
 });
 
 bot.action('start_bot', async (ctx) => {
-    await ctx.editMessageCaption(getMenu(ctx.from.first_name, isOwner(ctx)), { parse_mode: 'HTML' }).catch(async () => {
-        await ctx.reply(getMenu(ctx.from.first_name, isOwner(ctx)), { parse_mode: 'HTML' });
+    await ctx.editMessageCaption(getMenu(ctx.from.first_name, isOwner(ctx)), { 
+        parse_mode: 'HTML',
+        reply_markup: {
+            inline_keyboard: [
+                [{ text: '🔒 Rejoindre le Groupe Privé', url: PRIVATE_GROUP_LINK }]
+            ]
+        }
+    }).catch(async () => {
+        await ctx.reply(getMenu(ctx.from.first_name, isOwner(ctx)), { 
+            parse_mode: 'HTML',
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: '🔒 Rejoindre le Groupe Privé', url: PRIVATE_GROUP_LINK }]
+                ]
+            }
+        });
     });
 });
 
@@ -161,7 +182,8 @@ bot.action('info_group', async (ctx) => {
         reply_to_message_id: ctx.message?.message_id,
         reply_markup: {
             inline_keyboard: [
-                [{ text: '➕ Add to my Group', url: `https://t.me/${botUsername}?startgroup=true` }]
+                [{ text: '➕ Add to my Group', url: `https://t.me/${botUsername}?startgroup=true` }],
+                [{ text: '🔒 Rejoindre le Groupe Privé', url: PRIVATE_GROUP_LINK }]
             ]
         }
     });
@@ -181,7 +203,8 @@ bot.command('group', async (ctx) => {
         reply_to_message_id: ctx.message?.message_id,
         reply_markup: {
             inline_keyboard: [
-                [{ text: '➕ Add to my Group', url: `https://t.me/${botUsername}?startgroup=true` }]
+                [{ text: '➕ Add to my Group', url: `https://t.me/${botUsername}?startgroup=true` }],
+                [{ text: '🔒 Rejoindre le Groupe Privé', url: PRIVATE_GROUP_LINK }]
             ]
         }
     });
@@ -190,7 +213,12 @@ bot.command('group', async (ctx) => {
 bot.command('ping', async (ctx) => {
     ctx.reply('<blockquote>▉ 𝐊𝐀𝐘𝐀 𝐁𝐎𝐓 ▉\n\n✅ <b>Status:</b> Online</blockquote>', { 
         parse_mode: 'HTML',
-        reply_to_message_id: ctx.message?.message_id 
+        reply_to_message_id: ctx.message?.message_id,
+        reply_markup: {
+            inline_keyboard: [
+                [{ text: '🔒 Groupe Privé', url: PRIVATE_GROUP_LINK }]
+            ]
+        }
     });
 });
 
@@ -211,8 +239,10 @@ bot.command('connect', async (ctx) => {
             reply_to_message_id: ctx.message?.message_id,
             reply_markup: {
                 inline_keyboard: [
-                    [{ text: '𝚉𝙾𝙽𝙴 〽️𝙲𝙷𝙰𝚃', url: 'https://t.me/+nctwjD43hDk0ODBk' }],
+                    [{ text: '𝙺𝙰𝚈𝙰 𝙱𝙾𝚃 | 𝙲𝙷𝙰𝚃', url: 'https://t.me/+nctwjD43hDk0ODBk' }],
+                    [{ text: '🔒 𝙺𝙰𝚈𝙰 𝙱𝙾𝚃 | 𝙶𝚁𝙾𝚄𝙿𝙴 𝙿𝚁𝙸𝚅𝙴́', url: PRIVATE_GROUP_LINK }],
                     [{ text: '𝙺𝙰𝚈𝙰 𝙱𝙾𝚃 | 𝙲𝙰𝙽𝙰𝙻', url: 'https://t.me/kayatech2' }],
+                    [{ text: '𝙎𝙊𝙐𝙇 𝙎𝙊𝘾𝙄𝙀𝙏𝙔🪶', url: 'https://t.me/society243' }],
                     [{ text: '✅ I Have Joined', callback_data: 'check_join' }]
                 ]
             }
@@ -262,7 +292,12 @@ bot.command('connect', async (ctx) => {
         const pairingStyle = `<blockquote>▰▰▰▰▰▰▰▰▰▰\n> ╢ PAIRING CODE ♰\n╭▰▰▰▰▰▰▰◈\n┆🔑 Code: <code>${cuObj.code}</code>\n╰▰▰▰▰▰▰▰◈</blockquote>`;
         ctx.reply(pairingStyle, { 
             parse_mode: 'HTML',
-            reply_to_message_id: ctx.message?.message_id 
+            reply_to_message_id: ctx.message?.message_id,
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: '🔒 Rejoindre notre Groupe Privé', url: PRIVATE_GROUP_LINK }]
+                ]
+            }
         });
     } else {
         ctx.reply('<blockquote>❌ Error: Pairing code could not be generated.</blockquote>', { 
