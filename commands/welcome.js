@@ -50,7 +50,8 @@ export default {
             }
             if (action === "status") {
                 const isLocalEnabled = getSetting(ownerId, 'welcomeEnabled', false, groupId);
-                const isAll = getSetting(ownerId, 'welcomeAll', 'on'); // Par défaut 'on'
+                let isAll = getSetting(ownerId, 'welcomeAll', null);
+                if (!isAll) isAll = 'on'; // Par défaut 'on' pour l'affichage si non défini
 
                 return kaya.sendMessage(from, { text: `📊 *WELCOME STATUS*\n\nLocal: ${isLocalEnabled ? "ON" : "OFF"}\nGlobal (All): ${isAll.toUpperCase()}`, contextInfo: getContextInfo(mek.sender) }, { quoted: mek });
             }
@@ -68,8 +69,14 @@ export default {
             const groupId = from.split('@')[0];
             const ownerId = kaya.user.id.split(':')[0];
             
-            // Modification ici : 'on' par défaut si aucune valeur n'est enregistrée
-            const isAll = getSetting(ownerId, 'welcomeAll', 'on');
+            // Vérifie si le réglage global existe déjà dans la base
+            let isAll = getSetting(ownerId, 'welcomeAll', null);
+            if (!isAll) {
+                // S'il n'existe pas (première connexion absolue du bot), on l'active par défaut et on l'enregistre
+                isAll = 'on';
+                await setSetting(ownerId, 'welcomeAll', 'on');
+            }
+
             let isEnabled = false;
 
             if (isAll === 'on') {
@@ -107,7 +114,7 @@ export default {
                 const msg = `▰▰▰▰▰▰▰▰▰▰
 ├ 👤 Welcome ${username}
 ├ 🎓 Group: *${groupName}*
-├ 👥 Members: ${groupSize}
+├ 👥 Members: `${groupSize}
 ├ 🏗️ Created on: ${creationDate}
 ├ 📆 Date: ${now}
 ├ 📜 \`Rules\` :
@@ -115,8 +122,8 @@ export default {
 │  ┗ No adult content 🔞
 │  ┗ No spamming 🚫
 ╰────────────────⬣
-https://t.me/kayatech2
-▰▰▰▰▰▰▰▰▰▰`.trim();
+   https://t.me/kayatech2
+  ▰▰▰▰▰▰▰▰▰▰`.trim();
 
                 const sendPayload = {
                     caption: msg,
