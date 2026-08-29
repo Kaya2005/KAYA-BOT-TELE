@@ -40,7 +40,7 @@ export default {
 
 ⏳ Downloading in progress...
 
-https://t.me/kayatech2
+bot link : https://t.me/kayatech2
 
 ${BOT_SLOGAN}`,
             }, { quoted: mek });

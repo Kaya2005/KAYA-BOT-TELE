@@ -1,7 +1,8 @@
 import yts from 'yt-search';
 import axios from 'axios';
+import { BOT_SLOGAN } from '../setting/botAssets.js';
 
-// Ajout d'une fonction de délai
+// Delay helper function
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 export default {
@@ -12,7 +13,7 @@ export default {
     async execute(kaya, mek, from, args, prefix) {
         try {
             if (!args.length) {
-                return await kaya.sendMessage(from, { text: `❌ Usage: \`${prefix}song <nom de la musique>\`` }, { quoted: mek });
+                return await kaya.sendMessage(from, { text: `❌ Usage: \`${prefix}play <song name>\`` }, { quoted: mek });
             }
 
             const query = args.join(' ').trim();
@@ -24,31 +25,38 @@ export default {
             } else {
                 const search = await yts(query);
                 if (!search.videos.length) {
-                    await kaya.sendMessage(from, { text: `❌ Aucun résultat trouvé.` }, { quoted: mek });
+                    await kaya.sendMessage(from, { text: `❌ No results found.` }, { quoted: mek });
                     return;
                 }
                 video = search.videos[0];
             }
 
-            // Envoi de la miniature avec délai
+            // Sending the thumbnail with title, duration, downloading status, channel link, and imported signature
             await delay(1000);
             await kaya.sendMessage(from, {
                 image: { url: video.thumbnail },
-                caption: `🎵 *${video.title}*\n⏱ ${video.timestamp || "N/A"}\n\n⏳ Téléchargement en cours...`,
+                caption: `🎵 *${video.title}*
+⏱ ${video.timestamp || "N/A"}
+
+⏳ Downloading in progress...
+
+bot link : https://t.me/kayatech2
+
+${BOT_SLOGAN}`,
             }, { quoted: mek });
 
             await kaya.sendMessage(from, { react: { text: "⏳", key: mek.key } });
 
-            // Appel API sécurisé
+            // Secure API call
             const apiUrl = `https://yt-dl.officialhectormanuel.workers.dev/?url=${encodeURIComponent(video.url)}`;
-            const response = await axios.get(apiUrl, { timeout: 30000 }); // Timeout réduit à 30s
+            const response = await axios.get(apiUrl, { timeout: 30000 }); // Timeout reduced to 30s
             const data = response.data;
 
             if (!data?.status || !data.audio) {
-                return await kaya.sendMessage(from, { text: "❌ Échec de la récupération audio." }, { quoted: mek });
+                return await kaya.sendMessage(from, { text: `❌ Failed to retrieve audio.` }, { quoted: mek });
             }
 
-            // Envoi audio avec un court délai pour la stabilité
+            // Sending audio with a short delay for stability
             await delay(1500);
             await kaya.sendMessage(from, {
                 audio: { url: data.audio },
@@ -59,9 +67,8 @@ export default {
             await kaya.sendMessage(from, { react: { text: "✅", key: mek.key } });
 
         } catch (error) {
-            console.error("❌ SONG ERROR:", error);
-            // On évite d'envoyer trop de messages d'erreur si l'API est down
-            await kaya.sendMessage(from, { text: "❌ Erreur lors du traitement. L'API est peut-être surchargée." }, { quoted: mek });
+            console.error("❌ PLAY ERROR:", error);
+            await kaya.sendMessage(from, { text: `❌ Error processing request. The API might be overloaded.` }, { quoted: mek });
             await kaya.sendMessage(from, { react: { text: "❌", key: mek.key } });
         }
     }
