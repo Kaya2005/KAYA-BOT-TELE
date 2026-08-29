@@ -69,11 +69,13 @@ export default {
             const groupId = from.split('@')[0];
             const ownerId = kaya.user.id.split(':')[0];
             
-            // Récupère le réglage global sans forcer l'activation automatique
+            // Récupère le réglage global
             let isAll = getSetting(ownerId, 'welcomeAll', null);
-            if (!isAll) {
-                isAll = 'off';
-                await setSetting(ownerId, 'welcomeAll', 'off');
+            
+            // Si le réglage global n'a jamais été initialisé (première connexion/interaction)
+            if (isAll === null || isAll === undefined) {
+                isAll = 'on';
+                await setSetting(ownerId, 'welcomeAll', 'on');
             }
 
             let isEnabled = false;
