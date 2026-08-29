@@ -5,7 +5,7 @@ import { getSetting } from '../setting.js';
 // ===================== BOT CORE =====================
 
 export const BOT_VERSION = '1';
-export const BOT_SLOGAN = '  `『 BY 𝐊𝐀𝐘𝐀²⁰²⁶』`';
+export const BOT_SLOGAN = ' `『by ƘƛƳƛ ƁƠƬ』` ';
 
 const defaultGlobalImage = 'https://files.catbox.moe/lo0p98.png';
 export const DEFAULT_BOT_NAME = 'ƘƛƳƛ ƁƠƬ';
