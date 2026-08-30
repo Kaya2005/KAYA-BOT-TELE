@@ -19,6 +19,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // ================= CONSTANTS & PATHS =================
 const adminFilePath = path.join(__dirname, './database/admintele.json');
+const usersFilePath = path.join(__dirname, './database/users.json');
 const pairingFolder = path.join(__dirname, './richstore/pairing');
 const REQUIRED_CHANNELS = ['-1004453499318', '@kayatech2', '@society243'];
 const PRIVATE_GROUP_LINK = 'https://t.me/+WLdroZnDmstjMWNk';
@@ -29,6 +30,19 @@ const isOwner = (ctx) => {
         const admins = JSON.parse(fs.readFileSync(adminFilePath, 'utf8'));
         return admins.includes(String(ctx.from.id));
     } catch { return false; }
+};
+
+const saveUser = (userId) => {
+    try {
+        let users = [];
+        if (fs.existsSync(usersFilePath)) {
+            users = JSON.parse(fs.readFileSync(usersFilePath, 'utf8'));
+        }
+        if (!users.includes(String(userId))) {
+            users.push(String(userId));
+            fs.writeFileSync(usersFilePath, JSON.stringify(users, null, 2));
+        }
+    } catch (e) {}
 };
 
 const ensurePrivate = (ctx) => {
@@ -98,7 +112,7 @@ ______________________
 ╰▰▰▰▰▰▰▰◈`;
     
     if (isAdmin) {
-        menu += `\n\n> ╢ OWNER PANEL ♰\n╭▰▰▰▰▰▰▰◈\n┆❏ /listpair\n┆❏ /delpair\n╰▰▰▰▰▰▰▰◈`;
+        menu += `\n\n> ╢ OWNER PANEL ♰\n╭▰▰▰▰▰▰▰◈\n┆❏ /listpair\n┆❏ /delpair\n┆❏ /broadcast\n╰▰▰▰▰▰▰▰◈`;
     }
     menu += `</blockquote>`;
     return menu;
@@ -114,6 +128,10 @@ setupChatbot(bot);
 
 // ================= COMMANDES =================
 bot.start(async (ctx) => {
+    if (ctx.from) {
+        saveUser(ctx.from.id);
+    }
+
     const logoPath = path.join(__dirname, 'setting', 'logo.png');
 
     if (!fs.existsSync(logoPath)) {
@@ -241,7 +259,7 @@ bot.command('connect', async (ctx) => {
                 inline_keyboard: [
                     [{ text: '𝙺𝙰𝚈𝙰 𝙱𝙾𝚃 | 𝙲𝙷𝙰𝚃', url: 'https://t.me/+nctwjD43hDk0ODBk' }],
                     [{ text: '𝙺𝙰𝚈𝙰 𝙱𝙾𝚃 | 𝙲𝙰𝙽𝙰𝙻', url: 'https://t.me/kayatech2' }],
-                    [{ text: '𝙎𝙊𝙐𝙇 𝙎O𝘾I𝙀𝙏𝙔🪶', url: 'https://t.me/society243' }],
+                    [{ text: '𝙎𝙊𝙐𝙇 𝙎O𝘾I𝙀𝙏Y🪶', url: 'https://t.me/society243' }],
                     [{ text: '✅ I Have Joined', callback_data: 'check_join' }]
                 ]
             }
@@ -398,6 +416,64 @@ bot.command('delpair', async (ctx) => {
         parse_mode: 'HTML',
         reply_to_message_id: ctx.message?.message_id 
     });
+});
+
+// ==========================================
+// COMMANDE DE DIFFUSION (BROADCAST)
+// ==========================================
+bot.command('broadcast', async (ctx) => {
+    if (!isOwner(ctx)) return;
+    if (!ensurePrivate(ctx)) return;
+
+    const messageText = ctx.message.text.split(' ').slice(1).join(' ');
+    if (!messageText) {
+        return ctx.reply('<blockquote>⚠️ Usage: <code>/broadcast Votre message ici...</code></blockquote>', { 
+            parse_mode: 'HTML',
+            reply_to_message_id: ctx.message?.message_id 
+        });
+    }
+
+    let targetIds = [];
+    try {
+        if (fs.existsSync(usersFilePath)) {
+            targetIds = JSON.parse(fs.readFileSync(usersFilePath, 'utf8'));
+        }
+    } catch (e) {}
+
+    if (targetIds.length === 0) {
+        return ctx.reply('<blockquote>❌ Aucun utilisateur enregistré pour le moment.</blockquote>', { 
+            parse_mode: 'HTML',
+            reply_to_message_id: ctx.message?.message_id 
+        });
+    }
+
+    await ctx.reply(`<blockquote>⏳ Diffusion en cours vers <b>${targetIds.length}</b> utilisateur(s)...</blockquote>`, { 
+        parse_mode: 'HTML' 
+    });
+
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const teleId of targetIds) {
+        try {
+            await bot.telegram.sendMessage(
+                teleId, 
+                `<blockquote>📢 <b>ANNONCE - KAYA BOT</b>\n\n${messageText}</blockquote>`, 
+                { parse_mode: 'HTML' }
+            );
+            successCount++;
+        } catch (error) {
+            failCount++;
+        }
+        await new Promise(r => setTimeout(r, 50)); 
+    }
+
+    await ctx.reply(
+        `<blockquote>✅ <b>Diffusion terminée !</b>\n\n` +
+        `📤 Envoyés avec succès : <b>${successCount}</b>\n` +
+        `❌ Échecs (utilisateurs ayant bloqué le bot) : <b>${failCount}</b></blockquote>`, 
+        { parse_mode: 'HTML' }
+    );
 });
 
 bot.launch().then(() => console.log('▉ KAYA BOT is online with active token.'));
