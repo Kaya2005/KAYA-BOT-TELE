@@ -72,10 +72,10 @@ export default {
             // Récupère le réglage global
             let isAll = getSetting(ownerId, 'welcomeAll', null);
             
-            // Si le réglage global n'a jamais été initialisé (première connexion/interaction)
+            // Si le réglage global n'a jamais été initialisé, on le met explicitement à 'off'
             if (isAll === null || isAll === undefined) {
-                isAll = 'on';
-                await setSetting(ownerId, 'welcomeAll', 'on');
+                isAll = 'off';
+                await setSetting(ownerId, 'welcomeAll', 'off');
             }
 
             let isEnabled = false;
