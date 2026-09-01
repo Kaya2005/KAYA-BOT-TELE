@@ -9,9 +9,6 @@ import decodeJid from "./setting/decodeJid.js";
 import checkAdminOrOwner from "./setting/checkAdminOrOwner.js";
 import { getSetting } from "./setting.js";
 
-// ✅ DÉLAI D'EXÉCUTION DES COMMANDES
-import { randomDelay } from "./utils/kayaUtils.js";
-
 // 🛡️ STOCKAGE ANTI-DELETE
 import { storeMessage } from "./commands/antidelete.js";
 
@@ -782,78 +779,6 @@ export default async function caseHandler(
         cooldownTracker.set(
             sender,
             Date.now()
-        );
-
-        // ==================================================
-        // DÉLAI DYNAMIQUE
-        // ==================================================
-
-        const speedProfile =
-            getSetting(
-                ownerId,
-                "botSpeed",
-                "4-5"
-            );
-
-        let dMin = 4000;
-        let dMax = 5000;
-
-        switch (speedProfile) {
-
-            case "1-2":
-                dMin = 1000;
-                dMax = 2000;
-                break;
-
-            case "2-3":
-                dMin = 2000;
-                dMax = 3000;
-                break;
-
-            case "3-4":
-                dMin = 3000;
-                dMax = 4000;
-                break;
-
-            case "4-5":
-                dMin = 4000;
-                dMax = 5000;
-                break;
-
-            case "4-6":
-                dMin = 4000;
-                dMax = 6000;
-                break;
-
-            case "5-8":
-                dMin = 5000;
-                dMax = 8000;
-                break;
-
-            case "6-10":
-                dMin = 6000;
-                dMax = 10000;
-                break;
-
-            case "8-10":
-                dMin = 8000;
-                dMax = 10000;
-                break;
-
-            case "10-15":
-                dMin = 10000;
-                dMax = 15000;
-                break;
-
-            default:
-                dMin = 4000;
-                dMax = 5000;
-                break;
-        }
-
-        await randomDelay(
-            dMin,
-            dMax
         );
 
         // ==================================================
