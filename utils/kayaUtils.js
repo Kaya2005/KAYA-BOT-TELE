@@ -1,99 +1,459 @@
 // ==========================================
 // FILE: ./utils/kayaUtils.js
+// SIMPLE MESSAGE RATE LIMITER
 // ==========================================
+
 import { getSetting } from '../setting.js';
 
+// ==========================================
+// CONFIGURATION
+// ==========================================
+
+// Nombre maximum de messages par heure
+const HOURLY_LIMIT = 300;
+
+// Pause lorsque la limite est atteinte
+const LIMIT_PAUSE = 60 * 1000;
+
+// ==========================================
+// STOCKAGE
+// ==========================================
+
 const messageCounter = new Map();
-// ✅ Global tracker to prevent warning message spam
-let lastWarningTime = 0; 
 
-export const randomDelay = (min = 5000, max = 8000) => 
-    new Promise((resolve) => setTimeout(resolve, Math.floor(Math.random() * (max - min + 1)) + min));
+// Empêche plusieurs notifications pendant
+// la même période de pause
+const warningTracker = new Map();
 
-export async function sendLimited(kaya, originalSendMessage, jid, content, options = {}) {
-    const number = jid.split('@')[0];
-    const now = Date.now();
-    
-    // Retrieve ownerId from the kaya instance
-    const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0] : '';
-    
-    // Retrieve the chosen speed profile (default '5-8')
-    const speedProfile = getSetting(ownerId, 'botSpeed', '5-8');
-    
-    let min = 5000;
-    let max = 8000;
-    
-    // Define time ranges in milliseconds based on the profile
+// ==========================================
+// DÉLAI ALÉATOIRE
+// ==========================================
+
+export const randomDelay = (
+    min = 5000,
+    max = 8000
+) => new Promise(resolve =>
+    setTimeout(
+        resolve,
+        Math.floor(
+            Math.random() * (max - min + 1)
+        ) + min
+    )
+);
+
+// ==========================================
+// RÉCUPÉRER LE PROFIL DE VITESSE
+// ==========================================
+
+function getSpeedRange(kaya) {
+
+    const ownerId = kaya.user?.id
+        ? kaya.user.id.split(':')[0]
+        : '';
+
+    const speedProfile = getSetting(
+        ownerId,
+        'botSpeed',
+        '5-8'
+    );
+
     switch (speedProfile) {
-        case '1-2': min = 1000; max = 2000; break;
-        case '2-3': min = 2000; max = 3000; break;
-        case '3-4': min = 3000; max = 4000; break;
-        case '4-6': min = 4000; max = 6000; break;
-        case '5-8': min = 5000; max = 8000; break;
-        case '6-10': min = 6000; max = 10000; break;
-        case '8-10': min = 8000; max = 10000; break;
-        case '10-15': min = 10000; max = 15000; break;
-        default: min = 5000; max = 8000; break;
+
+        case '1-2':
+            return [1000, 2000];
+
+        case '2-3':
+            return [2000, 3000];
+
+        case '3-4':
+            return [3000, 4000];
+
+        case '4-6':
+            return [4000, 6000];
+
+        case '5-8':
+            return [5000, 8000];
+
+        case '6-10':
+            return [6000, 10000];
+
+        case '8-10':
+            return [8000, 10000];
+
+        case '10-15':
+            return [10000, 15000];
+
+        default:
+            return [5000, 8000];
+    }
+}
+
+// ==========================================
+// NETTOYAGE DES ANCIENNES DONNÉES
+// ==========================================
+
+function cleanOldData(number, now) {
+
+    const stats = messageCounter.get(number);
+
+    if (!stats) {
+        return null;
     }
 
-    const stats = messageCounter.get(number) || { count: 0, lastReset: now };
-    
-    if (now - stats.lastReset > 3600000) {
-        stats.count = 0;
-        stats.lastReset = now;
-    }
-    
-    // If send limit is reached
-    if (stats.count >= 100) {
-        console.log(`[BAN PROTECTION] Limit reached for ${number}. 60-second pause activated.`);
-        
-        // Anti-flood check for warning
-        if (Date.now() - lastWarningTime > 60000) {
-            lastWarningTime = Date.now();
-            try {
-                await originalSendMessage.call(kaya, jid, { 
-                    text: "🛡️ *[ANTI-SPAM PROTECTION]*\nMessage limit reached. The bot is taking a 60-second pause to avoid being blocked by WhatsApp." 
-                }, {});
-            } catch (e) {}
-        }
+    // Nouvelle fenêtre d'une heure
+    if (
+        now - stats.lastReset >=
+        60 * 60 * 1000
+    ) {
 
-        // 60-second pause
-        await new Promise(resolve => setTimeout(resolve, 60000));
-        
-        // Partial counter reset
-        stats.count = 50; 
-        stats.lastReset = Date.now();
+        messageCounter.delete(number);
+        warningTracker.delete(number);
+
+        return null;
     }
-    
-    stats.count++;
-    messageCounter.set(number, stats);
-    
-    // Apply dynamic delay
-    await randomDelay(min, max); 
-    
+
+    return stats;
+}
+
+// ==========================================
+// NOTIFICATION
+// UNE SEULE FOIS PAR PAUSE
+// ==========================================
+
+async function sendPauseNotification(
+    kaya,
+    originalSendMessage,
+    jid
+) {
+
+    const number = jid.split('@')[0];
+
+    // Si une notification a déjà été envoyée
+    // pendant cette pause, on ne renvoie rien.
+    if (
+        warningTracker.get(number) === true
+    ) {
+        return;
+    }
+
+    warningTracker.set(number, true);
+
     try {
-        return await originalSendMessage.call(kaya, jid, content, options);
+
+        await originalSendMessage.call(
+            kaya,
+            jid,
+            {
+                text:
+                    "🛡️ *ANTI-SPAM PROTECTION*\n\n" +
+                    "The bot has temporarily reached its message limit.\n\n" +
+                    "⏸️ Sending is paused for *60 seconds*.\n\n" +
+                    "🔄 The bot will automatically resume after the pause.\n\n" +
+                    "Please wait."
+            },
+            {}
+        );
+
+        console.log(
+            `[ANTI-SPAM] Notification sent to ${number}`
+        );
+
+    } catch (error) {
+
+        console.log(
+            `[ANTI-SPAM] Unable to send notification to ${number}:`,
+            error?.message || error
+        );
+    }
+}
+
+// ==========================================
+// ENVOI SÉCURISÉ
+// ==========================================
+
+export async function sendLimited(
+    kaya,
+    originalSendMessage,
+    jid,
+    content,
+    options = {}
+) {
+
+    if (
+        !kaya ||
+        !originalSendMessage
+    ) {
+        throw new Error(
+            'Invalid WhatsApp socket or send function.'
+        );
+    }
+
+    const number = String(jid)
+        .split('@')[0]
+        .split(':')[0]
+        .replace(/\D/g, '');
+
+    if (!number) {
+        throw new Error(
+            `Invalid JID: ${jid}`
+        );
+    }
+
+    const now = Date.now();
+
+    // ==========================================
+    // RÉCUPÉRATION DES STATISTIQUES
+    // ==========================================
+
+    let stats =
+        cleanOldData(
+            number,
+            now
+        );
+
+    if (!stats) {
+
+        stats = {
+            count: 0,
+            lastReset: now,
+            pausedUntil: 0
+        };
+
+        messageCounter.set(
+            number,
+            stats
+        );
+    }
+
+    // ==========================================
+    // PAUSE DÉJÀ ACTIVE
+    // ==========================================
+
+    if (
+        stats.pausedUntil > now
+    ) {
+
+        const remaining =
+            stats.pausedUntil - now;
+
+        console.log(
+            `[ANTI-SPAM] ${number} is paused for ${Math.ceil(remaining / 1000)}s`
+        );
+
+        await sendPauseNotification(
+            kaya,
+            originalSendMessage,
+            jid
+        );
+
+        await new Promise(resolve =>
+            setTimeout(
+                resolve,
+                remaining
+            )
+        );
+
+        // La pause est terminée
+        stats.pausedUntil = 0;
+
+        // On permet une nouvelle notification
+        warningTracker.delete(number);
+    }
+
+    // ==========================================
+    // LIMITE DES 300 MESSAGES
+    // ==========================================
+
+    if (
+        stats.count >= HOURLY_LIMIT
+    ) {
+
+        console.log(
+            `[BAN PROTECTION] Hourly limit reached for ${number}.`
+        );
+
+        stats.pausedUntil =
+            Date.now() + LIMIT_PAUSE;
+
+        await sendPauseNotification(
+            kaya,
+            originalSendMessage,
+            jid
+        );
+
+        await new Promise(resolve =>
+            setTimeout(
+                resolve,
+                LIMIT_PAUSE
+            )
+        );
+
+        // Après la pause, on repart
+        // avec une partie du compteur.
+        stats.count = 150;
+
+        stats.lastReset =
+            Date.now();
+
+        stats.pausedUntil = 0;
+
+        // Nouvelle période possible
+        warningTracker.delete(number);
+    }
+
+    // ==========================================
+    // COMPTEUR
+    // ==========================================
+
+    stats.count++;
+
+    messageCounter.set(
+        number,
+        stats
+    );
+
+    // ==========================================
+    // DÉLAI DYNAMIQUE
+    // ==========================================
+
+    const [min, max] =
+        getSpeedRange(kaya);
+
+    await randomDelay(
+        min,
+        max
+    );
+
+    // ==========================================
+    // ENVOI
+    // ==========================================
+
+    try {
+
+        return await originalSendMessage.call(
+            kaya,
+            jid,
+            content,
+            options
+        );
+
     } catch (err) {
-        // Intercept rate limit errors (rate-overlimit / 429)
-        if (String(err).includes('rate-overlimit') || String(err).includes('429')) {
-            console.log(`[RATE LIMIT] Rate-overlimit alert detected for ${number}. 60s pause...`);
-            
-            // Anti-flood check for warning
-            if (Date.now() - lastWarningTime > 60000) {
-                lastWarningTime = Date.now();
-                try {
-                    await originalSendMessage.call(kaya, jid, { 
-                        text: "⚠️ *[RATE LIMIT DETECTED]*\nWhatsApp is temporarily restricting sending. The bot is applying a 60-second safety pause..." 
-                    }, {});
-                } catch (e) {}
-            }
-            
-            // 60-second cooldown pause
-            await new Promise(resolve => setTimeout(resolve, 60000));
-            
-            // Retry sending after pause
-            return await originalSendMessage.call(kaya, jid, content, options);
+
+        // ==========================================
+        // RATE LIMIT WHATSAPP
+        // ==========================================
+
+        const errorText =
+            String(
+                err?.message ||
+                err ||
+                ''
+            ).toLowerCase();
+
+        if (
+            errorText.includes('rate-overlimit') ||
+            errorText.includes('429') ||
+            errorText.includes('too many requests') ||
+            errorText.includes('rate limit')
+        ) {
+
+            console.log(
+                `[RATE LIMIT] WhatsApp restriction detected for ${number}.`
+            );
+
+            // Notification UNE SEULE FOIS
+            await sendPauseNotification(
+                kaya,
+                originalSendMessage,
+                jid
+            );
+
+            // Pause de sécurité
+            await new Promise(resolve =>
+                setTimeout(
+                    resolve,
+                    LIMIT_PAUSE
+                )
+            );
+
+            // Autorise une nouvelle notification
+            // lors d'une prochaine restriction.
+            warningTracker.delete(number);
+
+            // IMPORTANT :
+            // On NE renvoie PAS automatiquement
+            // le message qui a échoué.
+            throw err;
         }
+
         throw err;
     }
+}
+
+// ==========================================
+// NETTOYAGE MANUEL
+// ==========================================
+
+export function clearMessageCounter(number) {
+
+    const cleanNumber =
+        String(number)
+            .replace(/\D/g, '');
+
+    messageCounter.delete(
+        cleanNumber
+    );
+
+    warningTracker.delete(
+        cleanNumber
+    );
+}
+
+// ==========================================
+// STATISTIQUES
+// ==========================================
+
+export function getMessageStats(number) {
+
+    const cleanNumber =
+        String(number)
+            .replace(/\D/g, '');
+
+    const stats =
+        messageCounter.get(
+            cleanNumber
+        );
+
+    if (!stats) {
+
+        return {
+            count: 0,
+            limit: HOURLY_LIMIT,
+            remaining: HOURLY_LIMIT,
+            paused: false
+        };
+    }
+
+    const now = Date.now();
+
+    return {
+
+        count: stats.count,
+
+        limit: HOURLY_LIMIT,
+
+        remaining: Math.max(
+            0,
+            HOURLY_LIMIT - stats.count
+        ),
+
+        paused:
+            stats.pausedUntil > now,
+
+        pausedFor:
+            Math.max(
+                0,
+                stats.pausedUntil - now
+            )
+    };
 }
