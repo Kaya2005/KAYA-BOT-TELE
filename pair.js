@@ -70,9 +70,27 @@ const __filename =
 const __dirname =
     path.dirname(__filename);
 
+// ==========================================
+// STOCKAGE PERSISTANT
+// ==========================================
+// Railway Volume recommandé : /data
+//
+// Si RAILWAY_VOLUME_MOUNT_PATH existe,
+// on l'utilise.
+// Sinon, on utilise /data.
+// ==========================================
+
+const STORAGE_DIR =
+    process.env.RAILWAY_VOLUME_MOUNT_PATH ||
+    "/data";
+
+// ==========================================
+// RICHSTORE / PAIRING
+// ==========================================
+
 const PAIRING_DIR =
     path.join(
-        process.cwd(),
+        STORAGE_DIR,
         "richstore",
         "pairing"
     );
@@ -610,36 +628,22 @@ export function forceCleanupSession(
     // CONFIG
     // ==========================================
 
-    const possibleConfigPaths = [
-
+    const configDir =
         path.join(
-            "/home/container/Kaya-MD",
+            STORAGE_DIR,
             "userall",
             cleanNumber
-        ),
+        );
 
-        path.join(
-            process.cwd(),
-            "userall",
-            cleanNumber
+    if (
+        fs.existsSync(
+            configDir
         )
-    ];
-
-    for (
-        const configDir
-        of possibleConfigPaths
     ) {
 
-        if (
-            fs.existsSync(
-                configDir
-            )
-        ) {
-
-            deleteFolderRecursive(
-                configDir
-            );
-        }
+        deleteFolderRecursive(
+            configDir
+        );
     }
 }
 
@@ -1005,7 +1009,6 @@ export default async function startpairing(
             keepAliveIntervalMs:
                 30000,
 
-            // Réduit l'activité de présence
             markOnlineOnConnect:
                 false,
 
@@ -1299,6 +1302,7 @@ export default async function startpairing(
                             update
                         );
                     }
+
                 }
 
             } catch (err) {
@@ -1354,10 +1358,6 @@ export default async function startpairing(
                 // MODE ONLINE
                 // ==========================================
 
-                // Conservé pour compatibilité.
-                // Si ton module online.js force une présence
-                // permanente, il est recommandé de le désactiver
-                // dans ses propres réglages.
                 try {
 
                     const onlineEnabled =
@@ -1603,8 +1603,6 @@ export default async function startpairing(
                         backoffDelay
                     );
 
-                    // Vérifie que cette session
-                    // est toujours la session active.
                     if (
                         rentbotTracker
                             .get(number)
@@ -1789,3 +1787,381 @@ function smsg(
 
     return m;
 }
+
+
+
+// ==================== index.js ====================
+
+import express from 'express';
+import cors from 'cors';
+import fs from 'fs';
+import path from 'path';
+import chalk from 'chalk';
+
+import {
+    restoreSessions,
+    watchPairingRequests
+} from './pair.js';
+
+import {
+    startAutoCleanup
+} from './cleanup.js';
+
+// ==========================================
+// 📦 STOCKAGE PERSISTANT RAILWAY
+// ==========================================
+
+const DATA_DIR = '/data';
+
+const RICHSTORE_DIR =
+    path.join(DATA_DIR, 'richstore');
+
+const PAIRING_DIR =
+    path.join(RICHSTORE_DIR, 'pairing');
+
+// ==========================================
+// 📁 CRÉATION DES DOSSIERS
+// ==========================================
+
+if (!fs.existsSync(RICHSTORE_DIR)) {
+    fs.mkdirSync(
+        RICHSTORE_DIR,
+        { recursive: true }
+    );
+}
+
+if (!fs.existsSync(PAIRING_DIR)) {
+    fs.mkdirSync(
+        PAIRING_DIR,
+        { recursive: true }
+    );
+}
+
+// ==========================================
+// EXPRESS
+// ==========================================
+
+const app = express();
+
+const PORT =
+    process.env.PORT || 3000;
+
+app.use(cors());
+
+app.use(express.json());
+
+app.use(
+    express.urlencoded({
+        extended: true
+    })
+);
+
+// ==========================================
+// 🔗 ROUTE API PAIRAGE
+// ==========================================
+
+app.post(
+    '/api/connect',
+    async (req, res) => {
+
+        try {
+
+            const {
+                phone
+            } = req.body;
+
+            if (!phone) {
+
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        'Phone number is required'
+                });
+            }
+
+            const cleanNumber =
+                phone.replace(
+                    /[^0-9]/g,
+                    ''
+                );
+
+            if (
+                cleanNumber.length < 9
+            ) {
+
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        'Invalid phone number'
+                });
+            }
+
+            const webSessionId =
+                'web_' + Date.now();
+
+            const requestPath =
+                path.join(
+                    PAIRING_DIR,
+                    `request_${webSessionId}.json`
+                );
+
+            const pairingFile =
+                path.join(
+                    PAIRING_DIR,
+                    `pairing_${webSessionId}.json`
+                );
+
+            // ==========================================
+            // DEMANDE DE PAIRAGE
+            // ==========================================
+
+            fs.writeFileSync(
+                requestPath,
+                JSON.stringify({
+                    jid:
+                        cleanNumber +
+                        '@s.whatsapp.net',
+
+                    name:
+                        'Web User'
+                })
+            );
+
+            // ==========================================
+            // ATTENTE DU CODE
+            // ==========================================
+
+            let attempts = 0;
+
+            let codeData = null;
+
+            while (
+                attempts < 20
+            ) {
+
+                if (
+                    fs.existsSync(
+                        pairingFile
+                    )
+                ) {
+
+                    try {
+
+                        codeData =
+                            JSON.parse(
+                                fs.readFileSync(
+                                    pairingFile,
+                                    'utf-8'
+                                )
+                            );
+
+                        break;
+
+                    } catch (e) {
+
+                        console.error(
+                            'Erreur lecture fichier pairing:',
+                            e.message
+                        );
+                    }
+                }
+
+                await new Promise(
+                    resolve =>
+                        setTimeout(
+                            resolve,
+                            1000
+                        )
+                );
+
+                attempts++;
+            }
+
+            // ==========================================
+            // CODE TROUVÉ
+            // ==========================================
+
+            if (
+                codeData &&
+                codeData.code
+            ) {
+
+                return res.json({
+                    success: true,
+                    code:
+                        codeData.code
+                });
+            }
+
+            // ==========================================
+            // TIMEOUT
+            // ==========================================
+
+            return res.status(500).json({
+                success: false,
+                message:
+                    'Timeout generating pairing code.'
+            });
+
+        } catch (error) {
+
+            console.error(
+                'Erreur /api/connect:',
+                error
+            );
+
+            return res.status(500).json({
+                success: false,
+                message:
+                    'Internal server error'
+            });
+        }
+    }
+);
+
+// ==========================================
+// 📊 NOMBRE DE SESSIONS ACTIVES
+// ==========================================
+
+app.get(
+    '/api/listpair',
+    (req, res) => {
+
+        try {
+
+            const items =
+                fs.readdirSync(
+                    PAIRING_DIR
+                );
+
+            // Compte uniquement les dossiers de sessions (exclut les fichiers .json de requêtes ou de codes)
+            const activeSessions =
+                items.filter(item => {
+                    const fullPath =
+                        path.join(
+                            PAIRING_DIR,
+                            item
+                        );
+
+                    return (
+                        fs.lstatSync(
+                            fullPath
+                        ).isDirectory() &&
+                        !item.startsWith(
+                            'request_'
+                        )
+                    );
+                });
+
+            res.json({
+                total:
+                    activeSessions.length
+            });
+
+        } catch (error) {
+
+            console.error(
+                'Erreur listpair:',
+                error.message
+            );
+
+            res.json({
+                total: 0
+            });
+        }
+    }
+);
+
+// ==========================================
+// 🚀 LANCEMENT DU BOT
+// ==========================================
+
+async function launchBot() {
+
+    global.botName =
+        'KAYA-MD';
+
+    // ==========================================
+    // CLEANUP
+    // ==========================================
+
+    startAutoCleanup();
+
+    // ==========================================
+    // SERVEUR
+    // ==========================================
+
+    app.listen(
+        PORT,
+        () => {
+
+            console.log(
+                chalk.green(
+                    `🌐 Railway backend running on port ${PORT}`
+                )
+            );
+
+            console.log(
+                chalk.green(
+                    `💾 Stockage persistant : ${DATA_DIR}`
+                )
+            );
+
+            console.log(
+                chalk.green(
+                    `📂 Sessions : ${PAIRING_DIR}`
+                )
+            );
+        }
+    );
+
+    // ==========================================
+    // RESTAURATION DES SESSIONS
+    // ==========================================
+
+    console.log(
+        chalk.blue(
+            '⏳ Restauration des sessions en cours...'
+        )
+    );
+
+    await restoreSessions();
+
+    await new Promise(
+        resolve =>
+            setTimeout(
+                resolve,
+                5000
+            )
+    );
+
+    // ==========================================
+    // WATCHER
+    // ==========================================
+
+    console.log(
+        chalk.blue(
+            '🚀 Surveillance des demandes de pairage activée.'
+        )
+    );
+
+    watchPairingRequests();
+}
+
+// ==========================================
+// START
+// ==========================================
+
+launchBot().catch(
+    error => {
+
+        console.error(
+            chalk.red(
+                '❌ Erreur au démarrage du bot:'
+            ),
+            error
+        );
+
+        process.exit(1);
+    }
+);
