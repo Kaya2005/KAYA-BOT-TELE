@@ -16,16 +16,24 @@ function getDate() {
     return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${pad(d.getFullYear())}`;
 }
 
+function getDayName() {
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    return days[new Date().getDay()];
+}
+
+// 🎨 Style avec conservation du préfixe `>` et alignement parfait des encadrés
 function buildHeader({ user, prefix, totalCmds, botName }) {
     return `
-▉ \`${botName}\` ▉
-▰▰▰▰▰▰▰▰▰▰
-➠ User: *${user}*
-➠ Prefix: *[ ${prefix || 'Sans préfixe'} ]*
-➠ Total Cmds: *${totalCmds}*
-➠ Time: *${getTime()}*
-➠ Date: *${getDate()}*
-______________________
+> ╭┈▉ \`${botName}\` ▉┄◈
+> ┆ ╭────↯
+> ┆ │ ➠ *𝙾𝚆𝙽𝙴𝚁:* ${user}
+> ┆ │ ➠ *𝙿𝚁𝙴𝙵𝙸𝚇:* ${prefix || 'Sans préfixe'}
+> ┆ │ ➠ *𝚃𝙾𝙳𝙰𝚈:* ${getDayName()}
+> ┆ │ ➠ *𝙳𝙰𝚃𝙴:* ${getDate()}
+> ┆ │ ➠ *𝚃𝙸𝙼𝙴:* ${getTime()}
+> ┆ │ ➠ *𝚃𝙾𝚃𝙰𝙻 𝙲𝙼𝙳𝚂:* ${totalCmds}
+> ┆ ╰────↯
+> ╰┄┄┄┄┄┄┄┄┄┄┄┄┄◈
 `.trim();
 }
 
@@ -35,7 +43,7 @@ function buildMenuCategoryText({ cat, cmds = [], prefix }) {
     return `
 > ╢ ${cat.toUpperCase()} ♰
 ╭▰▰▰▰▰▰▰◈
-${cmds.map(c => `┆❏ ${prefix}${c.toLowerCase()}`).join('\n')}
+${cmds.map(c => `┆ ➠ ${prefix}${c.toLowerCase()}`).join('\n')}
 ╰▰▰▰▰▰▰▰◈
 `.trim();
 }
