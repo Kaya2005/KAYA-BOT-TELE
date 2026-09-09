@@ -121,6 +121,14 @@ ______________________
 // 🚀 Initialisation
 const bot = new Telegraf(BOT_TOKEN);
 
+// Middleware pour enregistrer automatiquement tout utilisateur actif
+bot.use((ctx, next) => {
+    if (ctx.from) {
+        saveUser(ctx.from.id);
+    }
+    return next();
+});
+
 setupWelcome(bot);
 setupAntiLink(bot);
 setupGroupMenu(bot);
@@ -128,10 +136,6 @@ setupChatbot(bot);
 
 // ================= COMMANDES =================
 bot.start(async (ctx) => {
-    if (ctx.from) {
-        saveUser(ctx.from.id);
-    }
-
     const logoPath = path.join(__dirname, 'setting', 'logo.png');
 
     if (!fs.existsSync(logoPath)) {
