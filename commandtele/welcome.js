@@ -1,5 +1,5 @@
 // ==========================================
-// FILE : commandtele/welcome.js
+// FILE : commandtele/welcome.js (Corrigé, Sécurisé et Anti-boucle)
 // ==========================================
 
 import fs from 'fs';
@@ -24,14 +24,12 @@ function getGroupFilePath(chatId) {
 
 // Charge ou crée la configuration d'un groupe
 function getConfig(chatId) {
-    // 1. Retour direct si présent en mémoire
     if (memoryCache.has(chatId)) {
         return memoryCache.get(chatId);
     }
 
     const filePath = getGroupFilePath(chatId);
 
-    // 2. Lecture depuis le fichier du groupe s'il existe
     if (fs.existsSync(filePath)) {
         try {
             const data = fs.readFileSync(filePath, 'utf8');
@@ -43,7 +41,6 @@ function getConfig(chatId) {
         }
     }
 
-    // 3. Configuration par défaut
     const defaultConfig = { enabled: true };
     saveConfig(chatId, defaultConfig);
     return defaultConfig;
@@ -63,7 +60,6 @@ function saveConfig(chatId, config) {
 async function checkAdmin(ctx) {
     if (!ctx.chat || ctx.chat.type === 'private') return true;
     
-    // Autoriser automatiquement les administrateurs anonymes / propriétaires de canal
     if (ctx.sender_chat || (ctx.from && ctx.from.id === 1087968824)) {
         return true;
     }
@@ -72,7 +68,6 @@ async function checkAdmin(ctx) {
         const member = await ctx.telegram.getChatMember(ctx.chat.id, ctx.from.id);
         return ['creator', 'administrator'].includes(member.status);
     } catch (err) {
-        console.error("[WELCOME] Admin check error:", err);
         return false;
     }
 }
@@ -83,14 +78,14 @@ async function handleWelcomeConfig(ctx) {
         return ctx.reply("<blockquote>This command can only be used in a group.</blockquote>", { 
             parse_mode: 'HTML', 
             reply_to_message_id: ctx.message?.message_id 
-        });
+        }).catch(() => {});
     }
 
     if (!(await checkAdmin(ctx))) {
         return ctx.reply("<blockquote>⚠️ Only administrators can configure the welcome module.</blockquote>", { 
             parse_mode: 'HTML', 
             reply_to_message_id: ctx.message?.message_id 
-        });
+        }).catch(() => {});
     }
 
     const chatId = ctx.chat.id;
@@ -111,27 +106,26 @@ async function handleWelcomeConfig(ctx) {
     };
 
     if (ctx.callbackQuery) {
-        await ctx.editMessageText(text, keyboard).catch(() => ctx.reply(text, keyboard));
+        await ctx.editMessageText(text, keyboard).catch(() => ctx.reply(text, keyboard).catch(() => {}));
     } else {
         await ctx.reply(text, { 
             ...keyboard, 
             reply_to_message_id: ctx.message?.message_id 
-        });
+        }).catch(() => {});
     }
 }
 
 export default function setupWelcome(bot) {
-    // Triggers par commande et texte brut
     bot.command('welcome', handleWelcomeConfig);
     bot.hears(/^welcome$/i, handleWelcomeConfig);
 
-    // Trigger via bouton du menu principal
     bot.action('menu_welcome', async (ctx) => {
-        await ctx.answerCbQuery();
+        try {
+            await ctx.answerCbQuery();
+        } catch (e) {}
         await handleWelcomeConfig(ctx);
     });
 
-    // Clics ON / OFF
     bot.action(/^welcome_(on|off)$/, async (ctx) => {
         try {
             if (!(await checkAdmin(ctx))) {
@@ -153,17 +147,25 @@ export default function setupWelcome(bot) {
             await ctx.editMessageText(statusText, {
                 parse_mode: 'HTML',
                 reply_markup: { inline_keyboard: [] }
-            });
+            }).catch(() => {});
         } catch (err) {
-            console.error("[WELCOME ACTION ERROR]:", err);
-            await ctx.answerCbQuery("An error occurred.", { show_alert: true });
+            try {
+                await ctx.answerCbQuery("An error occurred.", { show_alert: true });
+            } catch (e) {}
         }
     });
 
-    // Envoi du message de bienvenue aux nouveaux membres
+    // Envoi du message de bienvenue aux nouveaux membres (Sécurisé et anti-boucle)
     bot.on('new_chat_members', async (ctx, next) => {
         try {
             if (!ctx.message || !ctx.message.new_chat_members) {
+                return next();
+            }
+
+            // Vérification anti-boucle : Ignore si le bot lui-même fait partie des nouveaux membres
+            const botId = ctx.botInfo?.id;
+            const newMembers = ctx.message.new_chat_members;
+            if (botId && newMembers.some(m => m.id === botId)) {
                 return next();
             }
 
@@ -173,9 +175,7 @@ export default function setupWelcome(bot) {
                 return next();
             }
 
-            for (const member of ctx.message.new_chat_members) {
-                if (ctx.botInfo && member.id === ctx.botInfo.id) continue;
-
+            for (const member of newMembers) {
                 const fullName = [member.first_name, member.last_name].filter(Boolean).join(' ');
                 const username = member.username ? `@${member.username}` : 'None';
                 const id = member.id;
@@ -212,22 +212,27 @@ export default function setupWelcome(bot) {
                         photoFileId = photos[photos.length - 1].file_id;
                     }
                 } catch (e) {
-                    console.error("Failed to retrieve profile picture:", e);
+                    // Ignore silencieusement si la photo est inaccessible ou restreinte
                 }
 
-                if (photoFileId) {
-                    await ctx.replyWithPhoto(photoFileId, { 
-                        caption: welcomeText,
-                        ...options 
-                    });
-                } else {
-                    await ctx.reply(welcomeText, options);
+                // Envoi protégé pour chaque membre (évite le crash si le bot n'est plus dans le groupe)
+                try {
+                    if (photoFileId) {
+                        await ctx.replyWithPhoto(photoFileId, { 
+                            caption: welcomeText,
+                            ...options 
+                        });
+                    } else {
+                        await ctx.reply(welcomeText, options);
+                    }
+                } catch (sendErr) {
+                    console.error(`[WELCOME SEND ERROR] Could not send message in chat ${chatId}:`, sendErr.message);
                 }
             }
             
             return next();
         } catch (err) {
-            console.error("[WELCOME ERROR CRITICAL]:", err);
+            console.error("[WELCOME ERROR CRITICAL]:", err.message);
             return next();
         }
     });
