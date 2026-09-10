@@ -1,5 +1,5 @@
 // ==========================================
-// FICHIER : bot.js
+// FICHIER : bot.js (Corrigé et Sécurisé)
 // ==========================================
 import './config.js'; 
 import fs from 'fs';
@@ -24,7 +24,7 @@ const pairingFolder = path.join(__dirname, './richstore/pairing');
 const REQUIRED_CHANNELS = ['-1004453499318', '@kayatech2', '@society243'];
 const PRIVATE_GROUP_LINK = 'https://t.me/+WLdroZnDmstjMWNk';
 
-// ================= HELPERS =================
+// ================= HELPERS & SAFE METHODS =================
 const isOwner = (ctx) => {
     try {
         const admins = JSON.parse(fs.readFileSync(adminFilePath, 'utf8'));
@@ -45,11 +45,42 @@ const saveUser = (userId) => {
     } catch (e) {}
 };
 
+// Fonction de réponse sécurisée pour éviter les crashs si le message d'origine n'existe plus
+const safeReply = async (ctx, text, options = {}) => {
+    try {
+        return await ctx.reply(text, options);
+    } catch (err) {
+        if (options.reply_to_message_id) {
+            delete options.reply_to_message_id;
+            try {
+                return await ctx.reply(text, options);
+            } catch (e) {
+                console.error("Erreur safeReply:", e.message);
+            }
+        }
+    }
+};
+
+const safeReplyWithPhoto = async (ctx, photo, options = {}) => {
+    try {
+        return await ctx.replyWithPhoto(photo, options);
+    } catch (err) {
+        if (options.reply_to_message_id) {
+            delete options.reply_to_message_id;
+            try {
+                return await ctx.replyWithPhoto(photo, options);
+            } catch (e) {
+                console.error("Erreur safeReplyWithPhoto:", e.message);
+            }
+        }
+    }
+};
+
 const ensurePrivate = (ctx) => {
     if (isOwner(ctx)) return true;
     if (!ctx.chat || ctx.chat.type !== 'private') {
         const botUsername = ctx.botInfo?.username || 'KayaMdBot';
-        ctx.reply('<blockquote>❌ Please write to me in private to use this command.</blockquote>', {
+        safeReply(ctx, '<blockquote>❌ Please write to me in private to use this command.</blockquote>', {
             parse_mode: 'HTML',
             reply_to_message_id: ctx.message?.message_id,
             reply_markup: {
@@ -121,6 +152,11 @@ ______________________
 // 🚀 Initialisation
 const bot = new Telegraf(BOT_TOKEN);
 
+// Middleware global anti-crash pour les erreurs non interceptées
+bot.catch((err, ctx) => {
+    console.error(`[Telegram Error for ${ctx.updateType}]:`, err.message);
+});
+
 // Middleware pour enregistrer automatiquement tout utilisateur actif
 bot.use((ctx, next) => {
     if (ctx.from) {
@@ -139,13 +175,13 @@ bot.start(async (ctx) => {
     const logoPath = path.join(__dirname, 'setting', 'logo.png');
 
     if (!fs.existsSync(logoPath)) {
-        return ctx.reply("❌ Erreur : L'image logo.png est introuvable dans le dossier 'setting'.");
+        return safeReply(ctx, "❌ Erreur : L'image logo.png est introuvable dans le dossier 'setting'.");
     }
 
     const photo = { source: fs.readFileSync(logoPath) };
 
     if (ctx.chat.type === 'private') {
-        await ctx.replyWithPhoto(photo, {
+        await safeReplyWithPhoto(photo, {
             caption: '<blockquote>▉ 𝐊𝐀𝐘𝐀 𝐁𝐎𝐓 ▉\n\nWelcome! Choose an option below to connect your WhatsApp or add the bot to your group.</blockquote>',
             parse_mode: 'HTML',
             reply_to_message_id: ctx.message?.message_id,
@@ -158,7 +194,7 @@ bot.start(async (ctx) => {
             }
         });
     } else {
-        await ctx.replyWithPhoto(photo, {
+        await safeReplyWithPhoto(photo, {
             caption: getMenu(ctx.from.first_name, isOwner(ctx)),
             parse_mode: 'HTML',
             reply_to_message_id: ctx.message?.message_id,
@@ -172,15 +208,17 @@ bot.start(async (ctx) => {
 });
 
 bot.action('start_bot', async (ctx) => {
-    await ctx.editMessageCaption(getMenu(ctx.from.first_name, isOwner(ctx)), { 
-        parse_mode: 'HTML',
-        reply_markup: {
-            inline_keyboard: [
-                [{ text: '🔒 Rejoindre le Groupe Privé', url: PRIVATE_GROUP_LINK }]
-            ]
-        }
-    }).catch(async () => {
-        await ctx.reply(getMenu(ctx.from.first_name, isOwner(ctx)), { 
+    try {
+        await ctx.editMessageCaption(getMenu(ctx.from.first_name, isOwner(ctx)), { 
+            parse_mode: 'HTML',
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: '🔒 Rejoindre le Groupe Privé', url: PRIVATE_GROUP_LINK }]
+                ]
+            }
+        });
+    } catch {
+        await safeReply(ctx, getMenu(ctx.from.first_name, isOwner(ctx)), { 
             parse_mode: 'HTML',
             reply_markup: {
                 inline_keyboard: [
@@ -188,7 +226,7 @@ bot.action('start_bot', async (ctx) => {
                 ]
             }
         });
-    });
+    }
 });
 
 bot.action('info_group', async (ctx) => {
@@ -199,7 +237,7 @@ bot.action('info_group', async (ctx) => {
                  `3️⃣ Use <code>/groupmenu</code> inside the group to see all options!</blockquote>`;
 
     const botUsername = ctx.botInfo?.username || 'KayaMdBot';
-    await ctx.reply(text, {
+    await safeReply(ctx, text, {
         parse_mode: 'HTML',
         reply_to_message_id: ctx.message?.message_id,
         reply_markup: {
@@ -220,7 +258,7 @@ bot.command('group', async (ctx) => {
                  `Click below to add it directly:</blockquote>`;
 
     const botUsername = ctx.botInfo?.username || 'KayaMdBot';
-    await ctx.reply(text, {
+    await safeReply(ctx, text, {
         parse_mode: 'HTML',
         reply_to_message_id: ctx.message?.message_id,
         reply_markup: {
@@ -233,7 +271,7 @@ bot.command('group', async (ctx) => {
 });
 
 bot.command('ping', async (ctx) => {
-    ctx.reply('<blockquote>▉ 𝐊𝐀𝐘𝐀 𝐁𝐎𝐓 ▉\n\n✅ <b>Status:</b> Online</blockquote>', { 
+    await safeReply(ctx, '<blockquote>▉ 𝐊𝐀𝐘𝐀 𝐁𝐎𝐓 ▉\n\n✅ <b>Status:</b> Online</blockquote>', { 
         parse_mode: 'HTML',
         reply_to_message_id: ctx.message?.message_id,
         reply_markup: {
@@ -249,14 +287,14 @@ bot.command('connect', async (ctx) => {
 
     const activeSessions = getActiveSessions();
     if (activeSessions.length >= 60) {
-        return ctx.reply('<blockquote>❌ <b>Error:</b> Server capacity reached (60/60). Please try again later.</blockquote>', { 
+        return safeReply(ctx, '<blockquote>❌ <b>Error:</b> Server capacity reached (60/60). Please try again later.</blockquote>', { 
             parse_mode: 'HTML',
             reply_to_message_id: ctx.message?.message_id 
         });
     }
 
     if (!(await checkChannels(ctx))) {
-        return ctx.reply('<blockquote>⚠️ Restricted access. Please join our channels to continue:</blockquote>', {
+        return safeReply(ctx, '<blockquote>⚠️ Restricted access. Please join our channels to continue:</blockquote>', {
             parse_mode: 'HTML',
             reply_to_message_id: ctx.message?.message_id,
             reply_markup: {
@@ -271,13 +309,13 @@ bot.command('connect', async (ctx) => {
     }
 
     const text = ctx.message.text.split(' ')[1];
-    if (!text) return ctx.reply('<blockquote>⚠️ Usage: <code>/connect 243xxxxxx</code></blockquote>', { 
+    if (!text) return safeReply(ctx, '<blockquote>⚠️ Usage: <code>/connect 243xxxxxx</code></blockquote>', { 
         parse_mode: 'HTML',
         reply_to_message_id: ctx.message?.message_id 
     });
     
     const number = text.replace(/\D/g, '');
-    if (number.length < 9) return ctx.reply('<blockquote>❌ Invalid number. Minimum 9 digits required.</blockquote>', { 
+    if (number.length < 9) return safeReply(ctx, '<blockquote>❌ Invalid number. Minimum 9 digits required.</blockquote>', { 
         parse_mode: 'HTML',
         reply_to_message_id: ctx.message?.message_id 
     });
@@ -289,7 +327,7 @@ bot.command('connect', async (ctx) => {
     const requestPath = path.join(pairingFolder, `request_${teleId}.json`);
     fs.writeFileSync(requestPath, JSON.stringify({ jid, name: userName }));
     
-    ctx.reply('<blockquote>⏳ Initialization... please wait.</blockquote>', { 
+    await safeReply(ctx, '<blockquote>⏳ Initialization... please wait.</blockquote>', { 
         parse_mode: 'HTML',
         reply_to_message_id: ctx.message?.message_id 
     });
@@ -311,7 +349,7 @@ bot.command('connect', async (ctx) => {
     
     if (cuObj) {
         const pairingStyle = `<blockquote>▰▰▰▰▰▰▰▰▰▰\n> ╢ PAIRING CODE ♰\n╭▰▰▰▰▰▰▰◈\n┆🔑 Code: <code>${cuObj.code}</code>\n╰▰▰▰▰▰▰▰◈</blockquote>`;
-        ctx.reply(pairingStyle, { 
+        await safeReply(ctx, pairingStyle, { 
             parse_mode: 'HTML',
             reply_to_message_id: ctx.message?.message_id,
             reply_markup: {
@@ -321,7 +359,7 @@ bot.command('connect', async (ctx) => {
             }
         });
     } else {
-        ctx.reply('<blockquote>❌ Error: Pairing code could not be generated.</blockquote>', { 
+        await safeReply(ctx, '<blockquote>❌ Error: Pairing code could not be generated.</blockquote>', { 
             parse_mode: 'HTML',
             reply_to_message_id: ctx.message?.message_id 
         });
@@ -329,12 +367,14 @@ bot.command('connect', async (ctx) => {
 });
 
 bot.action('check_join', async (ctx) => {
-    if (await checkChannels(ctx)) {
-        await ctx.editMessageText('✅ You can connect now.');
-        ctx.answerCbQuery('✅ Access authorized.');
-    } else {
-        ctx.answerCbQuery('❌ You must join the required channels first.', { show_alert: true });
-    }
+    try {
+        if (await checkChannels(ctx)) {
+            await ctx.editMessageText('✅ You can connect now.');
+            ctx.answerCbQuery('✅ Access authorized.');
+        } else {
+            ctx.answerCbQuery('❌ You must join the required channels first.', { show_alert: true });
+        }
+    } catch (e) {}
 });
 
 bot.command('listpair', async (ctx) => {
@@ -342,7 +382,7 @@ bot.command('listpair', async (ctx) => {
     if (!ensurePrivate(ctx)) return;
 
     const activeSessions = getActiveSessions();
-    if (activeSessions.length === 0) return ctx.reply('<blockquote>No devices linked.</blockquote>', { 
+    if (activeSessions.length === 0) return safeReply(ctx, '<blockquote>No devices linked.</blockquote>', { 
         parse_mode: 'HTML',
         reply_to_message_id: ctx.message?.message_id 
     });
@@ -366,7 +406,7 @@ bot.command('listpair', async (ctx) => {
     });
     
     text += `</blockquote>`;
-    ctx.reply(text, { 
+    await safeReply(ctx, text, { 
         parse_mode: 'HTML',
         reply_to_message_id: ctx.message?.message_id 
     });
@@ -377,7 +417,7 @@ bot.command('delpair', async (ctx) => {
     if (!ensurePrivate(ctx)) return;
 
     const arg = ctx.message.text.split(' ')[1];
-    if (!arg) return ctx.reply('<blockquote>⚠️ Usage: <code>/delpair [teleId or number]</code></blockquote>', { 
+    if (!arg) return safeReply(ctx, '<blockquote>⚠️ Usage: <code>/delpair [teleId or number]</code></blockquote>', { 
         parse_mode: 'HTML',
         reply_to_message_id: ctx.message?.message_id 
     });
@@ -402,7 +442,7 @@ bot.command('delpair', async (ctx) => {
 
     if (foundNumber) {
         forceCleanupSession(foundNumber, teleId);
-        return ctx.reply(`<blockquote>✅ Session for <code>${foundNumber}</code> disconnected successfully.</blockquote>`, { 
+        return safeReply(ctx, `<blockquote>✅ Session for <code>${foundNumber}</code> disconnected successfully.</blockquote>`, { 
             parse_mode: 'HTML',
             reply_to_message_id: ctx.message?.message_id 
         });
@@ -410,13 +450,13 @@ bot.command('delpair', async (ctx) => {
 
     if (fs.existsSync(path.join(pairingFolder, teleId))) {
         forceCleanupSession(teleId, "default");
-        return ctx.reply(`<blockquote>✅ Session <code>${teleId}</code> disconnected successfully.</blockquote>`, { 
+        return safeReply(ctx, `<blockquote>✅ Session <code>${teleId}</code> disconnected successfully.</blockquote>`, { 
             parse_mode: 'HTML',
             reply_to_message_id: ctx.message?.message_id 
         });
     }
 
-    ctx.reply('<blockquote>❌ Session not found.</blockquote>', { 
+    safeReply(ctx, '<blockquote>❌ Session not found.</blockquote>', { 
         parse_mode: 'HTML',
         reply_to_message_id: ctx.message?.message_id 
     });
@@ -431,7 +471,7 @@ bot.command('broadcast', async (ctx) => {
 
     const messageText = ctx.message.text.split(' ').slice(1).join(' ');
     if (!messageText) {
-        return ctx.reply('<blockquote>⚠️ Usage: <code>/broadcast Votre message ici...</code></blockquote>', { 
+        return safeReply(ctx, '<blockquote>⚠️ Usage: <code>/broadcast Votre message ici...</code></blockquote>', { 
             parse_mode: 'HTML',
             reply_to_message_id: ctx.message?.message_id 
         });
@@ -445,13 +485,13 @@ bot.command('broadcast', async (ctx) => {
     } catch (e) {}
 
     if (targetIds.length === 0) {
-        return ctx.reply('<blockquote>❌ Aucun utilisateur enregistré pour le moment.</blockquote>', { 
+        return safeReply(ctx, '<blockquote>❌ Aucun utilisateur enregistré pour le moment.</blockquote>', { 
             parse_mode: 'HTML',
             reply_to_message_id: ctx.message?.message_id 
         });
     }
 
-    await ctx.reply(`<blockquote>⏳ Diffusion en cours vers <b>${targetIds.length}</b> utilisateur(s)...</blockquote>`, { 
+    await safeReply(ctx, `<blockquote>⏳ Diffusion en cours vers <b>${targetIds.length}</b> utilisateur(s)...</blockquote>`, { 
         parse_mode: 'HTML' 
     });
 
@@ -472,7 +512,8 @@ bot.command('broadcast', async (ctx) => {
         await new Promise(r => setTimeout(r, 50)); 
     }
 
-    await ctx.reply(
+    await safeReply(
+        ctx,
         `<blockquote>✅ <b>Diffusion terminée !</b>\n\n` +
         `📤 Envoyés avec succès : <b>${successCount}</b>\n` +
         `❌ Échecs (utilisateurs ayant bloqué le bot) : <b>${failCount}</b></blockquote>`, 
