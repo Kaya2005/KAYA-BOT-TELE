@@ -8,31 +8,29 @@ import fetch from 'node-fetch';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dbFolder = path.join(__dirname, '../database/chatbot');
-const apiKeyPath = path.join(__dirname, '../database/groq_key.json');
+const apiKeyPath = path.join(__dirname, '../database/openrouter_key.json');
 
-// Garantir que le dossier existe
+// Ensure the directory exists
 if (!fs.existsSync(dbFolder)) {
     fs.mkdirSync(dbFolder, { recursive: true });
 }
 
-// Cache en mémoire RAM pour des performances maximales
+// RAM memory cache for maximum performance
 const memoryCache = new Map();
 
-// Obtenir le chemin du fichier JSON propre à un groupe
+// Get the specific JSON file path for a group
 function getGroupFilePath(chatId) {
     return path.join(dbFolder, `${chatId}.json`);
 }
 
-// Charge ou crée la configuration d'un groupe
+// Load or create a group's configuration
 function getConfig(chatId) {
-    // 1. Retour direct si présent en mémoire
     if (memoryCache.has(chatId)) {
         return memoryCache.get(chatId);
     }
 
     const filePath = getGroupFilePath(chatId);
 
-    // 2. Lecture depuis le fichier du groupe s'il existe
     if (fs.existsSync(filePath)) {
         try {
             const data = fs.readFileSync(filePath, 'utf8');
@@ -44,13 +42,12 @@ function getConfig(chatId) {
         }
     }
 
-    // 3. Configuration par défaut (désactivé par défaut)
     const defaultConfig = { enabled: false };
     saveConfig(chatId, defaultConfig);
     return defaultConfig;
 }
 
-// Sauvegarde la configuration du groupe dans son fichier dédié
+// Save the group configuration to its dedicated file
 function saveConfig(chatId, config) {
     memoryCache.set(chatId, config);
     try {
@@ -61,8 +58,8 @@ function saveConfig(chatId, config) {
     }
 }
 
-// --- GESTION DE LA CLÉ GROQ (GLOBALE AU BOT) ---
-function getGroqKey() {
+// --- OPENROUTER API KEY MANAGEMENT (BOT-WIDE) ---
+function getOpenRouterKey() {
     try {
         if (fs.existsSync(apiKeyPath)) {
             const data = JSON.parse(fs.readFileSync(apiKeyPath, 'utf8'));
@@ -72,17 +69,17 @@ function getGroqKey() {
     return '';
 }
 
-function saveGroqKey(key) {
+function saveOpenRouterKey(key) {
     try {
         const dir = path.dirname(apiKeyPath);
         if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
         fs.writeFileSync(apiKeyPath, JSON.stringify({ key }, null, 2), 'utf8');
     } catch (err) {
-        console.error("[GROQ KEY SAVE ERROR]:", err);
+        console.error("[OPENROUTER KEY SAVE ERROR]:", err);
     }
 }
 
-// Vérification administrateur
+// Administrator check
 async function checkAdmin(ctx) {
     if (!ctx.chat || ctx.chat.type === 'private') return true;
     if (ctx.sender_chat || (ctx.from && ctx.from.id === 1087968824)) return true;
@@ -94,17 +91,17 @@ async function checkAdmin(ctx) {
     }
 }
 
-// Panneau de configuration interactif (Menu)
+// Interactive configuration panel (Menu)
 async function handleChatbotConfig(ctx) {
     if (!ctx.chat || !['supergroup', 'group'].includes(ctx.chat.type)) {
-        return ctx.reply("<blockquote>❌ Cette commande s'utilise uniquement dans un groupe.</blockquote>", { 
+        return ctx.reply("<blockquote>❌ This command can only be used inside a group.</blockquote>", { 
             parse_mode: 'HTML', 
             reply_to_message_id: ctx.message?.message_id 
         });
     }
 
     if (!(await checkAdmin(ctx))) {
-        return ctx.reply("<blockquote>⚠️ Seuls les administrateurs peuvent configurer le chatbot.</blockquote>", { 
+        return ctx.reply("<blockquote>⚠️ Only administrators can configure the chatbot.</blockquote>", { 
             parse_mode: 'HTML', 
             reply_to_message_id: ctx.message?.message_id 
         });
@@ -112,9 +109,9 @@ async function handleChatbotConfig(ctx) {
 
     const chatId = ctx.chat.id;
     const config = getConfig(chatId);
-    const statusText = config.enabled ? "🟢 Activé (ON)" : "🔴 Désactivé (OFF)";
+    const statusText = config.enabled ? "🟢 Enabled (ON)" : "🔴 Disabled (OFF)";
 
-    const text = `<blockquote>🤖 <b>Gestion du Chatbot IA</b>\n\nÉtat actuel : ${statusText}\n\nChoisissez une option :</blockquote>`;
+    const text = `<blockquote>🤖 <b>AI Chatbot Management (OpenRouter)</b>\n\nCurrent Status: ${statusText}\n\nChoose an option:</blockquote>`;
     const keyboard = {
         parse_mode: 'HTML',
         reply_markup: {
@@ -138,50 +135,49 @@ async function handleChatbotConfig(ctx) {
 }
 
 export default function setupChatbot(bot) {
-    // Clé API Groq
-    bot.command('setgroqkey', async (ctx) => {
+    // OpenRouter API Key command
+    bot.command('setopenrouterkey', async (ctx) => {
         const text = ctx.message.text.split(' ')[1];
         if (!text) {
-            return ctx.reply('<blockquote>⚠️ Utilisation : <code>/setgroqkey gsk_...</code></blockquote>', { parse_mode: 'HTML' });
+            return ctx.reply('<blockquote>⚠️ Usage: <code>/setopenrouterkey sk-or-v1-...</code></blockquote>', { parse_mode: 'HTML' });
         }
-        saveGroqKey(text);
-        return ctx.reply('<blockquote>✅ Clé API Groq enregistrée avec succès pour le chatbot Telegram !</blockquote>', { parse_mode: 'HTML' });
+        saveOpenRouterKey(text);
+        return ctx.reply('<blockquote>✅ OpenRouter API key successfully registered for the Telegram chatbot!</blockquote>', { parse_mode: 'HTML' });
     });
 
-    // Commande /chatbot
+    // /chatbot command
     bot.command('chatbot', async (ctx) => {
         const args = ctx.message.text.split(' ')[1]?.toLowerCase();
         const chatId = ctx.chat.id;
 
         if (args === 'on' || args === 'off') {
-            if (!(await checkAdmin(ctx))) return ctx.reply('<blockquote>❌ Action réservée aux administrateurs.</blockquote>', { parse_mode: 'HTML' });
+            if (!(await checkAdmin(ctx))) return ctx.reply('<blockquote>❌ Action restricted to administrators.</blockquote>', { parse_mode: 'HTML' });
             
             const config = getConfig(chatId);
             config.enabled = (args === 'on');
             saveConfig(chatId, config);
 
             if (config.enabled) {
-                return ctx.reply('<blockquote>🤖 Chatbot IA (mode ado) activé pour ce groupe ! Mentionne-moi pour discuter.</blockquote>', { parse_mode: 'HTML' });
+                return ctx.reply('<blockquote>🤖 AI Chatbot (OpenRouter) enabled for this group! Mention me or reply to my messages to chat.</blockquote>', { parse_mode: 'HTML' });
             } else {
-                return ctx.reply('<blockquote>🤖 Chatbot désactivé pour ce groupe.</blockquote>', { parse_mode: 'HTML' });
+                return ctx.reply('<blockquote>🤖 Chatbot disabled for this group.</blockquote>', { parse_mode: 'HTML' });
             }
         }
 
-        // Si aucun argument n'est fourni, affichage du menu interactif
         await handleChatbotConfig(ctx);
     });
 
-    // Bouton de menu principal (groupmenu)
+    // Main menu button (groupmenu)
     bot.action('menu_chatbot', async (ctx) => {
         await ctx.answerCbQuery();
         await handleChatbotConfig(ctx);
     });
 
-    // Actions ON / OFF depuis les boutons inline
+    // ON / OFF actions from inline buttons
     bot.action(/^chatbot_(on|off)$/, async (ctx) => {
         try {
             if (!(await checkAdmin(ctx))) {
-                return await ctx.answerCbQuery("⚠️ Action réservée aux administrateurs !", { show_alert: true });
+                return await ctx.answerCbQuery("⚠️ Action restricted to administrators!", { show_alert: true });
             }
 
             const action = ctx.match[1];
@@ -192,21 +188,21 @@ export default function setupChatbot(bot) {
             saveConfig(chatId, config);
 
             const statusText = config.enabled 
-                ? "<blockquote>🟢 Le Chatbot IA a été <b>ACTIVÉ</b> pour ce groupe.</blockquote>" 
-                : "<blockquote>🔴 Le Chatbot IA a été <b>DÉSACTIVÉ</b>.</blockquote>";
+                ? "<blockquote>🟢 The AI Chatbot has been <b>ENABLED</b> for this group.</blockquote>" 
+                : "<blockquote>🔴 The AI Chatbot has been <b>DISABLED</b>.</blockquote>";
 
-            await ctx.answerCbQuery(config.enabled ? "Chatbot activé !" : "Chatbot désactivé !");
+            await ctx.answerCbQuery(config.enabled ? "Chatbot enabled!" : "Chatbot disabled!");
             await ctx.editMessageText(statusText, {
                 parse_mode: 'HTML',
                 reply_markup: { inline_keyboard: [] }
             });
         } catch (err) {
             console.error("[CHATBOT ACTION ERROR]:", err);
-            await ctx.answerCbQuery("Une erreur est survenue.", { show_alert: true });
+            await ctx.answerCbQuery("An error occurred.", { show_alert: true });
         }
     });
 
-    // Écouteur des messages texte du groupe
+    // Group text message listener
     bot.on('text', async (ctx, next) => {
         try {
             if (ctx.chat.type === 'private') return next();
@@ -227,31 +223,37 @@ export default function setupChatbot(bot) {
                 const cleanQuery = text.replace(new RegExp(`@${botUsername}`, 'gi'), '').trim();
                 if (!cleanQuery) return next();
 
-                const apiKey = getGroqKey();
+                const apiKey = getOpenRouterKey();
 
                 if (!apiKey) {
-                    await ctx.reply('<blockquote>⚠️ L\'administrateur n\'a pas configuré la clé API Groq avec <code>/setgroqkey</code>.</blockquote>', { 
+                    await ctx.reply('<blockquote>⚠️ The administrator has not configured the OpenRouter API key with <code>/setopenrouterkey</code>.</blockquote>', { 
                         parse_mode: 'HTML', 
                         reply_to_message_id: message.message_id 
                     });
                     return;
                 }
 
-                const apiResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                // Simulate "typing..." action
+                await ctx.telegram.sendChatAction(chatId, 'typing').catch(() => {});
+
+                const apiResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${apiKey}`
+                        'Authorization': `Bearer ${apiKey}`,
+                        'HTTP-Referer': 'https://github.com/kaya-bot',
+                        'X-Title': 'KAYA BOT'
                     },
                     body: JSON.stringify({
-                        model: 'llama-3.3-70b-versatile',
+                        model: 'openrouter/free',
                         messages: [
                             { 
                                 role: 'system', 
-                                content: "Tu es un adolescent normal, un peu drôle, familier et détendu. Tu parles comme un jeune sur les réseaux (argot, expressions naturelles comme 'wesh', 'mdr', 'frérot', 'grave', etc.). Tu ne te présentes jamais comme une IA, tu réponds simplement de façon naturelle, courte et décontractée." 
+                                content: "You are a teenager (a normal teen). You reply to messages in a very casual, natural, and friendly way, sometimes using common slang, text abbreviations, a bit of humor, without unnecessary capital letters, and ABOVE ALL, NEVER acting like a polite AI or a virtual assistant. Keep your sentences short, direct, and lively. IMPORTANT: Always reply in the exact same language as the user's message while keeping this exact teen personality." 
                             },
                             { role: 'user', content: cleanQuery }
-                        ]
+                        ],
+                        temperature: 0.8
                     })
                 });
 
@@ -261,7 +263,7 @@ export default function setupChatbot(bot) {
                 if (json.choices && json.choices[0]?.message?.content) {
                     answer = json.choices[0].message.content;
                 } else {
-                    answer = "Wesh y'a un bug technique là, réessaie plus tard mdr";
+                    answer = json.error?.message || "Oops, there's a technical bug right now, try again later lol";
                 }
 
                 await ctx.reply(answer, {
