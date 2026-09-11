@@ -1,3 +1,4 @@
+// ==================== commands/chatbot.js ====================
 import fetch from 'node-fetch';
 import { getSetting, setSetting } from '../setting.js';
 import { getContextInfo } from '../setting/contextInfo.js';
@@ -34,12 +35,12 @@ export default {
             if (option === 'setkey') {
                 const customKey = args[1];
                 if (!customKey) {
-                    const caption = `▉ \`${botName}\` ▉\n▰▰▰▰▰▰▰▰▰▰▰▰▰\n*❌ Please provide your Groq API key.*\n\nExample: \`${prefix}chatbot setkey gsk_...\``;
+                    const caption = `▉ \`${botName}\` ▉\n▰▰▰▰▰▰▰▰▰▰▰▰▰\n*❌ Please provide your OpenRouter API key.*\n\nExample: \`${prefix}chatbot setkey sk-or-v1-...\``;
                     return await sendWithBotImage(kaya, from, mek.sender, { caption, contextInfo: getContextInfo(mek.sender) }, { quoted: mek });
                 }
                 
                 await setSetting(botId, 'ai_api_key', customKey);
-                const caption = `▉ \`${botName}\` ▉\n▰▰▰▰▰▰▰▰▰▰▰▰▰\n*✅ Groq API key successfully registered for ${botName}!*`;
+                const caption = `▉ \`${botName}\` ▉\n▰▰▰▰▰▰▰▰▰▰▰▰▰\n*✅ OpenRouter API key successfully registered for ${botName}!*`;
                 return await sendWithBotImage(kaya, from, mek.sender, { caption, contextInfo: getContextInfo(mek.sender) }, { quoted: mek });
             }
 
@@ -59,9 +60,9 @@ export default {
                           `• \`${prefix}chatbot group\` (Enable in this specific group only)\n` +
                           `• \`${prefix}chatbot group off\` (Disable in this specific group)\n` +
                           `• \`${prefix}chatbot off\` (Disable completely)\n` +
-                          `• \`${prefix}chatbot setkey <key>\` (Configure Groq API key)\n` +
-                          `• \`${prefix}chatbot delkey\` (Delete Groq API key)\n\n` +
-                          `*Note:* Requires a Groq API key registered via \`${prefix}chatbot setkey\` if not already done.`;
+                          `• \`${prefix}chatbot setkey <key>\` (Configure OpenRouter API key)\n` +
+                          `• \`${prefix}chatbot delkey\` (Delete OpenRouter API key)\n\n` +
+                          `*Note:* Requires an OpenRouter API key registered via \`${prefix}chatbot setkey\` if not already done.`;
 
                 return await sendWithBotImage(kaya, from, mek.sender, { caption: usageText, contextInfo: getContextInfo(mek.sender) }, { quoted: mek });
             }
@@ -76,12 +77,12 @@ export default {
                 const ownerApiKey = getSetting(botId, 'ai_api_key', null);
 
                 if (!ownerApiKey) {
-                    const guideText = `*⚠️ Groq API Key Not Configured*\n\n` +
-                        `As the owner, you must configure a free Groq API key to activate ${botName}'s assistant.\n\n` +
+                    const guideText = `*⚠️ OpenRouter API Key Not Configured*\n\n` +
+                        `As the owner, you must configure a free OpenRouter API key to activate ${botName}'s assistant.\n\n` +
                         `🌐 *How to generate your free API key:*\n` +
-                        `1. Go to [Groq Console](https://console.groq.com/)\n` +
+                        `1. Go to [OpenRouter](https://openrouter.ai/)\n` +
                         `2. Log in (Google or GitHub account).\n` +
-                        `3. Go to **API Keys** and create a new key (\`gsk_...\`).\n` +
+                        `3. Go to **Keys** and create a new key (\`sk-or-v1-...\`).\n` +
                         `4. Copy the key.\n\n` +
                         `⚙️ *Save it in the bot using the command:*\n` +
                         `\`${prefix}chatbot setkey <your_key>\``;
@@ -168,14 +169,16 @@ export default {
             // Simulate typing presence
             await kaya.sendPresenceUpdate('composing', from).catch(() => {});
 
-            const apiResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            const apiResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${ownerApiKey}`
+                    'Authorization': `Bearer ${ownerApiKey}`,
+                    'HTTP-Referer': 'https://github.com/kaya-bot',
+                    'X-Title': 'KAYA BOT'
                 },
                 body: JSON.stringify({
-                    model: 'llama-3.3-70b-versatile',
+                    model: 'openrouter/free',
                     messages: [
                         { 
                             role: 'system', 

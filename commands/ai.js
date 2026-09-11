@@ -1,9 +1,10 @@
+// ==================== commands/ai.js ====================
 import fetch from 'node-fetch';
 import { getSetting, setSetting } from '../setting.js';
 
 export default {
     name: 'ai',
-    description: '🤖 Ask a question to the artificial intelligence (Groq)',
+    description: '🤖 Ask a question to the artificial intelligence (OpenRouter)',
     category: 'AI',
 
     async execute(kaya, mek, from, args, prefix) {
@@ -29,13 +30,13 @@ export default {
                 const customKey = args[1];
                 if (!customKey) {
                     return await kaya.sendMessage(from, { 
-                        text: `*❌ Please provide your Groq API key.*\n\nExample: \`${prefix}ai setkey gsk_...\`` 
+                        text: `*❌ Please provide your OpenRouter API key.*\n\nExample: \`${prefix}ai setkey sk-or-v1-...\`` 
                     }, { quoted: mek });
                 }
                 
                 await setSetting(botId, 'ai_api_key', customKey);
                 return await kaya.sendMessage(from, { 
-                    text: `*✅ Groq API key successfully registered for your bot!*` 
+                    text: `*✅ OpenRouter API key successfully registered for your bot!*` 
                 }, { quoted: mek });
             }
 
@@ -58,12 +59,12 @@ export default {
 
             if (!ownerApiKey) {
                 if (isOwner) {
-                    const guideText = `*⚠️ Groq API Key Not Configured*\n\n` +
-                        `As the owner, you must configure a free Groq API key to activate the assistant.\n\n` +
+                    const guideText = `*⚠️ OpenRouter API Key Not Configured*\n\n` +
+                        `As the owner, you must configure a free OpenRouter API key to activate the assistant.\n\n` +
                         `🌐 *How to generate your free API key:*\n` +
-                        `1. Go to [Groq Console](https://console.groq.com/)\n` +
+                        `1. Go to [OpenRouter](https://openrouter.ai/)\n` +
                         `2. Log in (Google or GitHub account).\n` +
-                        `3. Go to **API Keys** and create a new key (\`gsk_...\`).\n` +
+                        `3. Go to **Keys** and create a new API key (\`sk-or-v1-...\`).\n` +
                         `4. Copy the key.\n\n` +
                         `⚙️ *Save it in the bot using the command:*\n` +
                         `\`${prefix}ai setkey <your_key>\``;
@@ -84,15 +85,17 @@ export default {
                 }, { quoted: mek });
             }
 
-            // Use Groq API (Llama 3.3 Model)
-            const apiResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            // Use OpenRouter API with automatic free routing
+            const apiResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${ownerApiKey}`
+                    'Authorization': `Bearer ${ownerApiKey}`,
+                    'HTTP-Referer': 'https://github.com/kaya-bot',
+                    'X-Title': 'KAYA BOT'
                 },
                 body: JSON.stringify({
-                    model: 'llama-3.3-70b-versatile',
+                    model: 'openrouter/free', // Route automatiquement vers le meilleur modèle gratuit disponible
                     messages: [
                         { role: 'user', content: text }
                     ]
