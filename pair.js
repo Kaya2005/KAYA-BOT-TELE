@@ -1,3 +1,4 @@
+
 // ==================== pair.js ====================
 
 import {
@@ -213,7 +214,7 @@ export function watchPairingRequests() {
 }
 
 // ==========================================
-// RESTAURATION DES SESSIONS
+// RESTAURATION DES SESSIONS (Ancien Système)
 // ==========================================
 
 export async function restoreSessions() {
@@ -326,6 +327,8 @@ export async function restoreSessions() {
             );
         });
 
+        // Évite de lancer toutes les sessions
+        // exactement au même moment.
         await new Promise(
             resolve =>
                 setTimeout(
@@ -426,6 +429,10 @@ export function forceCleanupSession(
             cleanNumber
         );
 
+    // ==========================================
+    // ARRÊT SOCKET + QUEUE
+    // ==========================================
+
     if (
         rentbotTracker.has(
             cleanNumber
@@ -496,6 +503,10 @@ export function forceCleanupSession(
         );
     }
 
+    // ==========================================
+    // SESSION
+    // ==========================================
+
     if (
         fs.existsSync(
             sessionPath
@@ -506,6 +517,10 @@ export function forceCleanupSession(
             sessionPath
         );
     }
+
+    // ==========================================
+    // PAIRING FILE
+    // ==========================================
 
     if (
         teleId &&
@@ -591,6 +606,10 @@ export function forceCleanupSession(
             }
         }
     }
+
+    // ==========================================
+    // CONFIG
+    // ==========================================
 
     const possibleConfigPaths = [
 
@@ -754,6 +773,10 @@ export default async function startpairing(
     const logPrefix =
         `[${number} | ID:${instanceId}]`;
 
+    // ==========================================
+    // FERMER ANCIENNE INSTANCE
+    // ==========================================
+
     if (
         rentbotTracker.has(
             number
@@ -824,6 +847,10 @@ export default async function startpairing(
         );
     }
 
+    // ==========================================
+    // TRACKER
+    // ==========================================
+
     let isReady =
         false;
 
@@ -837,6 +864,10 @@ export default async function startpairing(
         number,
         tracker
     );
+
+    // ==========================================
+    // SESSION PATH
+    // ==========================================
 
     const sessionPath =
         path.join(
@@ -857,6 +888,10 @@ export default async function startpairing(
             }
         );
     }
+
+    // ==========================================
+    // METADATA
+    // ==========================================
 
     const metadataPath =
         path.join(
@@ -925,6 +960,10 @@ export default async function startpairing(
         )
     );
 
+    // ==========================================
+    // AUTH STATE
+    // ==========================================
+
     const {
         state,
         saveCreds
@@ -936,19 +975,8 @@ export default async function startpairing(
     await sleep(2000);
 
     // ==========================================
-    // ANTI-BAN : EMPREINTE NAVIGATEUR DIVERSIFIÉE
+    // SOCKET
     // ==========================================
-    const platforms = ["Windows", "Mac OS", "Ubuntu"];
-    const selectedPlatform = platforms[Number(number) % platforms.length];
-    
-    let browserConfig;
-    if (selectedPlatform === "Windows") {
-        browserConfig = Browsers.windows("Desktop");
-    } else if (selectedPlatform === "Mac OS") {
-        browserConfig = Browsers.macOS("Desktop");
-    } else {
-        browserConfig = Browsers.ubuntu("Chrome");
-    }
 
     const kaya =
         makeWASocket({
@@ -964,7 +992,10 @@ export default async function startpairing(
             auth:
                 state,
 
-            browser: browserConfig,
+            browser:
+                Browsers.ubuntu(
+                    "Chrome"
+                ),
 
             connectTimeoutMs:
                 60000,
@@ -981,6 +1012,10 @@ export default async function startpairing(
             emitOwnEvents:
                 false
         });
+
+    // ==========================================
+    // SEND MESSAGE PATCH
+    // ==========================================
 
     if (!kaya._patched) {
 
@@ -1011,6 +1046,10 @@ export default async function startpairing(
 
     tracker.connection =
         kaya;
+
+    // ==========================================
+    // PAIRING CODE
+    // ==========================================
 
     if (
         !state.creds.registered
@@ -1095,6 +1134,10 @@ export default async function startpairing(
         );
     }
 
+    // ==========================================
+    // DECODE JID
+    // ==========================================
+
     kaya.decodeJid =
         jid => {
 
@@ -1120,6 +1163,10 @@ export default async function startpairing(
 
             return jid;
         };
+
+    // ==========================================
+    // MESSAGES UPSERT
+    // ==========================================
 
     kaya.ev.on(
         "messages.upsert",
@@ -1189,6 +1236,10 @@ export default async function startpairing(
         }
     );
 
+    // ==========================================
+    // ANTI DELETE
+    // ==========================================
+
     kaya.ev.on(
         "messages.update",
         async updates => {
@@ -1213,6 +1264,10 @@ export default async function startpairing(
             }
         }
     );
+
+    // ==========================================
+    // GROUP PARTICIPANTS
+    // ==========================================
 
     kaya.ev.on(
         "group-participants.update",
@@ -1256,6 +1311,10 @@ export default async function startpairing(
         }
     );
 
+    // ==========================================
+    // CONNECTION UPDATE
+    // ==========================================
+
     kaya.ev.on(
         "connection.update",
         async update => {
@@ -1264,6 +1323,10 @@ export default async function startpairing(
                 connection,
                 lastDisconnect
             } = update;
+
+            // ==========================================
+            // OPEN
+            // ==========================================
 
             if (
                 connection === "open"
@@ -1286,6 +1349,10 @@ export default async function startpairing(
 
                 tracker.status =
                     "connected";
+
+                // ==========================================
+                // MODE ONLINE
+                // ==========================================
 
                 try {
 
@@ -1313,6 +1380,10 @@ export default async function startpairing(
                     );
                 }
 
+                // ==========================================
+                // SUPPRESSION PAIRING FILE
+                // ==========================================
+
                 if (
                     teleId &&
                     teleId !== "default"
@@ -1336,6 +1407,10 @@ export default async function startpairing(
                     }
                 }
 
+                // ==========================================
+                // MESSAGE INITIAL
+                // ==========================================
+
                 if (
                     !tracker.isConnected
                 ) {
@@ -1343,11 +1418,8 @@ export default async function startpairing(
                     tracker.isConnected =
                         true;
 
-                    // ==========================================
-                    // ANTI-BAN : DÉLAI SÉCURISÉ AUGMENTÉ (10s)
-                    // ==========================================
                     await sleep(
-                        10000
+                        4000
                     );
 
                     const statusFile =
@@ -1356,6 +1428,10 @@ export default async function startpairing(
                             "utils",
                             "update_status.json"
                         );
+
+                    // ==========================================
+                    // MESSAGE UPDATE
+                    // ==========================================
 
                     if (
                         fs.existsSync(
@@ -1380,6 +1456,10 @@ export default async function startpairing(
                         }
 
                     } else {
+
+                        // ==========================================
+                        // PREMIÈRE CONNEXION
+                        // ==========================================
 
                         const isWelcomed =
                             getSetting(
@@ -1418,6 +1498,10 @@ export default async function startpairing(
                 }
             }
 
+            // ==========================================
+            // CLOSE
+            // ==========================================
+
             if (
                 connection === "close"
             ) {
@@ -1447,6 +1531,10 @@ export default async function startpairing(
                     `${logPrefix} 🔴 Connexion fermée. Code: ${statusCode}`
                 );
 
+                // ==========================================
+                // SESSION DÉCONNECTÉE
+                // ==========================================
+
                 if (
                     statusCode ===
                         DisconnectReason.loggedOut ||
@@ -1473,6 +1561,10 @@ export default async function startpairing(
                     return;
                 }
 
+                // ==========================================
+                // NETTOYAGE DE LA QUEUE
+                // ==========================================
+
                 try {
 
                     destroySendQueue(
@@ -1480,6 +1572,10 @@ export default async function startpairing(
                     );
 
                 } catch {}
+
+                // ==========================================
+                // RECONNEXION AVEC BACKOFF
+                // ==========================================
 
                 if (
                     attempt < 10
@@ -1503,6 +1599,8 @@ export default async function startpairing(
                         backoffDelay
                     );
 
+                    // Vérifie que cette session
+                    // est toujours la session active.
                     if (
                         rentbotTracker
                             .get(number)
@@ -1546,6 +1644,7 @@ export default async function startpairing(
                         nexusDevNumber,
                         teleId,
                         userName,
+                        0
                     ).catch(error => {
 
                         console.error(
@@ -1557,6 +1656,10 @@ export default async function startpairing(
             }
         }
     );
+
+    // ==========================================
+    // SAVE CREDENTIALS
+    // ==========================================
 
     kaya.ev.on(
         "creds.update",
@@ -1577,6 +1680,10 @@ export default async function startpairing(
 
     return kaya;
 }
+
+// ==========================================
+// NORMALISATION MESSAGE
+// ==========================================
 
 function smsg(
     kaya,
