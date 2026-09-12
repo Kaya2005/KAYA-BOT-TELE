@@ -1544,25 +1544,29 @@ export default async function startpairing(
                 );
 
                 // ==========================================
-                // SUPPRESSION DIRECTE DE LA SESSION À LA DÉCONNEXION
+                // NETTOYAGE UNIQUEMENT SI DÉCONNEXION DÉFINITIVE
                 // ==========================================
 
-                try {
+                if (statusCode === DisconnectReason.loggedOut || statusCode === 401) {
+                    try {
+                        destroySendQueue(
+                            kaya
+                        );
+                    } catch {}
 
-                    destroySendQueue(
-                        kaya
+                    console.log(
+                        `${logPrefix} 🧹 Suppression du dossier de session suite à une déconnexion définitive (LoggedOut / 401).`
                     );
 
-                } catch {}
-
-                console.log(
-                    `${logPrefix} 🧹 Suppression directe du dossier de session suite à la fermeture de connexion.`
-                );
-
-                forceCleanupSession(
-                    number,
-                    teleId
-                );
+                    forceCleanupSession(
+                        number,
+                        teleId
+                    );
+                } else {
+                    console.log(
+                        `${logPrefix} 🔄 Déconnexion temporaire (Code: ${statusCode}). Le dossier de session est conservé pour la reconnexion.`
+                    );
+                }
 
                 return;
             }
