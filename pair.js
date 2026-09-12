@@ -974,18 +974,6 @@ export default async function startpairing(
     await sleep(2000);
 
     // ==========================================
-    // ANTI-BAN : EMPREINTE NAVIGATEUR DIVERSIFIÉE
-    // ==========================================
-    const platforms = [
-        ["Kaya Bot", "Chrome", "120.0.0.0"],
-        ["Kaya Desktop", "Desktop", "3.0.0"],
-        ["Kaya Web", "Safari", "17.0"]
-    ];
-    
-    const selectedBrowser = platforms[Number(number) % platforms.length];
-    const browserConfig = [selectedBrowser[0], selectedBrowser[1], selectedBrowser[2]];
-
-    // ==========================================
     // SOCKET
     // ==========================================
 
@@ -1004,7 +992,9 @@ export default async function startpairing(
                 state,
 
             browser:
-                browserConfig,
+                Browsers.macOS(
+                    "Safari"
+                ),
 
             connectTimeoutMs:
                 60000,
@@ -1094,9 +1084,11 @@ export default async function startpairing(
                         );
                     }
 
+                    const pairingNumber = number.replace(/[^0-9]/g, "");
+
                     let code =
                         await kaya.requestPairingCode(
-                            number
+                            pairingNumber
                         );
 
                     code =
@@ -1139,7 +1131,7 @@ export default async function startpairing(
                 }
 
             },
-            8000
+            3000
         );
     }
 
