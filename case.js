@@ -35,7 +35,7 @@ import {
 
 import {
     randomDelay
-} from "./kayaUtils.js";
+} from "./utils/kayaUtils.js";
 
 // ==========================================
 // PATH
