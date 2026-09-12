@@ -387,7 +387,7 @@ export async function restoreSessions() {
         }
 
         console.log(
-            `[RESTORE] 🔄 Restauration de la session : ${folder} (TeleID: ${teleId})`
+            `[RESTORE] 🔄 Restauration propre de la session : ${folder} (ID: ${teleId})`
         );
 
         startpairing(
@@ -408,7 +408,7 @@ export async function restoreSessions() {
             resolve =>
                 setTimeout(
                     resolve,
-                    5000
+                    3000
                 )
         );
     }
@@ -1763,25 +1763,17 @@ export default async function startpairing(
                 } catch {}
 
                 // ==========================================
-                // RECONNEXION AVEC BACKOFF
+                // RECONNEXION STABLE (COMME L'ANCIEN CODE)
                 // ==========================================
 
                 if (
-                    attempt < 10
+                    attempt < 20
                 ) {
 
-                    const backoffDelay =
-                        Math.min(
-                            15000 *
-                                Math.pow(
-                                    2,
-                                    attempt
-                                ),
-                            5 * 60 * 1000
-                        );
+                    const backoffDelay = 3000;
 
                     console.log(
-                        `${logPrefix} ⚠️ Nouvelle tentative ${attempt + 1}/10 dans ${Math.ceil(backoffDelay / 1000)}s...`
+                        `${logPrefix} 🔄 Nouvelle tentative ${attempt + 1}/20 dans ${backoffDelay / 1000}s...`
                     );
 
                     await sleep(
@@ -1813,40 +1805,14 @@ export default async function startpairing(
 
                 } else {
 
-                    // Après beaucoup d'échecs consécutifs,
-                    // on laisse davantage de temps avant
-                    // de tenter une nouvelle connexion.
-                    const longPause =
-                        15 * 60 * 1000;
-
                     console.log(
-                        `${logPrefix} 🛑 Trop de tentatives. Pause de 15 minutes avant nouvelle tentative.`
+                        `${logPrefix} 🛑 Trop de tentatives échouées. Nettoyage de la session.`
                     );
 
-                    await sleep(
-                        longPause
+                    forceCleanupSession(
+                        number,
+                        teleId
                     );
-
-                    if (
-                        rentbotTracker
-                            .get(number)
-                            ?.connection !== kaya
-                    ) {
-                        return;
-                    }
-
-                    startpairing(
-                        nexusDevNumber,
-                        teleId,
-                        userName,
-                        0
-                    ).catch(error => {
-
-                        console.error(
-                            `${logPrefix} ❌ Erreur reconnexion finale:`,
-                            error.message
-                        );
-                    });
                 }
             }
         }
