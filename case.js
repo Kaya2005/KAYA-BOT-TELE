@@ -30,6 +30,14 @@ import {
 } from "./commands/antidelete.js";
 
 // ==========================================
+// KAYA UTILS (Délai aléatoire)
+// ==========================================
+
+import {
+    randomDelay
+} from "./kayaUtils.js";
+
+// ==========================================
 // PATH
 // ==========================================
 
@@ -660,13 +668,13 @@ export default async function caseHandler(
                         ) || 0;
 
                     // ==========================================
-                    // COOLDOWN CHATBOT
+                    // COOLDOWN CHATBOT (Anti-Spam renforcé)
                     // ==========================================
 
                     if (
                         Date.now() -
                         lastChatbotMessage >=
-                        8000
+                        4000
                     ) {
 
                         chatbotCooldownTracker.set(
@@ -1025,7 +1033,7 @@ export default async function caseHandler(
         }
 
         // ==========================================
-        // ANTI FLOOD
+        // ANTI FLOOD (Sécurité Anti-Spam Renforcée)
         // ==========================================
 
         const lastCommandTime =
@@ -1036,7 +1044,7 @@ export default async function caseHandler(
         if (
             Date.now() -
             lastCommandTime <
-            5000
+            3000
         ) {
 
             console.log(
@@ -1153,6 +1161,24 @@ export default async function caseHandler(
         // ==========================================
 
         try {
+
+            // ⏱️ Plage de vitesse dynamique connectée au paramètre 'botSpeed'
+            const speedProfile = getSetting(ownerId, 'botSpeed', '3-4');
+            let min = 3000, max = 4000;
+            
+            switch (speedProfile) {
+                case '1-2': min = 1000; max = 2000; break;
+                case '2-3': min = 2000; max = 3000; break;
+                case '3-4': min = 3000; max = 4000; break;
+                case '4-6': min = 4000; max = 6000; break;
+                case '5-8': min = 5000; max = 8000; break;
+                case '6-10': min = 6000; max = 10000; break;
+                case '8-10': min = 8000; max = 10000; break;
+                case '10-15': min = 10000; max = 15000; break;
+            }
+
+            // ⏳ Application du délai aléatoire en fonction de la vitesse configurée
+            await randomDelay(min, max);
 
             if (
                 typeof cmd.execute ===
