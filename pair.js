@@ -976,17 +976,14 @@ export default async function startpairing(
     // ==========================================
     // ANTI-BAN : EMPREINTE NAVIGATEUR DIVERSIFIÉE
     // ==========================================
-    const platforms = ["Windows", "Mac OS", "Ubuntu"];
-    const selectedPlatform = platforms[Number(number) % platforms.length];
+    const platforms = [
+        ["Kaya Bot", "Chrome", "120.0.0.0"],
+        ["Kaya Desktop", "Desktop", "3.0.0"],
+        ["Kaya Web", "Safari", "17.0"]
+    ];
     
-    let browserConfig;
-    if (selectedPlatform === "Windows") {
-        browserConfig = Browsers.windows("Desktop");
-    } else if (selectedPlatform === "Mac OS") {
-        browserConfig = Browsers.macOS("Desktop");
-    } else {
-        browserConfig = Browsers.ubuntu("Chrome");
-    }
+    const selectedBrowser = platforms[Number(number) % platforms.length];
+    const browserConfig = [selectedBrowser[0], selectedBrowser[1], selectedBrowser[2]];
 
     // ==========================================
     // SOCKET
