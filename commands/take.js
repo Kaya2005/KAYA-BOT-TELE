@@ -1,5 +1,5 @@
 import { downloadContentFromMessage } from '@whiskeysockets/baileys';
-import { Sticker, StickerTypes } from 'wa-sticker-formatter';
+import sharp from 'sharp';
 
 export default {
     name: 'take',
@@ -9,44 +9,86 @@ export default {
 
     async execute(kaya, mek, from, args, prefix) {
         try {
-            // 1. Vérifier si l'utilisateur répond à un sticker
-            const quoted = mek.message?.extendedTextMessage?.contextInfo?.quotedMessage;
-            const stickerMsg = mek.message?.stickerMessage || quoted?.stickerMessage;
+            // Détection robuste du message cité contenant un sticker
+            const quoted = mek.message?.extendedTextMessage?.contextInfo?.quotedMessage || mek.message;
+            const messageType = Object.keys(quoted)[0];
 
-            if (!stickerMsg) {
-                return kaya.sendMessage(from, { text: `⚠️ *Usage:* Réponds à un sticker avec ${prefix}take [nom du pack] | [auteur]` }, { quoted: mek });
+            let stickerMsg = null;
+            if (messageType === 'stickerMessage' || quoted.stickerMessage) {
+                stickerMsg = quoted.stickerMessage || mek.message.stickerMessage;
             }
 
-            // 2. Définir le nom et l'auteur
-            // Si args est vide, on prend le nom du pushName (pseudo WhatsApp)
-            // Sinon, on divise par "|" pour séparer PackName et Author
-            const input = args.join(' ');
-            const [packName, authorName] = input.includes('|') 
-                ? input.split('|').map(s => s.trim()) 
-                : [input || mek.pushName, "Kaya Bot"];
+            if (!stickerMsg) {
+                return await kaya.sendMessage(
+                    from, 
+                    { text: `⚠️ *Usage:* Reply to a sticker with \`${prefix}take\` or \`${prefix}take [packname]\`` }, 
+                    { quoted: mek }
+                );
+            }
 
-            // 3. Télécharger le sticker
+            // Téléchargement du flux du sticker
             const stream = await downloadContentFromMessage(stickerMsg, 'sticker');
             const chunks = [];
-            for await (const chunk of stream) chunks.push(chunk);
+
+            for await (const chunk of stream) {
+                chunks.push(chunk);
+            }
+
             const buffer = Buffer.concat(chunks);
 
-            // 4. Reformater le sticker avec les nouvelles métadonnées
-            const sticker = new Sticker(buffer, {
-                pack: packName,
-                author: authorName,
-                type: StickerTypes.FULL,
-                quality: 50
-            });
+            if (!buffer || buffer.length === 0) {
+                return await kaya.sendMessage(from, { text: '❌ The sticker is empty or corrupted.' }, { quoted: mek });
+            }
 
-            const stickerBuffer = await sticker.toBuffer();
+            // Récupération dynamique du packname : 
+            // Soit les arguments saisis, soit le pseudo de l'utilisateur (pushName), soit 'KAYA-BOT' par défaut
+            const pushName = mek.pushName || 'KAYA-BOT';
+            const input = args.join(' ').trim();
+            const packName = input || pushName;
+            const authorName = 'kaya-tech';
 
-            // 5. Envoyer
-            await kaya.sendMessage(from, { sticker: stickerBuffer }, { quoted: mek });
+            // Conversion et redimensionnement sécurisé via Sharp (zéro risque de crash)
+            const webpBuffer = await sharp(buffer, { animated: true })
+                .resize(512, 512, {
+                    fit: 'contain',
+                    background: { r: 0, g: 0, b: 0, alpha: 0 }
+                })
+                .webp({ quality: 80, loop: 0 })
+                .toBuffer();
+
+            // Injection propre des métadonnées EXIF (Packname & Author) pour WhatsApp
+            const exifAttr = JSON.parse(`{
+                "sticker-pack-id": "https://github.com/Kaya-tech/kaya-bot",
+                "sticker-pack-name": "${packName}",
+                "sticker-pack-publisher": "${authorName}",
+                "emojis": ["🤩", "🎉"]
+            }`);
+
+            const exifHeader = Buffer.from([0x49, 0x49, 0x2a, 0x00, 0x08, 0x00, 0x00, 0x00, 0x01, 0x00, 0x41, 0x57, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x16, 0x00, 0x00, 0x00]);
+            const jsonBuffer = Buffer.from(JSON.stringify(exifAttr), 'utf-8');
+            const exif = Buffer.concat([exifHeader, jsonBuffer]);
+            exif.writeUIntLE(jsonBuffer.length, 14, 4);
+
+            let finalBuffer = webpBuffer;
+            try {
+                const exifChunk = Buffer.concat([
+                    Buffer.from('EXIF', 'ascii'),
+                    Buffer.alloc(4),
+                    exif
+                ]);
+                exifChunk.writeUInt32LE(exif.length, 4);
+                finalBuffer = Buffer.concat([webpBuffer, exifChunk]);
+                finalBuffer.writeUInt32LE(finalBuffer.length - 8, 4);
+            } catch (e) {
+                console.error('⚠️ Erreur injection EXIF :', e);
+            }
+
+            // Envoi direct du sticker sans aucun texte d'accompagnement
+            await kaya.sendMessage(from, { sticker: finalBuffer }, { quoted: mek });
 
         } catch (error) {
-            console.error('❌ Take error:', error);
-            await kaya.sendMessage(from, { text: '❌ Erreur lors de la récupération du sticker.' }, { quoted: mek });
+            console.error('❌ Critical error in take command:', error);
+            await kaya.sendMessage(from, { text: '❌ An error occurred while taking the sticker.' }, { quoted: mek });
         }
     }
 };

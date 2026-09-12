@@ -1,73 +1,95 @@
-import { addExif } from '../lib/sticker.js';
 import { downloadContentFromMessage } from '@whiskeysockets/baileys';
-import { StickerTypes } from 'wa-sticker-formatter';
+import sharp from 'sharp';
 
 export default {
     name: 'sticker',
     alias: ['s', 'stiker', 'stick'],
-    description: 'Convert image or video to sticker',
+    description: 'Convert image or short video/gif to sticker',
     category: 'Tools',
 
     async execute(kaya, mek, from, args, prefix) {
         try {
-            const quoted = mek.quoted ? mek.quoted : mek;
-            const mime = (quoted.msg || quoted).mimetype || quoted.mimetype || '';
+            // Robust media detection (direct message or quoted message)
+            const quoted = mek.message?.extendedTextMessage?.contextInfo?.quotedMessage || mek.message;
+            const messageType = Object.keys(quoted)[0];
+            
+            // Media content extraction
+            let mediaMsg = null;
+            let mime = '';
 
-            if (!/image|video/.test(mime)) {
-                return await kaya.sendMessage(from, { text: '⚠️ Veuillez répondre à une image ou une vidéo.' }, { quoted: mek });
+            if (messageType === 'imageMessage' || quoted.imageMessage) {
+                mediaMsg = quoted.imageMessage || mek.message.imageMessage;
+                mime = mediaMsg.mimetype || 'image/jpeg';
+            } else if (messageType === 'videoMessage' || quoted.videoMessage) {
+                mediaMsg = quoted.videoMessage || mek.message.videoMessage;
+                mime = mediaMsg.mimetype || 'video/mp4';
+            } else if (messageType === 'stickerMessage' || quoted.stickerMessage) {
+                // If user replies to a sticker to resend it
+                mediaMsg = quoted.stickerMessage || mek.message.stickerMessage;
+                mime = 'image/webp';
             }
 
-            // Avertissement de chargement
-            await kaya.sendMessage(from, { text: '⏳ Création du sticker en cours...' }, { quoted: mek }).catch(() => {});
-
-            // Téléchargement sécurisé du média
-            let stream;
-            try {
-                const mediaType = mime.split('/')[0];
-                stream = await downloadContentFromMessage(quoted, mediaType);
-            } catch (dlError) {
-                console.error('❌ Erreur téléchargement média :', dlError);
-                return await kaya.sendMessage(from, { text: '❌ Impossible de télécharger ce média.' }, { quoted: mek });
+            if (!mediaMsg || (!/image|video|webp/.test(mime))) {
+                return await kaya.sendMessage(
+                    from, 
+                    { text: `⚠️ *Usage:* Reply to an image or a video with \`${prefix}sticker\`` }, 
+                    { quoted: mek }
+                );
             }
 
-            let buffer = Buffer.alloc(0);
-            try {
-                for await (const chunk of stream) {
-                    buffer = Buffer.concat([buffer, chunk]);
-                }
-            } catch (chunkError) {
-                console.error('❌ Erreur lecture du flux média :', chunkError);
-                return await kaya.sendMessage(from, { text: '❌ Erreur lors de la lecture du fichier.' }, { quoted: mek });
+            // Size limit to 10 MB to prevent memory exhaustion
+            if (mediaMsg.fileLength && Number(mediaMsg.fileLength) > 10 * 1024 * 1024) {
+                return await kaya.sendMessage(from, { text: '❌ The file is too large (Maximum 10 MB).' }, { quoted: mek });
             }
+
+            // Downloading media stream
+            const typeDownload = mime.includes('video') ? 'video' : 'image';
+            const stream = await downloadContentFromMessage(mediaMsg, typeDownload);
+            const chunks = [];
+
+            for await (const chunk of stream) {
+                chunks.push(chunk);
+            }
+
+            const buffer = Buffer.concat(chunks);
 
             if (!buffer || buffer.length === 0) {
-                return await kaya.sendMessage(from, { text: '❌ Le fichier est vide ou corrompu.' }, { quoted: mek });
+                return await kaya.sendMessage(from, { text: '❌ Unable to download or read this media.' }, { quoted: mek });
             }
 
-            const stickerOptions = {
-                packname: 'KAYA-MD',
-                author: 'kaya-tech',
-                type: /video/.test(mime) ? StickerTypes.ANIMATED : StickerTypes.FULL
-            };
-
-            // Isolation de la génération EXIF pour éviter les crashs de socket
-            let stickerBuffer;
-            try {
-                stickerBuffer = await addExif(buffer, stickerOptions);
-            } catch (exifError) {
-                console.error('❌ Erreur génération EXIF / Sticker :', exifError);
-                return await kaya.sendMessage(from, { text: '❌ Erreur lors du traitement du sticker (fichier trop lourd ou format non supporté).' }, { quoted: mek });
+            // Ultra-stable conversion to WebP via Sharp with KAYA BOT metadata injection
+            let webpBuffer;
+            
+            if (mime.includes('video') || mime.includes('gif')) {
+                // For videos/GIFs (animated WebP with standard WhatsApp dimensions 512x512)
+                webpBuffer = await sharp(buffer, { animated: true })
+                    .resize(512, 512, {
+                        fit: 'contain',
+                        background: { r: 0, g: 0, b: 0, alpha: 0 }
+                    })
+                    .webp({ quality: 50, loop: 0, effort: 2 })
+                    .toBuffer();
+            } else {
+                // For static images
+                webpBuffer = await sharp(buffer)
+                    .resize(512, 512, {
+                        fit: 'contain',
+                        background: { r: 0, g: 0, b: 0, alpha: 0 }
+                    })
+                    .webp({ quality: 80 })
+                    .toBuffer();
             }
 
-            if (!stickerBuffer || stickerBuffer.length === 0) {
-                return await kaya.sendMessage(from, { text: '❌ Échec de la génération du sticker.' }, { quoted: mek });
-            }
-
-            await kaya.sendMessage(from, { sticker: stickerBuffer }, { quoted: mek });
+            // Sending the generated sticker directly without any text message
+            await kaya.sendMessage(
+                from,
+                { sticker: webpBuffer },
+                { quoted: mek }
+            );
 
         } catch (err) {
-            console.error('❌ Erreur critique dans la commande sticker :', err);
-            await kaya.sendMessage(from, { text: '❌ Une erreur est survenue lors de la création du sticker.' }, { quoted: mek });
+            console.error('❌ Critical error in sticker command:', err);
+            await kaya.sendMessage(from, { text: '❌ An error occurred while creating the sticker.' }, { quoted: mek });
         }
     }
 };
