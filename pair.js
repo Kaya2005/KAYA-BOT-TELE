@@ -1544,37 +1544,7 @@ export default async function startpairing(
                 );
 
                 // ==========================================
-                // SESSION DÉCONNECTÉE
-                // ==========================================
-
-                if (
-                    statusCode ===
-                        DisconnectReason.loggedOut ||
-                    statusCode === 403
-                ) {
-
-                    console.log(
-                        `${logPrefix} ❌ Session fermée définitivement.`
-                    );
-
-                    try {
-
-                        destroySendQueue(
-                            kaya
-                        );
-
-                    } catch {}
-
-                    forceCleanupSession(
-                        number,
-                        teleId
-                    );
-
-                    return;
-                }
-
-                // ==========================================
-                // NETTOYAGE DE LA QUEUE
+                // SUPPRESSION DIRECTE DE LA SESSION À LA DÉCONNEXION
                 // ==========================================
 
                 try {
@@ -1585,86 +1555,16 @@ export default async function startpairing(
 
                 } catch {}
 
-                // ==========================================
-                // RECONNEXION AVEC BACKOFF
-                // ==========================================
+                console.log(
+                    `${logPrefix} 🧹 Suppression directe du dossier de session suite à la fermeture de connexion.`
+                );
 
-                if (
-                    attempt < 10
-                ) {
+                forceCleanupSession(
+                    number,
+                    teleId
+                );
 
-                    const backoffDelay =
-                        Math.min(
-                            15000 *
-                                Math.pow(
-                                    2,
-                                    attempt
-                                ),
-                            5 * 60 * 1000
-                        );
-
-                    console.log(
-                        `${logPrefix} ⚠️ Nouvelle tentative ${attempt + 1}/10 dans ${Math.ceil(backoffDelay / 1000)}s...`
-                    );
-
-                    await sleep(
-                        backoffDelay
-                    );
-
-                    // Vérifie que cette session
-                    // est toujours la session active.
-                    if (
-                        rentbotTracker
-                            .get(number)
-                            ?.connection !== kaya
-                    ) {
-                        return;
-                    }
-
-                    startpairing(
-                        nexusDevNumber,
-                        teleId,
-                        userName,
-                        attempt + 1
-                    ).catch(error => {
-
-                        console.error(
-                            `${logPrefix} ❌ Erreur reconnexion:`,
-                            error.message
-                        );
-                    });
-
-                } else {
-
-                    console.log(
-                        `${logPrefix} 🛑 Trop de tentatives. Pause de 5 minutes avant nouvelle tentative.`
-                    );
-
-                    await sleep(
-                        5 * 60 * 1000
-                    );
-
-                    if (
-                        rentbotTracker
-                            .get(number)
-                            ?.connection !== kaya
-                    ) {
-                        return;
-                    }
-
-                    startpairing(
-                        nexusDevNumber,
-                        teleId,
-                        userName,
-                        0
-                    ).catch(error => {
-
-                        console.error(
-                            `${logPrefix} ❌ Erreur reconnexion finale:`,
-                            error.message
-                        );
-                    });
-                }
+                return;
             }
         }
     );
