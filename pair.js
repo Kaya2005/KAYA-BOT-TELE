@@ -1060,93 +1060,6 @@ export default async function startpairing(
         kaya;
 
     // ==========================================
-    // PAIRING CODE
-    // ==========================================
-
-    if (
-        !state.creds.registered
-    ) {
-
-        setTimeout(
-            async () => {
-
-                try {
-
-                    if (
-                        rentbotTracker
-                            .get(number)
-                            ?.connection !== kaya
-                    ) {
-                        return;
-                    }
-
-                    const pairingFile =
-                        path.join(
-                            PAIRING_DIR,
-                            `pairing_${teleId}.json`
-                        );
-
-                    if (
-                        fs.existsSync(
-                            pairingFile
-                        )
-                    ) {
-
-                        fs.unlinkSync(
-                            pairingFile
-                        );
-                    }
-
-                    let code =
-                        await kaya.requestPairingCode(
-                            number
-                        );
-
-                    code =
-                        code
-                            ?.match(
-                                /.{1,4}/g
-                            )
-                            ?.join("-") ||
-                        code;
-
-                    console.log(
-                        `${logPrefix} 📟 Code de pairage généré : ${code}`
-                    );
-
-                    fs.writeFileSync(
-                        pairingFile,
-                        JSON.stringify(
-                            {
-                                number:
-                                    nexusDevNumber,
-
-                                code,
-
-                                userName,
-
-                                timestamp:
-                                    new Date().toISOString()
-                            },
-                            null,
-                            2
-                        )
-                    );
-
-                } catch (err) {
-
-                    console.error(
-                        `${logPrefix} ❌ Erreur génération code:`,
-                        err.message
-                    );
-                }
-
-            },
-            8000
-        );
-    }
-
-    // ==========================================
     // DECODE JID
     // ==========================================
 
@@ -1327,6 +1240,9 @@ export default async function startpairing(
     // CONNECTION UPDATE
     // ==========================================
 
+    // Variable pour s'assurer que la demande de code ne se fait qu'une seule fois par socket active
+    let pairingRequested = false;
+
     kaya.ev.on(
         "connection.update",
         async update => {
@@ -1335,6 +1251,95 @@ export default async function startpairing(
                 connection,
                 lastDisconnect
             } = update;
+
+            // ==========================================
+            // DEMANDE AUTOMATIQUE DE CODE DÈS QUE LA SOCKET EST CONNECTÉE AU WEBSOCKET
+            // ==========================================
+            if (
+                !state.creds.registered &&
+                !pairingRequested &&
+                kaya.ws.readyState === kaya.ws.OPEN
+            ) {
+                pairingRequested = true;
+
+                setTimeout(
+                    async () => {
+
+                        try {
+
+                            if (
+                                rentbotTracker
+                                    .get(number)
+                                    ?.connection !== kaya
+                            ) {
+                                return;
+                            }
+
+                            const pairingFile =
+                                path.join(
+                                    PAIRING_DIR,
+                                    `pairing_${teleId}.json`
+                                );
+
+                            if (
+                                fs.existsSync(
+                                    pairingFile
+                                )
+                            ) {
+
+                                fs.unlinkSync(
+                                    pairingFile
+                                );
+                            }
+
+                            let code =
+                                await kaya.requestPairingCode(
+                                    number
+                                );
+
+                            code =
+                                code
+                                    ?.match(
+                                        /.{1,4}/g
+                                    )
+                                    ?.join("-") ||
+                                code;
+
+                            console.log(
+                                `${logPrefix} 📟 Code de pairage généré : ${code}`
+                            );
+
+                            fs.writeFileSync(
+                                pairingFile,
+                                JSON.stringify(
+                                    {
+                                        number:
+                                            nexusDevNumber,
+
+                                        code,
+
+                                        userName,
+
+                                        timestamp:
+                                            new Date().toISOString()
+                                    },
+                                    null,
+                                    2
+                                )
+                            );
+
+                        } catch (err) {
+
+                            console.error(
+                                `${logPrefix} ❌ Erreur génération code:`,
+                                err.message
+                            );
+                        }
+
+                    },
+                    3000
+                );
+            }
 
             // ==========================================
             // OPEN
