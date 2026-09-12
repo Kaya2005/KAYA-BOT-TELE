@@ -1573,13 +1573,8 @@ export default async function startpairing(
                 } catch {}
 
                 // ==========================================
-                // RECONNEXION AVEC BACKOFF SÉCURISÉ (ANTI-BAN)
+                // RECONNEXION AVEC BACKOFF
                 // ==========================================
-
-                // Si le statut indique un blocage/rate-limiting potentiel (ex: 401, 408, 429, 515), on applique une pause de sécurité accrue.
-                const isRateLimitedOrBlocked = statusCode === 401 || statusCode === 408 || statusCode === 429 || statusCode === 515;
-                const baseDelay = isRateLimitedOrBlocked ? 60000 : 15000;
-                const maxDelay = isRateLimitedOrBlocked ? 15 * 60 * 1000 : 5 * 60 * 1000;
 
                 if (
                     attempt < 10
@@ -1587,12 +1582,12 @@ export default async function startpairing(
 
                     const backoffDelay =
                         Math.min(
-                            baseDelay *
+                            15000 *
                                 Math.pow(
                                     2,
                                     attempt
                                 ),
-                            maxDelay
+                            5 * 60 * 1000
                         );
 
                     console.log(
@@ -1629,11 +1624,11 @@ export default async function startpairing(
                 } else {
 
                     console.log(
-                        `${logPrefix} 🛑 Trop de tentatives. Pause de 10 minutes avant nouvelle tentative.`
+                        `${logPrefix} 🛑 Trop de tentatives. Pause de 5 minutes avant nouvelle tentative.`
                     );
 
                     await sleep(
-                        10 * 60 * 1000
+                        5 * 60 * 1000
                     );
 
                     if (
