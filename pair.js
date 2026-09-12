@@ -1,4 +1,3 @@
-
 // ==================== pair.js ====================
 
 import {
@@ -975,6 +974,21 @@ export default async function startpairing(
     await sleep(2000);
 
     // ==========================================
+    // ANTI-BAN : EMPREINTE NAVIGATEUR DIVERSIFIÉE
+    // ==========================================
+    const platforms = ["Windows", "Mac OS", "Ubuntu"];
+    const selectedPlatform = platforms[Number(number) % platforms.length];
+    
+    let browserConfig;
+    if (selectedPlatform === "Windows") {
+        browserConfig = Browsers.windows("Desktop");
+    } else if (selectedPlatform === "Mac OS") {
+        browserConfig = Browsers.macOS("Desktop");
+    } else {
+        browserConfig = Browsers.ubuntu("Chrome");
+    }
+
+    // ==========================================
     // SOCKET
     // ==========================================
 
@@ -993,9 +1007,7 @@ export default async function startpairing(
                 state,
 
             browser:
-                Browsers.ubuntu(
-                    "Chrome"
-                ),
+                browserConfig,
 
             connectTimeoutMs:
                 60000,
