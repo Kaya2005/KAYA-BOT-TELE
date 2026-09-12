@@ -91,7 +91,17 @@ if (!fs.existsSync(PAIRING_DIR)) {
 const processingRequests =
     new Set();
 
+let pairingWatcherStarted = false;
+
 export function watchPairingRequests() {
+
+    // Évite de créer plusieurs setInterval
+    // si la fonction est appelée plusieurs fois.
+    if (pairingWatcherStarted) {
+        return;
+    }
+
+    pairingWatcherStarted = true;
 
     setInterval(() => {
 
@@ -99,10 +109,24 @@ export function watchPairingRequests() {
             return;
         }
 
-        const files =
-            fs.readdirSync(
-                PAIRING_DIR
+        let files = [];
+
+        try {
+
+            files =
+                fs.readdirSync(
+                    PAIRING_DIR
+                );
+
+        } catch (error) {
+
+            console.error(
+                "[WATCHER] ❌ Impossible de lire le dossier pairing:",
+                error.message
             );
+
+            return;
+        }
 
         for (const file of files) {
 
@@ -149,6 +173,21 @@ export function watchPairingRequests() {
                         ""
                     );
 
+                if (
+                    !cleanNumber
+                ) {
+
+                    console.error(
+                        `[WATCHER] ❌ Numéro invalide dans ${file}`
+                    );
+
+                    fs.unlinkSync(
+                        filePath
+                    );
+
+                    continue;
+                }
+
                 const requestKey =
                     `${teleId}_${cleanNumber}`;
 
@@ -158,9 +197,13 @@ export function watchPairingRequests() {
                     )
                 ) {
 
-                    fs.unlinkSync(
-                        filePath
-                    );
+                    try {
+
+                        fs.unlinkSync(
+                            filePath
+                        );
+
+                    } catch {}
 
                     continue;
                 }
@@ -169,9 +212,13 @@ export function watchPairingRequests() {
                     `[WATCHER] 📥 Demande de pairing détectée pour : ${data.jid}`
                 );
 
-                fs.unlinkSync(
-                    filePath
-                );
+                try {
+
+                    fs.unlinkSync(
+                        filePath
+                    );
+
+                } catch {}
 
                 processingRequests.add(
                     requestKey
@@ -184,9 +231,11 @@ export function watchPairingRequests() {
                         "Client WhatsApp"
                 )
                     .then(() => {
+
                         processingRequests.delete(
                             requestKey
                         );
+
                     })
                     .catch(error => {
 
@@ -213,7 +262,7 @@ export function watchPairingRequests() {
 }
 
 // ==========================================
-// RESTAURATION DES SESSIONS (Ancien Système)
+// RESTAURATION DES SESSIONS (Ancienne méthode)
 // ==========================================
 
 export async function restoreSessions() {
@@ -326,8 +375,6 @@ export async function restoreSessions() {
             );
         });
 
-        // Évite de lancer toutes les sessions
-        // exactement au même moment.
         await new Promise(
             resolve =>
                 setTimeout(
@@ -370,9 +417,26 @@ function deleteFolderRecursive(
         return;
     }
 
-    fs.readdirSync(
-        folderPath
-    ).forEach(file => {
+    let entries = [];
+
+    try {
+
+        entries =
+            fs.readdirSync(
+                folderPath
+            );
+
+    } catch (error) {
+
+        console.error(
+            `[CLEANUP] ❌ Impossible de lire ${folderPath}:`,
+            error.message
+        );
+
+        return;
+    }
+
+    for (const file of entries) {
 
         const curPath =
             path.join(
@@ -380,27 +444,47 @@ function deleteFolderRecursive(
                 file
             );
 
-        if (
-            fs.lstatSync(
-                curPath
-            ).isDirectory()
-        ) {
+        try {
 
-            deleteFolderRecursive(
-                curPath
-            );
+            if (
+                fs.lstatSync(
+                    curPath
+                ).isDirectory()
+            ) {
 
-        } else {
+                deleteFolderRecursive(
+                    curPath
+                );
 
-            fs.unlinkSync(
-                curPath
+            } else {
+
+                fs.unlinkSync(
+                    curPath
+                );
+            }
+
+        } catch (error) {
+
+            console.error(
+                `[CLEANUP] ⚠️ Impossible de supprimer ${curPath}:`,
+                error.message
             );
         }
-    });
+    }
 
-    fs.rmdirSync(
-        folderPath
-    );
+    try {
+
+        fs.rmdirSync(
+            folderPath
+        );
+
+    } catch (error) {
+
+        console.error(
+            `[CLEANUP] ⚠️ Impossible de supprimer ${folderPath}:`,
+            error.message
+        );
+    }
 }
 
 // ==========================================
@@ -417,10 +501,14 @@ export function forceCleanupSession(
     );
 
     const cleanNumber =
-        number.replace(
+        String(number || "").replace(
             /[^0-9]/g,
             ""
         );
+
+    if (!cleanNumber) {
+        return;
+    }
 
     const sessionPath =
         path.join(
@@ -538,9 +626,13 @@ export function forceCleanupSession(
             )
         ) {
 
-            fs.unlinkSync(
-                pairingFile
-            );
+            try {
+
+                fs.unlinkSync(
+                    pairingFile
+                );
+
+            } catch {}
         }
 
     } else {
@@ -551,10 +643,19 @@ export function forceCleanupSession(
             )
         ) {
 
-            const files =
-                fs.readdirSync(
-                    PAIRING_DIR
-                );
+            let files = [];
+
+            try {
+
+                files =
+                    fs.readdirSync(
+                        PAIRING_DIR
+                    );
+
+            } catch {
+
+                files = [];
+            }
 
             for (
                 const file of files
@@ -700,9 +801,13 @@ async function sendConnectionOrUpdateMessage(
                 )
             ) {
 
-                fs.unlinkSync(
-                    statusFile
-                );
+                try {
+
+                    fs.unlinkSync(
+                        statusFile
+                    );
+
+                } catch {}
             }
         }
     }
@@ -744,7 +849,9 @@ export default async function startpairing(
 ) {
 
     const number =
-        nexusDevNumber.replace(
+        String(
+            nexusDevNumber || ""
+        ).replace(
             /[^0-9]/g,
             ""
         );
@@ -856,7 +963,8 @@ export default async function startpairing(
     const tracker = {
         connection: null,
         isConnected: false,
-        status: "starting"
+        status: "starting",
+        attempt
     };
 
     rentbotTracker.set(
@@ -940,24 +1048,34 @@ export default async function startpairing(
         } catch {}
     }
 
-    fs.writeFileSync(
-        metadataPath,
-        JSON.stringify(
-            {
-                number:
-                    nexusDevNumber,
+    try {
 
-                teleId,
+        fs.writeFileSync(
+            metadataPath,
+            JSON.stringify(
+                {
+                    number:
+                        nexusDevNumber,
 
-                userName,
+                    teleId,
 
-                timestamp:
-                    new Date().toISOString()
-            },
-            null,
-            2
-        )
-    );
+                    userName,
+
+                    timestamp:
+                        new Date().toISOString()
+                },
+                null,
+                2
+            )
+        );
+
+    } catch (error) {
+
+        console.error(
+            `${logPrefix} ⚠️ Impossible d'écrire metadata.json:`,
+            error.message
+        );
+    }
 
     // ==========================================
     // AUTH STATE
@@ -974,7 +1092,7 @@ export default async function startpairing(
     await sleep(2000);
 
     // ==========================================
-    // SOCKET
+    // SOCKET (Optimisé anti-ban)
     // ==========================================
 
     const kaya =
@@ -992,9 +1110,7 @@ export default async function startpairing(
                 state,
 
             browser:
-                Browsers.ubuntu(
-                    "Chrome"
-                ),
+                Browsers.macOS("Desktop"),
 
             connectTimeoutMs:
                 60000,
@@ -1003,17 +1119,25 @@ export default async function startpairing(
                 60000,
 
             keepAliveIntervalMs:
-                30000,
+                25000,
 
             markOnlineOnConnect:
                 false,
 
             emitOwnEvents:
-                false
+                false,
+
+            patchMessageBeforeSending: (message) => {
+                const requiresEncryption = !!message.audioMessage;
+                if (requiresEncryption) {
+                    message.audioMessage.ptt = true;
+                }
+                return message;
+            }
         });
 
     // ==========================================
-    // SEND MESSAGE PATCH
+    // SEND MESSAGE PATCH (Avec Jitter anti-spam)
     // ==========================================
 
     if (!kaya._patched) {
@@ -1029,6 +1153,8 @@ export default async function startpairing(
                 content,
                 options = {}
             ) => {
+                const humanDelay = Math.floor(Math.random() * 600) + 300;
+                await sleep(humanDelay);
 
                 return await sendLimited(
                     kaya,
@@ -1079,9 +1205,13 @@ export default async function startpairing(
                         )
                     ) {
 
-                        fs.unlinkSync(
-                            pairingFile
-                        );
+                        try {
+
+                            fs.unlinkSync(
+                                pairingFile
+                            );
+
+                        } catch {}
                     }
 
                     let code =
@@ -1178,7 +1308,7 @@ export default async function startpairing(
             try {
 
                 const rawMsg =
-                    chatUpdate.messages[0];
+                    chatUpdate?.messages?.[0];
 
                 if (
                     !rawMsg?.message ||
@@ -1349,6 +1479,9 @@ export default async function startpairing(
                 tracker.status =
                     "connected";
 
+                tracker.attempt =
+                    0;
+
                 // ==========================================
                 // MODE ONLINE
                 // ==========================================
@@ -1400,9 +1533,13 @@ export default async function startpairing(
                         )
                     ) {
 
-                        fs.unlinkSync(
-                            pairingFile
-                        );
+                        try {
+
+                            fs.unlinkSync(
+                                pairingFile
+                            );
+
+                        } catch {}
                     }
                 }
 
@@ -1421,16 +1558,20 @@ export default async function startpairing(
                         4000
                     );
 
+                    if (
+                        rentbotTracker
+                            .get(number)
+                            ?.connection !== kaya
+                    ) {
+                        return;
+                    }
+
                     const statusFile =
                         path.join(
                             process.cwd(),
                             "utils",
                             "update_status.json"
                         );
-
-                    // ==========================================
-                    // MESSAGE UPDATE
-                    // ==========================================
 
                     if (
                         fs.existsSync(
@@ -1455,10 +1596,6 @@ export default async function startpairing(
                         }
 
                     } else {
-
-                        // ==========================================
-                        // PREMIÈRE CONNEXION
-                        // ==========================================
 
                         const isWelcomed =
                             getSetting(
@@ -1519,20 +1656,26 @@ export default async function startpairing(
                     return;
                 }
 
-                const statusCode =
-                    new Boom(
+                let statusCode;
+
+                try {
+
+                    statusCode =
                         lastDisconnect?.error
-                    )
-                        ?.output
-                        ?.statusCode;
+                            ? new Boom(
+                                lastDisconnect.error
+                            )?.output?.statusCode
+                            : undefined;
+
+                } catch {
+
+                    statusCode =
+                        undefined;
+                }
 
                 console.log(
-                    `${logPrefix} 🔴 Connexion fermée. Code: ${statusCode}`
+                    `${logPrefix} 🔴 Connexion fermée. Code: ${statusCode ?? "inconnu"}`
                 );
-
-                // ==========================================
-                // SESSION DÉCONNECTÉE
-                // ==========================================
 
                 if (
                     statusCode ===
@@ -1560,10 +1703,6 @@ export default async function startpairing(
                     return;
                 }
 
-                // ==========================================
-                // NETTOYAGE DE LA QUEUE
-                // ==========================================
-
                 try {
 
                     destroySendQueue(
@@ -1571,10 +1710,6 @@ export default async function startpairing(
                     );
 
                 } catch {}
-
-                // ==========================================
-                // RECONNEXION AVEC BACKOFF
-                // ==========================================
 
                 if (
                     attempt < 10
@@ -1598,8 +1733,6 @@ export default async function startpairing(
                         backoffDelay
                     );
 
-                    // Vérifie que cette session
-                    // est toujours la session active.
                     if (
                         rentbotTracker
                             .get(number)
@@ -1623,12 +1756,15 @@ export default async function startpairing(
 
                 } else {
 
+                    const longPause =
+                        15 * 60 * 1000;
+
                     console.log(
-                        `${logPrefix} 🛑 Trop de tentatives. Pause de 5 minutes avant nouvelle tentative.`
+                        `${logPrefix} 🛑 Trop de tentatives. Pause de 15 minutes avant nouvelle tentative.`
                     );
 
                     await sleep(
-                        5 * 60 * 1000
+                        longPause
                     );
 
                     if (
@@ -1671,7 +1807,14 @@ export default async function startpairing(
             ) {
 
                 saveCreds().catch(
-                    () => {}
+                    error => {
+
+                        console.error(
+                            `${logPrefix} ⚠️ Erreur sauvegarde credentials:`,
+                            error?.message ||
+                                error
+                        );
+                    }
                 );
             }
         }
@@ -1712,7 +1855,7 @@ function smsg(
         m.sender =
             kaya.decodeJid(
                 m.fromMe
-                    ? kaya.user.id
+                    ? kaya.user?.id
                     : m.participant ||
                       m.key.participant ||
                       m.chat ||
@@ -1736,7 +1879,7 @@ function smsg(
             m.message.conversation ||
             m.msg?.caption ||
             m.msg?.text ||
-            "|";
+            "";
 
         const quoted =
             m.msg
@@ -1765,20 +1908,24 @@ function smsg(
                 };
             }
 
-            m.quoted.mtype =
-                type;
+            if (m.quoted) {
 
-            m.quoted.sender =
-                kaya.decodeJid(
-                    m.msg
-                        .contextInfo
-                        .participant
-                );
+                m.quoted.mtype =
+                    type;
 
-            m.quoted.text =
-                m.quoted.text ||
-                m.quoted.caption ||
-                "";
+                m.quoted.sender =
+                    kaya.decodeJid(
+                        m.msg
+                            ?.contextInfo
+                            ?.participant ||
+                        ""
+                    );
+
+                m.quoted.text =
+                    m.quoted.text ||
+                    m.quoted.caption ||
+                    "";
+            }
         }
     }
 
