@@ -23,14 +23,6 @@ import {
 } from "./setting.js";
 
 // ==========================================
-// MENU INTERACTIF
-// ==========================================
-
-import {
-    handleMenuReply
-} from "./commands/menu.js";
-
-// ==========================================
 // ANTI DELETE
 // ==========================================
 
@@ -301,6 +293,10 @@ export default async function caseHandler(
 
         switch (type) {
 
+            // ======================================
+            // INTERACTIVE RESPONSE
+            // ======================================
+
             case "interactiveResponseMessage": {
 
                 const paramsJson =
@@ -324,11 +320,18 @@ export default async function caseHandler(
                             parsed.command ||
                             "";
 
-                    } catch {}
+                    } catch {
+                        body = "";
+                    }
                 }
 
                 break;
             }
+
+
+            // ======================================
+            // TEMPLATE BUTTON
+            // ======================================
 
             case "templateButtonReplyMessage":
 
@@ -340,6 +343,11 @@ export default async function caseHandler(
 
                 break;
 
+
+            // ======================================
+            // BUTTON
+            // ======================================
+
             case "buttonsResponseMessage":
 
                 body =
@@ -350,6 +358,11 @@ export default async function caseHandler(
 
                 break;
 
+
+            // ======================================
+            // MESSAGE NORMAL
+            // ======================================
+
             case "conversation":
 
                 body =
@@ -359,20 +372,25 @@ export default async function caseHandler(
 
                 break;
 
+
+            // ======================================
+            // MESSAGE CITÉ / TEXTE
+            // ======================================
+
             case "extendedTextMessage":
 
                 body =
                     mek.message
                         ?.extendedTextMessage
                         ?.text ||
-                    mek.message
-                        ?.extendedTextMessage
-                        ?.contextInfo
-                        ?.externalAdReply
-                        ?.body ||
                     "";
 
                 break;
+
+
+            // ======================================
+            // IMAGE AVEC CAPTION
+            // ======================================
 
             case "imageMessage":
 
@@ -384,6 +402,11 @@ export default async function caseHandler(
 
                 break;
 
+
+            // ======================================
+            // VIDÉO AVEC CAPTION
+            // ======================================
+
             case "videoMessage":
 
                 body =
@@ -394,31 +417,14 @@ export default async function caseHandler(
 
                 break;
 
+
+            // ======================================
+            // AUTRES
+            // ======================================
+
             default:
 
                 body = "";
-        }
-
-
-        // ==========================================
-        // MENU INTERACTIF
-        // ==========================================
-
-        if (
-            body?.trim()
-        ) {
-
-            const menuHandled =
-                await handleMenuReply(
-                    kaya,
-                    mek,
-                    from,
-                    body
-                );
-
-            if (menuHandled) {
-                return;
-            }
         }
 
 
@@ -524,7 +530,9 @@ export default async function caseHandler(
 
                     args =
                         commandText
-                            ? commandText.split(/\s+/)
+                            ? commandText.split(
+                                /\s+/
+                            )
                             : [];
 
                     const rawCmd =
@@ -577,7 +585,9 @@ export default async function caseHandler(
 
                         args =
                             commandText
-                                ? commandText.split(/\s+/)
+                                ? commandText.split(
+                                    /\s+/
+                                )
                                 : [];
 
                         const rawCmd =
@@ -756,7 +766,8 @@ export default async function caseHandler(
                 30000
         ) {
 
-            let presenceSent = false;
+            let presenceSent =
+                false;
 
             if (
                 getSetting(
