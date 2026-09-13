@@ -16,7 +16,7 @@ import {
 // IDENTIFIANT DU MENU
 // ==========================================
 
-const MENU_MARKER = "KAYA-MENU";
+const MENU_MARKER = "MENU PRINCIPAL";
 
 // ==========================================
 // MENUS ACTIFS
@@ -81,7 +81,7 @@ function buildHeader({
     totalCmds,
     botName
 }) {
-        return `
+    return `
 > ╭┈▉ \`${botName}\` ▉┄◈
 > ┆ ╭────↯
 > ┆ │ ➠ *𝙾𝚆𝙽𝙴𝚁:* ${user}
@@ -186,7 +186,7 @@ async function sendMenuImage(
 
                 mentionedJid: [sender],
 
-                // Identifiant interne
+                // Identifiant interne mis à jour avec le marqueur du menu principal
                 externalAdReply: {
                     title: MENU_MARKER,
                     body: "Interactive Menu"
@@ -393,7 +393,7 @@ async function showMainMenu(
 }
 
 // ==========================================
-// RÉCUPÉRER L'ID DU MESSAGE CITÉ (CORRIGÉ)
+// RÉCUPÉRER L'ID DU MESSAGE CITÉ (ULTRA-ROBUSTE)
 // ==========================================
 
 function getQuotedMessageId(mek) {
@@ -401,6 +401,7 @@ function getQuotedMessageId(mek) {
         const msg = mek?.message;
         if (!msg) return null;
 
+        // Extraction profonde de toutes les structures possibles de contextInfo dans Baileys
         const contextInfo =
             msg.extendedTextMessage?.contextInfo ||
             msg.imageMessage?.contextInfo ||
@@ -409,10 +410,15 @@ function getQuotedMessageId(mek) {
             msg.audioMessage?.contextInfo ||
             msg.ephemeralMessage?.message?.extendedTextMessage?.contextInfo ||
             msg.ephemeralMessage?.message?.imageMessage?.contextInfo ||
+            msg.ephemeralMessage?.message?.videoMessage?.contextInfo ||
             msg.viewOnceMessage?.message?.extendedTextMessage?.contextInfo ||
             msg.viewOnceMessage?.message?.imageMessage?.contextInfo ||
+            msg.viewOnceMessage?.message?.videoMessage?.contextInfo ||
             msg.viewOnceMessageV2?.message?.extendedTextMessage?.contextInfo ||
-            msg.viewOnceMessageV2?.message?.imageMessage?.contextInfo;
+            msg.viewOnceMessageV2?.message?.imageMessage?.contextInfo ||
+            msg.viewOnceMessageV2?.message?.videoMessage?.contextInfo ||
+            msg.viewOnceMessageV2Extension?.message?.extendedTextMessage?.contextInfo ||
+            msg.viewOnceMessageV2Extension?.message?.imageMessage?.contextInfo;
 
         return (
             contextInfo?.stanzaId ||
