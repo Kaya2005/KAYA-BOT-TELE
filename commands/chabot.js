@@ -5,7 +5,7 @@ import { getBotName, sendWithBotImage } from '../setting/botAssets.js';
 
 export default {
     name: 'chatbot',
-    description: '🤖 Active or deactivates the intelligent chatbot mode (natural teen)',
+    description: '🤖 Active or deactivates the intelligent chatbot mode (cold & direct)',
     category: 'AI',
 
     async execute(kaya, mek, from, args, prefix) {
@@ -132,11 +132,16 @@ export default {
         }
     },
 
-    // 🧠 Global listener function called by case.js (Forcé à répondre partout sans restriction de mode)
+    // 🧠 Global listener function : 50% de chance de répondre, réponses courtes et froides sans conditions aléatoires sur le contenu
     async listen(kaya, mek, from, body, ownerId) {
         try {
             if (!body || typeof body !== 'string' || body.trim() === '') return;
             if (mek.key.fromMe) return;
+
+            // 50% de chance de répondre ou d'ignorer le message
+            if (Math.random() < 0.5) {
+                return;
+            }
 
             const ownerApiKey = getSetting(ownerId, 'ai_api_key', null);
             if (!ownerApiKey) return; 
@@ -157,11 +162,11 @@ export default {
                     messages: [
                         { 
                             role: 'system', 
-                            content: 'You are a teenager (a normal teen on WhatsApp). You reply to messages in a very casual, natural, and friendly way, sometimes using common slang, text abbreviations, a bit of humor, without unnecessary capital letters, and ABOVE ALL, NEVER acting like a polite AI or a virtual assistant. Keep your sentences short, direct, and lively. IMPORTANT: Always reply in the exact same language as the user\'s message while keeping this exact teen personality.' 
+                            content: 'Tu es distant, froid, sec, et hautain. Réponds de manière très laconique, directe et naturelle, avec une simple phrase courte ou quelques mots, sans aucune politesse et sans aucun emoji. Pas de bavardage inutile.' 
                         },
                         { role: 'user', content: body }
                     ],
-                    temperature: 0.8
+                    temperature: 0.6
                 })
             });
 
