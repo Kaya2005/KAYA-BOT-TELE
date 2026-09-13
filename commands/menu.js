@@ -81,17 +81,17 @@ function buildHeader({
     totalCmds,
     botName
 }) {
-    return `
+        return `
 > ╭┈▉ \`${botName}\` ▉┄◈
-┆ ╭────↯
-┆ │ ➠ 𝙾𝚆𝙽𝙴𝚁: ${user}
-┆ │ ➠ 𝙿𝚁𝙴𝙵𝙸𝚇: ${prefix || "Sans préfixe"}
-┆ │ ➠ 𝚃𝙾𝙳𝙰𝚈: ${getDayName()}
-┆ │ ➠ 𝙳𝙰𝚃𝙴: ${getDate()}
-┆ │ ➠ 𝚃𝙸𝙼𝙴: ${getTime()}
-┆ │ ➠ 𝚃𝙾𝚃𝙰𝙻 𝙲𝙼𝙳𝚂: ${totalCmds}
-┆ ╰────↯
-╰┄┄┄┄┄┄┄┄┄┄┄┄┄◈
+> ┆ ╭────↯
+> ┆ │ ➠ *𝙾𝚆𝙽𝙴𝚁:* ${user}
+> ┆ │ ➠ *𝙿𝚁𝙴𝙵𝙸𝚇:* ${prefix || "Sans préfixe"}
+> ┆ │ ➠ *𝚃𝙾𝙳𝙰𝚈:* ${getDayName()}
+> ┆ │ ➠ *𝙳𝙰𝚃𝙴:* ${getDate()}
+> ┆ │ ➠ *𝚃𝙸𝙼𝙴:* ${getTime()}
+> ┆ │ ➠ *𝚃𝙾𝚃𝙰𝙻 𝙲𝙼𝙳𝚂:* ${totalCmds}
+> ┆ ╰────↯
+> ╰┄┄┄┄┄┄┄┄┄┄┄┄┄◈
 `.trim();
 }
 
@@ -377,15 +377,6 @@ async function showMainMenu(
     // ======================================
     // STOCKAGE MINIMAL
     // ======================================
-    //
-    // Seulement quelques chaînes sont
-    // conservées en RAM.
-    //
-    // Pas de catégories.
-    // Pas de liste de commandes.
-    // Pas de timeout.
-    //
-    // ======================================
 
     activeMenus.set(
         from,
@@ -402,15 +393,26 @@ async function showMainMenu(
 }
 
 // ==========================================
-// RÉCUPÉRER L'ID DU MESSAGE CITÉ
+// RÉCUPÉRER L'ID DU MESSAGE CITÉ (CORRIGÉ)
 // ==========================================
 
 function getQuotedMessageId(mek) {
     try {
+        const msg = mek?.message;
+        if (!msg) return null;
+
         const contextInfo =
-            mek?.message
-                ?.extendedTextMessage
-                ?.contextInfo;
+            msg.extendedTextMessage?.contextInfo ||
+            msg.imageMessage?.contextInfo ||
+            msg.videoMessage?.contextInfo ||
+            msg.documentMessage?.contextInfo ||
+            msg.audioMessage?.contextInfo ||
+            msg.ephemeralMessage?.message?.extendedTextMessage?.contextInfo ||
+            msg.ephemeralMessage?.message?.imageMessage?.contextInfo ||
+            msg.viewOnceMessage?.message?.extendedTextMessage?.contextInfo ||
+            msg.viewOnceMessage?.message?.imageMessage?.contextInfo ||
+            msg.viewOnceMessageV2?.message?.extendedTextMessage?.contextInfo ||
+            msg.viewOnceMessageV2?.message?.imageMessage?.contextInfo;
 
         return (
             contextInfo?.stanzaId ||
@@ -485,11 +487,6 @@ export async function handleMenuReply(
         const activeMenu =
             activeMenus.get(from);
 
-        /*
-         * Aucun menu actif :
-         * les nombres normaux ne font rien.
-         */
-
         if (!activeMenu) {
             return false;
         }
@@ -538,13 +535,6 @@ export async function handleMenuReply(
 
         // ==================================
         // RECHARGER LES CATÉGORIES
-        // ==================================
-        //
-        // Elles ne sont PAS conservées en RAM.
-        //
-        // Elles sont chargées seulement lorsque
-        // quelqu'un répond au menu.
-        //
         // ==================================
 
         const categories =
@@ -633,11 +623,6 @@ export async function handleMenuReply(
             sentCategory?.key?.id;
 
         if (newMessageId) {
-
-            // On remplace seulement l'ID.
-            //
-            // Toujours aucun stockage des
-            // catégories en RAM.
 
             activeMenus.set(
                 from,
