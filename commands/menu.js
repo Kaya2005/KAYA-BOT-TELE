@@ -12,15 +12,30 @@ import {
     sendWithBotImage
 } from "../setting/botAssets.js";
 
+// ==========================================
+// IDENTIFIANT DU MENU
+// ==========================================
+
+const MENU_MARKER = "KAYA-MENU";
 
 // ==========================================
 // MENUS ACTIFS
 // ==========================================
+//
+// Pour économiser la RAM, on ne sauvegarde PAS
+// les catégories ni les commandes ici.
+//
+// On garde uniquement :
+// - messageId
+// - prefix
+// - marker
+//
+// Le menu n'expire jamais tant que le processus
+// du bot reste actif.
+//
+// ==========================================
 
 const activeMenus = new Map();
-
-const MENU_TIMEOUT = 5 * 60 * 1000;
-
 
 // ==========================================
 // UTILITAIRES
@@ -31,21 +46,18 @@ function pad(n) {
 }
 
 function getTime() {
-
     const d = new Date();
 
     return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 function getDate() {
-
     const d = new Date();
 
     return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
 }
 
 function getDayName() {
-
     const days = [
         "Sunday",
         "Monday",
@@ -59,7 +71,6 @@ function getDayName() {
     return days[new Date().getDay()];
 }
 
-
 // ==========================================
 // HEADER
 // ==========================================
@@ -70,33 +81,29 @@ function buildHeader({
     totalCmds,
     botName
 }) {
-
     return `
 > ╭┈▉ \`${botName}\` ▉┄◈
-> ┆ ╭────↯
-> ┆ │ ➠ *𝙾𝚆𝙽𝙴𝚁:* ${user}
-> ┆ │ ➠ *𝙿𝚁𝙴𝙵𝙸𝚇:* ${prefix || "Sans préfixe"}
-> ┆ │ ➠ *𝚃𝙾𝙳𝙰𝚈:* ${getDayName()}
-> ┆ │ ➠ *𝙳𝙰𝚃𝙴:* ${getDate()}
-> ┆ │ ➠ *𝚃𝙸𝙼𝙴:* ${getTime()}
-> ┆ │ ➠ *𝚃𝙾𝚃𝙰𝙻 𝙲𝙼𝙳𝚂:* ${totalCmds}
-> ┆ ╰────↯
-> ╰┄┄┄┄┄┄┄┄┄┄┄┄┄◈
+┆ ╭────↯
+┆ │ ➠ 𝙾𝚆𝙽𝙴𝚁: ${user}
+┆ │ ➠ 𝙿𝚁𝙴𝙵𝙸𝚇: ${prefix || "Sans préfixe"}
+┆ │ ➠ 𝚃𝙾𝙳𝙰𝚈: ${getDayName()}
+┆ │ ➠ 𝙳𝙰𝚃𝙴: ${getDate()}
+┆ │ ➠ 𝚃𝙸𝙼𝙴: ${getTime()}
+┆ │ ➠ 𝚃𝙾𝚃𝙰𝙻 𝙲𝙼𝙳𝚂: ${totalCmds}
+┆ ╰────↯
+╰┄┄┄┄┄┄┄┄┄┄┄┄┄◈
 `.trim();
 }
-
 
 // ==========================================
 // CHARGER LES CATÉGORIES
 // ==========================================
 
 async function loadCategories() {
-
-    const commandsDir =
-        path.join(
-            process.cwd(),
-            "commands"
-        );
+    const commandsDir = path.join(
+        process.cwd(),
+        "commands"
+    );
 
     const categories = {};
 
@@ -104,27 +111,19 @@ async function loadCategories() {
         return categories;
     }
 
-    const files =
-        fs.readdirSync(commandsDir)
-            .filter(
-                file =>
-                    file.endsWith(".js")
-            );
+    const files = fs.readdirSync(commandsDir)
+        .filter(file => file.endsWith(".js"));
 
     for (const file of files) {
-
         try {
+            const filePath = path.join(
+                commandsDir,
+                file
+            );
 
-            const filePath =
-                path.join(
-                    commandsDir,
-                    file
-                );
-
-            const cmd =
-                await import(
-                    `file://${filePath}`
-                );
+            const cmd = await import(
+                `file://${filePath}`
+            );
 
             const command =
                 cmd.default || cmd;
@@ -133,11 +132,10 @@ async function loadCategories() {
                 continue;
             }
 
-            const category =
-                (
-                    command.category ||
-                    "General"
-                ).toUpperCase();
+            const category = (
+                command.category ||
+                "General"
+            ).toUpperCase();
 
             if (!categories[category]) {
                 categories[category] = [];
@@ -150,13 +148,12 @@ async function loadCategories() {
                 !categories[category]
                     .includes(commandName)
             ) {
-
-                categories[category]
-                    .push(commandName);
+                categories[category].push(
+                    commandName
+                );
             }
 
         } catch (error) {
-
             console.error(
                 `Erreur lors du chargement de ${file} dans menu.js :`,
                 error
@@ -167,33 +164,8 @@ async function loadCategories() {
     return categories;
 }
 
-
 // ==========================================
-// NETTOYER LES MENUS EXPIRÉS
-// ==========================================
-
-function cleanExpiredMenus() {
-
-    const now = Date.now();
-
-    for (
-        const [userId, menu]
-        of activeMenus.entries()
-    ) {
-
-        if (
-            now - menu.createdAt >
-            MENU_TIMEOUT
-        ) {
-
-            activeMenus.delete(userId);
-        }
-    }
-}
-
-
-// ==========================================
-// ENVOYER LE MENU AVEC IMAGE
+// ENVOYER AVEC L'IMAGE DU BOT
 // ==========================================
 
 async function sendMenuImage(
@@ -202,8 +174,7 @@ async function sendMenuImage(
     sender,
     caption
 ) {
-
-    await sendWithBotImage(
+    return await sendWithBotImage(
         kaya,
         from,
         sender,
@@ -212,12 +183,18 @@ async function sendMenuImage(
 
             contextInfo: {
                 ...getContextInfo(sender),
-                mentionedJid: [sender]
+
+                mentionedJid: [sender],
+
+                // Identifiant interne
+                externalAdReply: {
+                    title: MENU_MARKER,
+                    body: "Interactive Menu"
+                }
             }
         }
     );
 }
-
 
 // ==========================================
 // MENU PRINCIPAL
@@ -227,18 +204,15 @@ function buildMainMenu({
     user,
     prefix,
     botName,
-    categories,
     sortedCategories,
     totalCmds
 }) {
-
-    let text =
-        buildHeader({
-            user,
-            prefix,
-            totalCmds,
-            botName
-        });
+    let text = buildHeader({
+        user,
+        prefix,
+        totalCmds,
+        botName
+    });
 
     text +=
         `\n\n> ╢ *MENU PRINCIPAL* ♰`;
@@ -258,7 +232,7 @@ function buildMainMenu({
         `\n╰▰▰▰▰▰▰▰◈`;
 
     text +=
-        `\n\n> ✦ *Répondez avec le numéro de votre choix.*`;
+        `\n\n> ✦ *Répondez à ce message avec le numéro de votre choix.*`;
 
     text +=
         `\n> ✦ Exemple : *1*`;
@@ -266,9 +240,8 @@ function buildMainMenu({
     return text;
 }
 
-
 // ==========================================
-// MENU CATÉGORIE
+// MENU D'UNE CATÉGORIE
 // ==========================================
 
 function buildCategoryMenu({
@@ -277,28 +250,37 @@ function buildCategoryMenu({
     prefix,
     botName
 }) {
+    if (!commands.length) {
+        return `
+> ╭┈▉ \`${botName}\` ▉┄◈
+┆ ╢ ${category} MENU ♰
+╰┄┄┄┄┄┄┄┄┄┄┄┄┄◈
 
-    const commandList =
-        commands
-            .map(
-                command =>
-                    `┆ ➠ ${prefix}${command}`
-            )
-            .join("\n");
+> ⚠️ Aucune commande disponible dans cette catégorie.
+
+> ✦ Répondez à ce message avec *menu* pour revenir au menu principal.
+`.trim();
+    }
+
+    const commandList = commands
+        .map(
+            command =>
+                `┆ ➠ ${prefix}${command}`
+        )
+        .join("\n");
 
     return `
 > ╭┈▉ \`${botName}\` ▉┄◈
-> ┆ ╢ *${category} MENU* ♰
-> ╰┄┄┄┄┄┄┄┄┄┄┄┄┄◈
+┆ ╢ ${category} MENU ♰
+╰┄┄┄┄┄┄┄┄┄┄┄┄┄◈
 
 ╭▰▰▰▰▰▰▰▰◈
 ${commandList}
 ╰▰▰▰▰▰▰▰◈
 
-> ✦ Répondez avec *menu* pour revenir.
+> ✦ Répondez à ce message avec *menu* pour revenir.
 `.trim();
 }
-
 
 // ==========================================
 // AFFICHER LE MENU PRINCIPAL
@@ -310,11 +292,7 @@ async function showMainMenu(
     from,
     prefix
 ) {
-
-    cleanExpiredMenus();
-
-    const userId =
-        mek.sender;
+    const userId = mek.sender;
 
     const userNumber =
         userId.split("@")[0];
@@ -325,8 +303,16 @@ async function showMainMenu(
     const botName =
         getBotName(userId);
 
+    // ======================================
+    // CHARGER LES COMMANDES
+    // ======================================
+
     const categories =
         await loadCategories();
+
+    // ======================================
+    // TRIER LES CATÉGORIES
+    // ======================================
 
     const sortedCategories =
         Object.keys(categories)
@@ -336,6 +322,10 @@ async function showMainMenu(
                     categories[a].length
             );
 
+    // ======================================
+    // TOTAL DES COMMANDES
+    // ======================================
+
     const totalCmds =
         Object.values(categories)
             .reduce(
@@ -344,38 +334,122 @@ async function showMainMenu(
                 0
             );
 
-    // Sauvegarder le menu pour l'utilisateur
-    activeMenus.set(
-        userId,
-        {
-            categories,
-            sortedCategories,
-            prefix,
-            createdAt: Date.now()
-        }
-    );
+    // ======================================
+    // CONSTRUIRE LE MENU
+    // ======================================
 
     const menuText =
         buildMainMenu({
             user: userMention,
             prefix,
             botName,
-            categories,
             sortedCategories,
             totalCmds
         });
 
-    await sendMenuImage(
-        kaya,
+    // ======================================
+    // ENVOYER LE MENU
+    // ======================================
+
+    const sentMessage =
+        await sendMenuImage(
+            kaya,
+            from,
+            userId,
+            menuText
+        );
+
+    // ======================================
+    // RÉCUPÉRER L'ID
+    // ======================================
+
+    const menuMessageId =
+        sentMessage?.key?.id;
+
+    if (!menuMessageId) {
+        console.error(
+            "❌ Impossible de récupérer l'ID du message du menu."
+        );
+
+        return;
+    }
+
+    // ======================================
+    // STOCKAGE MINIMAL
+    // ======================================
+    //
+    // Seulement quelques chaînes sont
+    // conservées en RAM.
+    //
+    // Pas de catégories.
+    // Pas de liste de commandes.
+    // Pas de timeout.
+    //
+    // ======================================
+
+    activeMenus.set(
         from,
-        userId,
-        menuText
+        {
+            messageId:
+                menuMessageId,
+
+            prefix,
+
+            marker:
+                MENU_MARKER
+        }
     );
 }
 
+// ==========================================
+// RÉCUPÉRER L'ID DU MESSAGE CITÉ
+// ==========================================
+
+function getQuotedMessageId(mek) {
+    try {
+        const contextInfo =
+            mek?.message
+                ?.extendedTextMessage
+                ?.contextInfo;
+
+        return (
+            contextInfo?.stanzaId ||
+            contextInfo?.quotedMessage?.key?.id ||
+            null
+        );
+
+    } catch {
+        return null;
+    }
+}
 
 // ==========================================
-// DÉTECTION DES RÉPONSES 1 / 2 / 3...
+// VÉRIFIER LA RÉPONSE AU MENU
+// ==========================================
+
+function isReplyToActiveMenu(
+    mek,
+    activeMenu
+) {
+    if (!activeMenu?.messageId) {
+        return false;
+    }
+
+    const quotedMessageId =
+        getQuotedMessageId(mek);
+
+    if (!quotedMessageId) {
+        return false;
+    }
+
+    return (
+        quotedMessageId ===
+        activeMenu.messageId
+    );
+}
+
+// ==========================================
+// DÉTECTION DES RÉPONSES
 // ==========================================
 
 export async function handleMenuReply(
@@ -384,10 +458,12 @@ export async function handleMenuReply(
     from,
     text
 ) {
-
     try {
-
         if (!mek?.sender) {
+            return false;
+        }
+
+        if (!from) {
             return false;
         }
 
@@ -395,32 +471,50 @@ export async function handleMenuReply(
             return false;
         }
 
-        cleanExpiredMenus();
-
-        const userId =
-            mek.sender;
-
         const message =
             String(text).trim();
 
-        const activeMenu =
-            activeMenus.get(userId);
+        if (!message) {
+            return false;
+        }
 
-        // Pas de menu actif
+        // ==================================
+        // MENU ACTIF
+        // ==================================
+
+        const activeMenu =
+            activeMenus.get(from);
+
+        /*
+         * Aucun menu actif :
+         * les nombres normaux ne font rien.
+         */
+
         if (!activeMenu) {
             return false;
         }
 
+        // ==================================
+        // VÉRIFIER LE MESSAGE CITÉ
+        // ==================================
 
-        // ======================================
+        if (
+            !isReplyToActiveMenu(
+                mek,
+                activeMenu
+            )
+        ) {
+            return false;
+        }
+
+        // ==================================
         // RETOUR AU MENU PRINCIPAL
-        // ======================================
+        // ==================================
 
         if (
             message.toLowerCase() ===
             "menu"
         ) {
-
             await showMainMenu(
                 kaya,
                 mek,
@@ -431,40 +525,53 @@ export async function handleMenuReply(
             return true;
         }
 
+        // ==================================
+        // ACCEPTER UNIQUEMENT LES NOMBRES
+        // ==================================
 
-        // ======================================
-        // UNIQUEMENT LES NUMÉROS
-        // ======================================
-
-        if (
-            !/^\d+$/.test(message)
-        ) {
-
+        if (!/^\d+$/.test(message)) {
             return false;
         }
 
         const number =
             Number(message);
 
+        // ==================================
+        // RECHARGER LES CATÉGORIES
+        // ==================================
+        //
+        // Elles ne sont PAS conservées en RAM.
+        //
+        // Elles sont chargées seulement lorsque
+        // quelqu'un répond au menu.
+        //
+        // ==================================
 
-        // ======================================
+        const categories =
+            await loadCategories();
+
+        const sortedCategories =
+            Object.keys(categories)
+                .sort(
+                    (a, b) =>
+                        categories[b].length -
+                        categories[a].length
+                );
+
+        // ==================================
         // NUMÉRO INVALIDE
-        // ======================================
+        // ==================================
 
         if (
             number < 1 ||
-            number >
-                activeMenu
-                    .sortedCategories
-                    .length
+            number > sortedCategories.length
         ) {
-
             await kaya.sendMessage(
                 from,
                 {
                     text:
                         `⚠️ *Choix invalide.*\n\n` +
-                        `Veuillez choisir un numéro entre *1* et *${activeMenu.sortedCategories.length}*.`
+                        `Veuillez choisir un numéro entre *1* et *${sortedCategories.length}*.`
                 },
                 {
                     quoted: mek
@@ -474,30 +581,28 @@ export async function handleMenuReply(
             return true;
         }
 
-
-        // ======================================
-        // CATÉGORIE
-        // ======================================
+        // ==================================
+        // TROUVER LA CATÉGORIE
+        // ==================================
 
         const category =
-            activeMenu
-                .sortedCategories[
-                    number - 1
-                ];
+            sortedCategories[number - 1];
 
         const commands =
-            activeMenu
-                .categories[
-                    category
-                ] || [];
+            categories[category] || [];
+
+        // ==================================
+        // NOM DU BOT
+        // ==================================
 
         const botName =
-            getBotName(userId);
+            getBotName(
+                mek.sender
+            );
 
-
-        // ======================================
+        // ==================================
         // CONSTRUIRE LE MENU
-        // ======================================
+        // ==================================
 
         const categoryText =
             buildCategoryMenu({
@@ -508,17 +613,52 @@ export async function handleMenuReply(
                 botName
             });
 
+        // ==================================
+        // ENVOYER LA CATÉGORIE
+        // ==================================
 
-        // ======================================
-        // ENVOYER
-        // ======================================
+        const sentCategory =
+            await sendMenuImage(
+                kaya,
+                from,
+                mek.sender,
+                categoryText
+            );
 
-        await sendMenuImage(
-            kaya,
-            from,
-            userId,
-            categoryText
-        );
+        // ==================================
+        // NOUVEAU MESSAGE ACTIF
+        // ==================================
+
+        const newMessageId =
+            sentCategory?.key?.id;
+
+        if (newMessageId) {
+
+            // On remplace seulement l'ID.
+            //
+            // Toujours aucun stockage des
+            // catégories en RAM.
+
+            activeMenus.set(
+                from,
+                {
+                    messageId:
+                        newMessageId,
+
+                    prefix:
+                        activeMenu.prefix,
+
+                    marker:
+                        MENU_MARKER
+                }
+            );
+
+        } else {
+
+            console.error(
+                "❌ Impossible de récupérer l'ID du nouveau menu."
+            );
+        }
 
         return true;
 
@@ -533,9 +673,8 @@ export async function handleMenuReply(
     }
 }
 
-
 // ==========================================
-// COMMANDE MENU
+// COMMANDE .MENU
 // ==========================================
 
 export default {
@@ -554,7 +693,6 @@ export default {
         args,
         prefix
     ) {
-
         try {
 
             await showMainMenu(
