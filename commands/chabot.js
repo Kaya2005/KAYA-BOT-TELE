@@ -5,7 +5,7 @@ import { getBotName, sendWithBotImage } from '../setting/botAssets.js';
 
 export default {
     name: 'chatbot',
-    description: '🤖 Active or deactivates the intelligent chatbot mode (cold & direct)',
+    description: '🤖 Active or deactivates the intelligent chatbot mode (cold & polite)',
     category: 'AI',
 
     async execute(kaya, mek, from, args, prefix) {
@@ -132,14 +132,14 @@ export default {
         }
     },
 
-    // 🧠 Global listener function : 50% de chance de répondre, réponses courtes et froides sans conditions aléatoires sur le contenu
+    // 🧠 Global listener function : 80% de chance de répondre (20% d'ignorés), ton froid mais correct et utile
     async listen(kaya, mek, from, body, ownerId) {
         try {
             if (!body || typeof body !== 'string' || body.trim() === '') return;
             if (mek.key.fromMe) return;
 
-            // 50% de chance de répondre ou d'ignorer le message
-            if (Math.random() < 0.5) {
+            // 20% de chance d'ignorer le message (laisse passer 80% du temps)
+            if (Math.random() < 0.2) {
                 return;
             }
 
@@ -162,11 +162,11 @@ export default {
                     messages: [
                         { 
                             role: 'system', 
-                            content: 'Tu es distant, froid, sec, et hautain. Réponds de manière très laconique, directe et naturelle, avec une simple phrase courte ou quelques mots, sans aucune politesse et sans aucun emoji. Pas de bavardage inutile.' 
+                            content: 'Tu es un assistant froid, sobre, neutre et direct. Tu réponds correctement aux questions de manière précise et utile, mais sans aucune émotion, sans enthousiasme, sans fioritures et sans emojis. Tes réponses sont naturelles et adaptées à ce qu\'on te demande, sans être agressif ou impoli.' 
                         },
                         { role: 'user', content: body }
                     ],
-                    temperature: 0.6
+                    temperature: 0.7
                 })
             });
 
