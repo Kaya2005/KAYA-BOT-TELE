@@ -265,7 +265,7 @@ ${commandList}
 
 
 // ==========================================
-// RÉCUPÉRER L'ID DU MESSAGE CITÉ
+// RÉCUPÉRER L'ID DU MESSAGE CITÉ (OPTIMISÉ BAILAYS)
 // ==========================================
 
 function getQuotedMessageId(mek) {
@@ -273,24 +273,25 @@ function getQuotedMessageId(mek) {
         const msg = mek?.message;
         if (!msg) return null;
 
-        const contextInfo =
+        // Extraction ciblée de la structure contextInfo de Baileys
+        const contextInfo = 
             msg.extendedTextMessage?.contextInfo ||
             msg.imageMessage?.contextInfo ||
             msg.videoMessage?.contextInfo ||
             msg.documentMessage?.contextInfo ||
-            msg.audioMessage?.contextInfo ||
+            msg.buttonsResponseMessage?.contextInfo ||
+            msg.templateButtonReplyMessage?.contextInfo ||
+            msg.listResponseMessage?.contextInfo ||
             msg.ephemeralMessage?.message?.extendedTextMessage?.contextInfo ||
             msg.ephemeralMessage?.message?.imageMessage?.contextInfo ||
             msg.viewOnceMessage?.message?.extendedTextMessage?.contextInfo ||
-            msg.viewOnceMessage?.message?.imageMessage?.contextInfo ||
-            msg.viewOnceMessageV2?.message?.extendedTextMessage?.contextInfo ||
-            msg.viewOnceMessageV2?.message?.imageMessage?.contextInfo;
+            msg.viewOnceMessage?.message?.imageMessage?.contextInfo;
 
-        return (
-            contextInfo?.stanzaId ||
-            contextInfo?.quotedMessage?.key?.id ||
-            null
-        );
+        if (contextInfo?.stanzaId) {
+            return contextInfo.stanzaId;
+        }
+
+        return null;
     } catch {
         return null;
     }
@@ -365,7 +366,7 @@ async function showMainMenu(
 
 
 // ==========================================
-// DÉTECTION DES RÉPONSES (UNIQUEMENT PAR CITATION)
+// DÉTECTION DES RÉPONSES
 // ==========================================
 
 export async function handleMenuReply(
@@ -385,15 +386,16 @@ export async function handleMenuReply(
 
         cleanExpiredMenus();
 
-        // Vérifie si l'utilisateur répond explicitement à un message du bot
+        // 1. On vérifie obligatoirement si le message cite un autre message
         const quotedId = getQuotedMessageId(mek);
         if (!quotedId) {
-            return false;
+            return false; // Ignore si on tape dans le vide sans citer
         }
 
+        // 2. On vérifie si l'ID cité correspond à un menu valide stocké
         const activeMenu = activeMenus.get(quotedId);
         if (!activeMenu) {
-            return false;
+            return false; // Ignore si on cite autre chose qu'un menu du bot
         }
 
         const userId = mek.sender;
