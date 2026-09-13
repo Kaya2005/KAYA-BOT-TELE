@@ -13,29 +13,11 @@ import {
 } from "../setting/botAssets.js";
 
 // ==========================================
-// IDENTIFIANT DU MENU
-// ==========================================
-
-const MENU_MARKER = "MENU PRINCIPAL";
-
-// ==========================================
-// MENUS ACTIFS
-// ==========================================
-//
-// Pour économiser la RAM, on ne sauvegarde PAS
-// les catégories ni les commandes ici.
-//
-// On garde uniquement :
-// - messageId
-// - prefix
-// - marker
-//
-// Le menu n'expire jamais tant que le processus
-// du bot reste actif.
-//
+// MENUS ACTIFS (Basés sur l'ID du message)
 // ==========================================
 
 const activeMenus = new Map();
+const MENU_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 
 // ==========================================
 // UTILITAIRES
@@ -47,13 +29,11 @@ function pad(n) {
 
 function getTime() {
     const d = new Date();
-
     return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 function getDate() {
     const d = new Date();
-
     return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
 }
 
@@ -67,7 +47,6 @@ function getDayName() {
         "Friday",
         "Saturday"
     ];
-
     return days[new Date().getDay()];
 }
 
@@ -165,6 +144,19 @@ async function loadCategories() {
 }
 
 // ==========================================
+// NETTOYER LES MENUS EXPIRÉS
+// ==========================================
+
+function cleanExpiredMenus() {
+    const now = Date.now();
+    for (const [msgId, menu] of activeMenus.entries()) {
+        if (now - menu.createdAt > MENU_TIMEOUT) {
+            activeMenus.delete(msgId);
+        }
+    }
+}
+
+// ==========================================
 // ENVOYER AVEC L'IMAGE DU BOT
 // ==========================================
 
@@ -183,14 +175,7 @@ async function sendMenuImage(
 
             contextInfo: {
                 ...getContextInfo(sender),
-
-                mentionedJid: [sender],
-
-                // Identifiant interne mis à jour avec le marqueur du menu principal
-                externalAdReply: {
-                    title: MENU_MARKER,
-                    body: "Interactive Menu"
-                }
+                mentionedJid: [sender]
             }
         }
     );
@@ -222,7 +207,6 @@ function buildMainMenu({
 
     sortedCategories.forEach(
         (category, index) => {
-
             text +=
                 `\n┆ ➠ *${index + 1}.* ${category}`;
         }
@@ -232,7 +216,7 @@ function buildMainMenu({
         `\n╰▰▰▰▰▰▰▰◈`;
 
     text +=
-        `\n\n> ✦ *Répondez à ce message avec le numéro de votre choix.*`;
+        `\n\n> ✦ *Répondez avec le numéro de votre choix.*`;
 
     text +=
         `\n> ✦ Exemple : *1*`;
@@ -258,7 +242,7 @@ function buildCategoryMenu({
 
 > ⚠️ Aucune commande disponible dans cette catégorie.
 
-> ✦ Répondez à ce message avec *menu* pour revenir au menu principal.
+> ✦ Répondez avec *menu* pour revenir au menu principal.
 `.trim();
     }
 
@@ -278,7 +262,7 @@ function buildCategoryMenu({
 ${commandList}
 ╰▰▰▰▰▰▰▰◈
 
-> ✦ Répondez à ce message avec *menu* pour revenir.
+> ✦ Répondez avec *menu* pour revenir.
 `.trim();
 }
 
@@ -292,27 +276,14 @@ async function showMainMenu(
     from,
     prefix
 ) {
+    cleanExpiredMenus();
+
     const userId = mek.sender;
+    const userNumber = userId.split("@")[0];
+    const userMention = `@${userNumber}`;
+    const botName = getBotName(userId);
 
-    const userNumber =
-        userId.split("@")[0];
-
-    const userMention =
-        `@${userNumber}`;
-
-    const botName =
-        getBotName(userId);
-
-    // ======================================
-    // CHARGER LES COMMANDES
-    // ======================================
-
-    const categories =
-        await loadCategories();
-
-    // ======================================
-    // TRIER LES CATÉGORIES
-    // ======================================
+    const categories = await loadCategories();
 
     const sortedCategories =
         Object.keys(categories)
@@ -322,10 +293,6 @@ async function showMainMenu(
                     categories[a].length
             );
 
-    // ======================================
-    // TOTAL DES COMMANDES
-    // ======================================
-
     const totalCmds =
         Object.values(categories)
             .reduce(
@@ -333,10 +300,6 @@ async function showMainMenu(
                     total + commands.length,
                 0
             );
-
-    // ======================================
-    // CONSTRUIRE LE MENU
-    // ======================================
 
     const menuText =
         buildMainMenu({
@@ -347,49 +310,26 @@ async function showMainMenu(
             totalCmds
         });
 
-    // ======================================
-    // ENVOYER LE MENU
-    // ======================================
-
-    const sentMessage =
-        await sendMenuImage(
-            kaya,
-            from,
-            userId,
-            menuText
-        );
-
-    // ======================================
-    // RÉCUPÉRER L'ID
-    // ======================================
-
-    const menuMessageId =
-        sentMessage?.key?.id;
-
-    if (!menuMessageId) {
-        console.error(
-            "❌ Impossible de récupérer l'ID du message du menu."
-        );
-
-        return;
-    }
-
-    // ======================================
-    // STOCKAGE MINIMAL
-    // ======================================
-
-    activeMenus.set(
+    const sentMessage = await sendMenuImage(
+        kaya,
         from,
-        {
-            messageId:
-                menuMessageId,
-
-            prefix,
-
-            marker:
-                MENU_MARKER
-        }
+        userId,
+        menuText
     );
+
+    const messageId = sentMessage?.key?.id;
+
+    if (messageId) {
+        activeMenus.set(
+            messageId,
+            {
+                categories,
+                sortedCategories,
+                prefix,
+                createdAt: Date.now()
+            }
+        );
+    }
 }
 
 // ==========================================
@@ -401,7 +341,6 @@ function getQuotedMessageId(mek) {
         const msg = mek?.message;
         if (!msg) return null;
 
-        // Extraction profonde de toutes les structures possibles de contextInfo dans Baileys
         const contextInfo =
             msg.extendedTextMessage?.contextInfo ||
             msg.imageMessage?.contextInfo ||
@@ -425,39 +364,13 @@ function getQuotedMessageId(mek) {
             contextInfo?.quotedMessage?.key?.id ||
             null
         );
-
     } catch {
         return null;
     }
 }
 
 // ==========================================
-// VÉRIFIER LA RÉPONSE AU MENU
-// ==========================================
-
-function isReplyToActiveMenu(
-    mek,
-    activeMenu
-) {
-    if (!activeMenu?.messageId) {
-        return false;
-    }
-
-    const quotedMessageId =
-        getQuotedMessageId(mek);
-
-    if (!quotedMessageId) {
-        return false;
-    }
-
-    return (
-        quotedMessageId ===
-        activeMenu.messageId
-    );
-}
-
-// ==========================================
-// DÉTECTION DES RÉPONSES
+// DÉTECTION DES RÉPONSES (OUVERT À TOUT LE MONDE PAR CITATION)
 // ==========================================
 
 export async function handleMenuReply(
@@ -471,44 +384,26 @@ export async function handleMenuReply(
             return false;
         }
 
-        if (!from) {
-            return false;
-        }
-
         if (!text) {
             return false;
         }
 
-        const message =
-            String(text).trim();
+        cleanExpiredMenus();
 
-        if (!message) {
+        // On récupère l'ID du message auquel l'utilisateur est en train de répondre
+        const quotedId = getQuotedMessageId(mek);
+        if (!quotedId) {
             return false;
         }
 
-        // ==================================
-        // MENU ACTIF
-        // ==================================
-
-        const activeMenu =
-            activeMenus.get(from);
-
+        // On regarde si cet ID correspond à un menu envoyé par le bot
+        const activeMenu = activeMenus.get(quotedId);
         if (!activeMenu) {
             return false;
         }
 
-        // ==================================
-        // VÉRIFIER LE MESSAGE CITÉ
-        // ==================================
-
-        if (
-            !isReplyToActiveMenu(
-                mek,
-                activeMenu
-            )
-        ) {
-            return false;
-        }
+        const userId = mek.sender;
+        const message = String(text).trim();
 
         // ==================================
         // RETOUR AU MENU PRINCIPAL
@@ -536,23 +431,7 @@ export async function handleMenuReply(
             return false;
         }
 
-        const number =
-            Number(message);
-
-        // ==================================
-        // RECHARGER LES CATÉGORIES
-        // ==================================
-
-        const categories =
-            await loadCategories();
-
-        const sortedCategories =
-            Object.keys(categories)
-                .sort(
-                    (a, b) =>
-                        categories[b].length -
-                        categories[a].length
-                );
+        const number = Number(message);
 
         // ==================================
         // NUMÉRO INVALIDE
@@ -560,14 +439,16 @@ export async function handleMenuReply(
 
         if (
             number < 1 ||
-            number > sortedCategories.length
+            number >
+                activeMenu.sortedCategories
+                    .length
         ) {
             await kaya.sendMessage(
                 from,
                 {
                     text:
                         `⚠️ *Choix invalide.*\n\n` +
-                        `Veuillez choisir un numéro entre *1* et *${sortedCategories.length}*.`
+                        `Veuillez choisir un numéro entre *1* et *${activeMenu.sortedCategories.length}*.`
                 },
                 {
                     quoted: mek
@@ -582,79 +463,53 @@ export async function handleMenuReply(
         // ==================================
 
         const category =
-            sortedCategories[number - 1];
+            activeMenu.sortedCategories[
+                number - 1
+            ];
 
         const commands =
-            categories[category] || [];
+            activeMenu.categories[
+                category
+            ] || [];
+
+        const botName = getBotName(userId);
 
         // ==================================
-        // NOM DU BOT
-        // ==================================
-
-        const botName =
-            getBotName(
-                mek.sender
-            );
-
-        // ==================================
-        // CONSTRUIRE LE MENU
+        // CONSTRUIRE LE SOUS-MENU
         // ==================================
 
         const categoryText =
             buildCategoryMenu({
                 category,
                 commands,
-                prefix:
-                    activeMenu.prefix,
+                prefix: activeMenu.prefix,
                 botName
             });
 
         // ==================================
-        // ENVOYER LA CATÉGORIE
+        // ENVOYER LA CATÉGORIE ET ENREGISTRER L'ID
         // ==================================
 
-        const sentCategory =
-            await sendMenuImage(
-                kaya,
-                from,
-                mek.sender,
-                categoryText
-            );
+        const sentCategory = await sendMenuImage(
+            kaya,
+            from,
+            userId,
+            categoryText
+        );
 
-        // ==================================
-        // NOUVEAU MESSAGE ACTIF
-        // ==================================
-
-        const newMessageId =
-            sentCategory?.key?.id;
-
-        if (newMessageId) {
-
-            activeMenus.set(
-                from,
-                {
-                    messageId:
-                        newMessageId,
-
-                    prefix:
-                        activeMenu.prefix,
-
-                    marker:
-                        MENU_MARKER
-                }
-            );
-
-        } else {
-
-            console.error(
-                "❌ Impossible de récupérer l'ID du nouveau menu."
-            );
+        const newMsgId = sentCategory?.key?.id;
+        if (newMsgId) {
+            activeMenus.set(newMsgId, {
+                categories: activeMenu.categories,
+                sortedCategories: activeMenu.sortedCategories,
+                prefix: activeMenu.prefix,
+                createdAt: Date.now()
+            });
         }
 
         return true;
 
     } catch (error) {
-
         console.error(
             "❌ Erreur handleMenuReply :",
             error
@@ -685,16 +540,13 @@ export default {
         prefix
     ) {
         try {
-
             await showMainMenu(
                 kaya,
                 mek,
                 from,
                 prefix
             );
-
         } catch (error) {
-
             console.error(
                 "❌ Erreur dans menu.js :",
                 error
