@@ -14,7 +14,7 @@ import {
 
 
 // ==========================================
-// MENUS ACTIFS (Basés sur l'ID du message)
+// MENUS ACTIFS (Basés sur l'ID de l'utilisateur)
 // ==========================================
 
 const activeMenus = new Map();
@@ -152,19 +152,40 @@ async function loadCategories() {
 
 function cleanExpiredMenus() {
     const now = Date.now();
-    for (const [msgId, menu] of activeMenus.entries()) {
+    for (const [userId, menu] of activeMenus.entries()) {
         if (now - menu.createdAt > MENU_TIMEOUT) {
-            activeMenus.delete(msgId);
+            activeMenus.delete(userId);
         }
     }
 }
 
 
 // ==========================================
-// ENVOYER LE MENU AVEC IMAGE
+// ENVOYER LE MENU PRINCIPAL (SANS CONTEXTINFO)
 // ==========================================
 
-async function sendMenuImage(
+async function sendMainMenuImage(
+    kaya,
+    from,
+    sender,
+    caption
+) {
+    return await sendWithBotImage(
+        kaya,
+        from,
+        sender,
+        {
+            caption
+        }
+    );
+}
+
+
+// ==========================================
+// ENVOYER LA CATÉGORIE (AVEC CONTEXTINFO)
+// ==========================================
+
+async function sendCategoryMenuImage(
     kaya,
     from,
     sender,
@@ -176,7 +197,6 @@ async function sendMenuImage(
         sender,
         {
             caption,
-
             contextInfo: {
                 ...getContextInfo(sender),
                 mentionedJid: [sender]
@@ -265,40 +285,6 @@ ${commandList}
 
 
 // ==========================================
-// RÉCUPÉRER L'ID DU MESSAGE CITÉ (OPTIMISÉ BAILAYS)
-// ==========================================
-
-function getQuotedMessageId(mek) {
-    try {
-        const msg = mek?.message;
-        if (!msg) return null;
-
-        // Extraction ciblée de la structure contextInfo de Baileys
-        const contextInfo = 
-            msg.extendedTextMessage?.contextInfo ||
-            msg.imageMessage?.contextInfo ||
-            msg.videoMessage?.contextInfo ||
-            msg.documentMessage?.contextInfo ||
-            msg.buttonsResponseMessage?.contextInfo ||
-            msg.templateButtonReplyMessage?.contextInfo ||
-            msg.listResponseMessage?.contextInfo ||
-            msg.ephemeralMessage?.message?.extendedTextMessage?.contextInfo ||
-            msg.ephemeralMessage?.message?.imageMessage?.contextInfo ||
-            msg.viewOnceMessage?.message?.extendedTextMessage?.contextInfo ||
-            msg.viewOnceMessage?.message?.imageMessage?.contextInfo;
-
-        if (contextInfo?.stanzaId) {
-            return contextInfo.stanzaId;
-        }
-
-        return null;
-    } catch {
-        return null;
-    }
-}
-
-
-// ==========================================
 // AFFICHER LE MENU PRINCIPAL
 // ==========================================
 
@@ -342,26 +328,22 @@ async function showMainMenu(
             totalCmds
         });
 
-    const sentMessage = await sendMenuImage(
+    await sendMainMenuImage(
         kaya,
         from,
         userId,
         menuText
     );
 
-    const messageId = sentMessage?.key?.id;
-
-    if (messageId) {
-        activeMenus.set(
-            messageId,
-            {
-                categories,
-                sortedCategories,
-                prefix,
-                createdAt: Date.now()
-            }
-        );
-    }
+    activeMenus.set(
+        userId,
+        {
+            categories,
+            sortedCategories,
+            prefix,
+            createdAt: Date.now()
+        }
+    );
 }
 
 
@@ -386,19 +368,13 @@ export async function handleMenuReply(
 
         cleanExpiredMenus();
 
-        // 1. On vérifie obligatoirement si le message cite un autre message
-        const quotedId = getQuotedMessageId(mek);
-        if (!quotedId) {
-            return false; // Ignore si on tape dans le vide sans citer
-        }
-
-        // 2. On vérifie si l'ID cité correspond à un menu valide stocké
-        const activeMenu = activeMenus.get(quotedId);
-        if (!activeMenu) {
-            return false; // Ignore si on cite autre chose qu'un menu du bot
-        }
-
         const userId = mek.sender;
+        const activeMenu = activeMenus.get(userId);
+
+        if (!activeMenu) {
+            return false;
+        }
+
         const message = String(text).trim();
 
 
@@ -493,29 +469,15 @@ export async function handleMenuReply(
 
 
         // ======================================
-        // ENVOYER ET ENREGISTRER LE NOUVEL ID
+        // ENVOYER AVEC CONTEXTINFO (CATÉGORIE)
         // ======================================
 
-        const sentCategory = await sendMenuImage(
+        await sendCategoryMenuImage(
             kaya,
             from,
             userId,
             categoryText
         );
-
-        const newMsgId = sentCategory?.key?.id;
-
-        if (newMsgId) {
-            activeMenus.set(
-                newMsgId,
-                {
-                    categories: activeMenu.categories,
-                    sortedCategories: activeMenu.sortedCategories,
-                    prefix: activeMenu.prefix,
-                    createdAt: Date.now()
-                }
-            );
-        }
 
         return true;
 
