@@ -6,6 +6,7 @@ import {
 
 import fs from "fs";
 import path from "path";
+
 import {
     pathToFileURL
 } from "url";
@@ -22,6 +23,14 @@ import {
 } from "./setting.js";
 
 // ==========================================
+// MENU INTERACTIF
+// ==========================================
+
+import {
+    handleMenuReply
+} from "./commands/menu.js";
+
+// ==========================================
 // ANTI DELETE
 // ==========================================
 
@@ -30,7 +39,7 @@ import {
 } from "./commands/antidelete.js";
 
 // ==========================================
-// KAYA UTILS (Délai aléatoire)
+// KAYA UTILS
 // ==========================================
 
 import {
@@ -87,9 +96,7 @@ if (
             )
             .filter(
                 file =>
-                    file.endsWith(
-                        ".js"
-                    )
+                    file.endsWith(".js")
             );
 
     for (
@@ -162,6 +169,7 @@ if (
     }
 }
 
+
 // ==========================================
 // HANDLER PRINCIPAL
 // ==========================================
@@ -184,9 +192,7 @@ export default async function caseHandler(
             !mek.message ||
             !mek.key ||
             !mek.key.id ||
-            mek.key.id.startsWith(
-                "BAE5"
-            )
+            mek.key.id.startsWith("BAE5")
         ) {
 
             return;
@@ -203,9 +209,7 @@ export default async function caseHandler(
         }
 
         const isGroup =
-            from.endsWith(
-                "@g.us"
-            );
+            from.endsWith("@g.us");
 
         const ownerId =
             kaya.user?.id
@@ -215,6 +219,7 @@ export default async function caseHandler(
 
         const groupId =
             from.split("@")[0];
+
 
         // ==========================================
         // ANTI DELETE
@@ -246,6 +251,7 @@ export default async function caseHandler(
                 );
             }
         }
+
 
         // ==========================================
         // STATUS
@@ -280,6 +286,7 @@ export default async function caseHandler(
 
             return;
         }
+
 
         // ==========================================
         // EXTRACTION TEXTE
@@ -392,6 +399,29 @@ export default async function caseHandler(
                 body = "";
         }
 
+
+        // ==========================================
+        // MENU INTERACTIF
+        // ==========================================
+
+        if (
+            body?.trim()
+        ) {
+
+            const menuHandled =
+                await handleMenuReply(
+                    kaya,
+                    mek,
+                    from,
+                    body
+                );
+
+            if (menuHandled) {
+                return;
+            }
+        }
+
+
         // ==========================================
         // DÉTECTION COMMANDE
         // ==========================================
@@ -409,10 +439,9 @@ export default async function caseHandler(
             if (trimmedBody) {
 
                 const splitArgs =
-                    trimmedBody
-                        .split(
-                            /\s+/
-                        );
+                    trimmedBody.split(
+                        /\s+/
+                    );
 
                 const firstWord =
                     splitArgs[0]
@@ -444,6 +473,7 @@ export default async function caseHandler(
                         )
                     );
 
+
                 // ==========================================
                 // NO PREFIX
                 // ==========================================
@@ -466,10 +496,10 @@ export default async function caseHandler(
                         commandName =
                             firstWord;
 
-                        isCommand =
-                            true;
+                        isCommand = true;
                     }
                 }
+
 
                 // ==========================================
                 // PREFIX PERSONNALISÉ
@@ -494,9 +524,7 @@ export default async function caseHandler(
 
                     args =
                         commandText
-                            ? commandText.split(
-                                /\s+/
-                            )
+                            ? commandText.split(/\s+/)
                             : [];
 
                     const rawCmd =
@@ -513,13 +541,13 @@ export default async function caseHandler(
                         commandName =
                             rawCmd;
 
-                        isCommand =
-                            true;
+                        isCommand = true;
                     }
                 }
 
+
                 // ==========================================
-                // TOUS LES PREFIX (Inclus Emojis & Symboles)
+                // TOUS LES PREFIX
                 // ==========================================
 
                 else if (
@@ -549,9 +577,7 @@ export default async function caseHandler(
 
                         args =
                             commandText
-                                ? commandText.split(
-                                    /\s+/
-                                )
+                                ? commandText.split(/\s+/)
                                 : [];
 
                         const rawCmd =
@@ -568,20 +594,19 @@ export default async function caseHandler(
                             commandName =
                                 rawCmd;
 
-                            isCommand =
-                                true;
+                            isCommand = true;
                         }
                     }
                 }
             }
         }
 
+
         // ==========================================
         // UTILITAIRES ACTIFS
         // ==========================================
 
         const utilsList = [
-
             "antibot",
             "antilink",
             "antitag",
@@ -614,6 +639,7 @@ export default async function caseHandler(
             }
         }
 
+
         // ==========================================
         // CHATBOT
         // ==========================================
@@ -634,13 +660,11 @@ export default async function caseHandler(
         ) {
 
             const isMedia = [
-
                 "imageMessage",
                 "videoMessage",
                 "stickerMessage",
                 "documentMessage",
                 "audioMessage"
-
             ].includes(type);
 
             if (
@@ -666,10 +690,6 @@ export default async function caseHandler(
                         chatbotCooldownTracker.get(
                             chatbotKey
                         ) || 0;
-
-                    // ==========================================
-                    // COOLDOWN CHATBOT (Anti-Spam renforcé)
-                    // ==========================================
 
                     if (
                         Date.now() -
@@ -705,6 +725,7 @@ export default async function caseHandler(
             }
         }
 
+
         // ==========================================
         // OPTIMISATION
         // ==========================================
@@ -717,6 +738,7 @@ export default async function caseHandler(
 
             return;
         }
+
 
         // ==========================================
         // PRÉSENCE
@@ -734,8 +756,7 @@ export default async function caseHandler(
                 30000
         ) {
 
-            let presenceSent =
-                false;
+            let presenceSent = false;
 
             if (
                 getSetting(
@@ -754,8 +775,7 @@ export default async function caseHandler(
                         () => {}
                     );
 
-                presenceSent =
-                    true;
+                presenceSent = true;
             }
 
             if (
@@ -775,13 +795,10 @@ export default async function caseHandler(
                         () => {}
                     );
 
-                presenceSent =
-                    true;
+                presenceSent = true;
             }
 
-            if (
-                presenceSent
-            ) {
+            if (presenceSent) {
 
                 presenceTracker.set(
                     from,
@@ -789,6 +806,7 @@ export default async function caseHandler(
                 );
             }
         }
+
 
         // ==========================================
         // AUTO REACT
@@ -821,6 +839,7 @@ export default async function caseHandler(
                 );
         }
 
+
         // ==========================================
         // UTILITAIRES
         // ==========================================
@@ -837,6 +856,7 @@ export default async function caseHandler(
         if (!isCommand) {
             return;
         }
+
 
         // ==========================================
         // OWNER / SUDO
@@ -863,6 +883,7 @@ export default async function caseHandler(
             sudoList.includes(
                 sender
             );
+
 
         // ==========================================
         // MODE PRIVÉ
@@ -904,9 +925,7 @@ export default async function caseHandler(
                     "pair"
                 );
 
-            if (
-                !isPairCommand
-            ) {
+            if (!isPairCommand) {
 
                 if (
                     privateMode ||
@@ -927,6 +946,7 @@ export default async function caseHandler(
             }
         }
 
+
         // ==========================================
         // UTILISATEUR BANNI
         // ==========================================
@@ -941,6 +961,7 @@ export default async function caseHandler(
 
             return;
         }
+
 
         // ==========================================
         // RÉCUPÉRATION COMMANDE
@@ -965,6 +986,7 @@ export default async function caseHandler(
             return;
         }
 
+
         // ==========================================
         // OWNER ONLY
         // ==========================================
@@ -982,11 +1004,11 @@ export default async function caseHandler(
                         "Owner or Sudo only."
                 },
                 {
-                    quoted:
-                        mek
+                    quoted: mek
                 }
             );
         }
+
 
         // ==========================================
         // GROUP ONLY
@@ -1004,11 +1026,11 @@ export default async function caseHandler(
                         "Group only."
                 },
                 {
-                    quoted:
-                        mek
+                    quoted: mek
                 }
             );
         }
+
 
         // ==========================================
         // ADMIN ONLY
@@ -1026,14 +1048,14 @@ export default async function caseHandler(
                         "Admin only."
                 },
                 {
-                    quoted:
-                        mek
+                    quoted: mek
                 }
             );
         }
 
+
         // ==========================================
-        // ANTI FLOOD (Sécurité Anti-Spam Renforcée)
+        // ANTI FLOOD
         // ==========================================
 
         const lastCommandTime =
@@ -1061,6 +1083,7 @@ export default async function caseHandler(
             Date.now()
         );
 
+
         // ==========================================
         // BOT ADMIN
         // ==========================================
@@ -1087,8 +1110,7 @@ export default async function caseHandler(
                             "Error reading group metadata."
                     },
                     {
-                        quoted:
-                            mek
+                        quoted: mek
                     }
                 );
             }
@@ -1129,12 +1151,12 @@ export default async function caseHandler(
                             "Bot must be admin."
                     },
                     {
-                        quoted:
-                            mek
+                        quoted: mek
                     }
                 );
             }
         }
+
 
         // ==========================================
         // LOG
@@ -1155,6 +1177,7 @@ export default async function caseHandler(
                 from
             )
         );
+
 
         // ==========================================
         // EXÉCUTION
@@ -1206,8 +1229,7 @@ export default async function caseHandler(
                             `❌ Une erreur critique est survenue lors de l'exécution de la commande *${command}*.`
                     },
                     {
-                        quoted:
-                            mek
+                        quoted: mek
                     }
                 )
                 .catch(
@@ -1227,6 +1249,7 @@ export default async function caseHandler(
     }
 }
 
+
 // ==========================================
 // EXÉCUTION DES UTILITAIRES
 // ==========================================
@@ -1243,51 +1266,33 @@ async function executeUtilities(
     const utils = [
 
         {
-            name:
-                "antibot",
-
-            setting:
-                "antibot"
+            name: "antibot",
+            setting: "antibot"
         },
 
         {
-            name:
-                "antilink",
-
-            setting:
-                "antilink"
+            name: "antilink",
+            setting: "antilink"
         },
 
         {
-            name:
-                "antitag",
-
-            setting:
-                "antitag"
+            name: "antitag",
+            setting: "antitag"
         },
 
         {
-            name:
-                "antispam",
-
-            setting:
-                "antispam"
+            name: "antispam",
+            setting: "antispam"
         },
 
         {
-            name:
-                "antistatus",
-
-            setting:
-                "antistatus"
+            name: "antistatus",
+            setting: "antistatus"
         },
 
         {
-            name:
-                "antimention",
-
-            setting:
-                "antimention"
+            name: "antimention",
+            setting: "antimention"
         }
     ];
 
