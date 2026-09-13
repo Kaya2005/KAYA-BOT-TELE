@@ -1,3 +1,5 @@
+
+
 // ==================== menu.js ====================
 
 import fs from "fs";
@@ -12,12 +14,15 @@ import {
     sendWithBotImage
 } from "../setting/botAssets.js";
 
+
 // ==========================================
-// MENUS ACTIFS (Basés sur l'ID du message)
+// MENUS ACTIFS
 // ==========================================
 
 const activeMenus = new Map();
-const MENU_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+
+const MENU_TIMEOUT = 5 * 60 * 1000;
+
 
 // ==========================================
 // UTILITAIRES
@@ -28,16 +33,21 @@ function pad(n) {
 }
 
 function getTime() {
+
     const d = new Date();
+
     return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 function getDate() {
+
     const d = new Date();
+
     return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
 }
 
 function getDayName() {
+
     const days = [
         "Sunday",
         "Monday",
@@ -47,8 +57,10 @@ function getDayName() {
         "Friday",
         "Saturday"
     ];
+
     return days[new Date().getDay()];
 }
+
 
 // ==========================================
 // HEADER
@@ -60,6 +72,7 @@ function buildHeader({
     totalCmds,
     botName
 }) {
+
     return `
 > ╭┈▉ \`${botName}\` ▉┄◈
 > ┆ ╭────↯
@@ -74,15 +87,18 @@ function buildHeader({
 `.trim();
 }
 
+
 // ==========================================
 // CHARGER LES CATÉGORIES
 // ==========================================
 
 async function loadCategories() {
-    const commandsDir = path.join(
-        process.cwd(),
-        "commands"
-    );
+
+    const commandsDir =
+        path.join(
+            process.cwd(),
+            "commands"
+        );
 
     const categories = {};
 
@@ -90,19 +106,27 @@ async function loadCategories() {
         return categories;
     }
 
-    const files = fs.readdirSync(commandsDir)
-        .filter(file => file.endsWith(".js"));
+    const files =
+        fs.readdirSync(commandsDir)
+            .filter(
+                file =>
+                    file.endsWith(".js")
+            );
 
     for (const file of files) {
-        try {
-            const filePath = path.join(
-                commandsDir,
-                file
-            );
 
-            const cmd = await import(
-                `file://${filePath}`
-            );
+        try {
+
+            const filePath =
+                path.join(
+                    commandsDir,
+                    file
+                );
+
+            const cmd =
+                await import(
+                    `file://${filePath}`
+                );
 
             const command =
                 cmd.default || cmd;
@@ -111,10 +135,11 @@ async function loadCategories() {
                 continue;
             }
 
-            const category = (
-                command.category ||
-                "General"
-            ).toUpperCase();
+            const category =
+                (
+                    command.category ||
+                    "General"
+                ).toUpperCase();
 
             if (!categories[category]) {
                 categories[category] = [];
@@ -127,12 +152,13 @@ async function loadCategories() {
                 !categories[category]
                     .includes(commandName)
             ) {
-                categories[category].push(
-                    commandName
-                );
+
+                categories[category]
+                    .push(commandName);
             }
 
         } catch (error) {
+
             console.error(
                 `Erreur lors du chargement de ${file} dans menu.js :`,
                 error
@@ -143,21 +169,33 @@ async function loadCategories() {
     return categories;
 }
 
+
 // ==========================================
 // NETTOYER LES MENUS EXPIRÉS
 // ==========================================
 
 function cleanExpiredMenus() {
+
     const now = Date.now();
-    for (const [msgId, menu] of activeMenus.entries()) {
-        if (now - menu.createdAt > MENU_TIMEOUT) {
-            activeMenus.delete(msgId);
+
+    for (
+        const [userId, menu]
+        of activeMenus.entries()
+    ) {
+
+        if (
+            now - menu.createdAt >
+            MENU_TIMEOUT
+        ) {
+
+            activeMenus.delete(userId);
         }
     }
 }
 
+
 // ==========================================
-// ENVOYER AVEC L'IMAGE DU BOT
+// ENVOYER LE MENU AVEC IMAGE
 // ==========================================
 
 async function sendMenuImage(
@@ -166,7 +204,8 @@ async function sendMenuImage(
     sender,
     caption
 ) {
-    return await sendWithBotImage(
+
+    await sendWithBotImage(
         kaya,
         from,
         sender,
@@ -181,6 +220,7 @@ async function sendMenuImage(
     );
 }
 
+
 // ==========================================
 // MENU PRINCIPAL
 // ==========================================
@@ -189,15 +229,18 @@ function buildMainMenu({
     user,
     prefix,
     botName,
+    categories,
     sortedCategories,
     totalCmds
 }) {
-    let text = buildHeader({
-        user,
-        prefix,
-        totalCmds,
-        botName
-    });
+
+    let text =
+        buildHeader({
+            user,
+            prefix,
+            totalCmds,
+            botName
+        });
 
     text +=
         `\n\n> ╢ *MENU PRINCIPAL* ♰`;
@@ -207,6 +250,7 @@ function buildMainMenu({
 
     sortedCategories.forEach(
         (category, index) => {
+
             text +=
                 `\n┆ ➠ *${index + 1}.* ${category}`;
         }
@@ -224,8 +268,9 @@ function buildMainMenu({
     return text;
 }
 
+
 // ==========================================
-// MENU D'UNE CATÉGORIE
+// MENU CATÉGORIE
 // ==========================================
 
 function buildCategoryMenu({
@@ -234,29 +279,19 @@ function buildCategoryMenu({
     prefix,
     botName
 }) {
-    if (!commands.length) {
-        return `
-> ╭┈▉ \`${botName}\` ▉┄◈
-┆ ╢ ${category} MENU ♰
-╰┄┄┄┄┄┄┄┄┄┄┄┄┄◈
 
-> ⚠️ Aucune commande disponible dans cette catégorie.
-
-> ✦ Répondez avec *menu* pour revenir au menu principal.
-`.trim();
-    }
-
-    const commandList = commands
-        .map(
-            command =>
-                `┆ ➠ ${prefix}${command}`
-        )
-        .join("\n");
+    const commandList =
+        commands
+            .map(
+                command =>
+                    `┆ ➠ ${prefix}${command}`
+            )
+            .join("\n");
 
     return `
 > ╭┈▉ \`${botName}\` ▉┄◈
-┆ ╢ ${category} MENU ♰
-╰┄┄┄┄┄┄┄┄┄┄┄┄┄◈
+> ┆ ╢ *${category} MENU* ♰
+> ╰┄┄┄┄┄┄┄┄┄┄┄┄┄◈
 
 ╭▰▰▰▰▰▰▰▰◈
 ${commandList}
@@ -265,6 +300,7 @@ ${commandList}
 > ✦ Répondez avec *menu* pour revenir.
 `.trim();
 }
+
 
 // ==========================================
 // AFFICHER LE MENU PRINCIPAL
@@ -276,14 +312,23 @@ async function showMainMenu(
     from,
     prefix
 ) {
+
     cleanExpiredMenus();
 
-    const userId = mek.sender;
-    const userNumber = userId.split("@")[0];
-    const userMention = `@${userNumber}`;
-    const botName = getBotName(userId);
+    const userId =
+        mek.sender;
 
-    const categories = await loadCategories();
+    const userNumber =
+        userId.split("@")[0];
+
+    const userMention =
+        `@${userNumber}`;
+
+    const botName =
+        getBotName(userId);
+
+    const categories =
+        await loadCategories();
 
     const sortedCategories =
         Object.keys(categories)
@@ -301,76 +346,38 @@ async function showMainMenu(
                 0
             );
 
+    // Sauvegarder le menu pour l'utilisateur
+    activeMenus.set(
+        userId,
+        {
+            categories,
+            sortedCategories,
+            prefix,
+            createdAt: Date.now()
+        }
+    );
+
     const menuText =
         buildMainMenu({
             user: userMention,
             prefix,
             botName,
+            categories,
             sortedCategories,
             totalCmds
         });
 
-    const sentMessage = await sendMenuImage(
+    await sendMenuImage(
         kaya,
         from,
         userId,
         menuText
     );
-
-    const messageId = sentMessage?.key?.id;
-
-    if (messageId) {
-        activeMenus.set(
-            messageId,
-            {
-                categories,
-                sortedCategories,
-                prefix,
-                createdAt: Date.now()
-            }
-        );
-    }
 }
 
-// ==========================================
-// RÉCUPÉRER L'ID DU MESSAGE CITÉ (ULTRA-ROBUSTE)
-// ==========================================
-
-function getQuotedMessageId(mek) {
-    try {
-        const msg = mek?.message;
-        if (!msg) return null;
-
-        const contextInfo =
-            msg.extendedTextMessage?.contextInfo ||
-            msg.imageMessage?.contextInfo ||
-            msg.videoMessage?.contextInfo ||
-            msg.documentMessage?.contextInfo ||
-            msg.audioMessage?.contextInfo ||
-            msg.ephemeralMessage?.message?.extendedTextMessage?.contextInfo ||
-            msg.ephemeralMessage?.message?.imageMessage?.contextInfo ||
-            msg.ephemeralMessage?.message?.videoMessage?.contextInfo ||
-            msg.viewOnceMessage?.message?.extendedTextMessage?.contextInfo ||
-            msg.viewOnceMessage?.message?.imageMessage?.contextInfo ||
-            msg.viewOnceMessage?.message?.videoMessage?.contextInfo ||
-            msg.viewOnceMessageV2?.message?.extendedTextMessage?.contextInfo ||
-            msg.viewOnceMessageV2?.message?.imageMessage?.contextInfo ||
-            msg.viewOnceMessageV2?.message?.videoMessage?.contextInfo ||
-            msg.viewOnceMessageV2Extension?.message?.extendedTextMessage?.contextInfo ||
-            msg.viewOnceMessageV2Extension?.message?.imageMessage?.contextInfo;
-
-        return (
-            contextInfo?.stanzaId ||
-            contextInfo?.quotedMessage?.key?.id ||
-            null
-        );
-    } catch {
-        return null;
-    }
-}
 
 // ==========================================
-// DÉTECTION DES RÉPONSES (OUVERT À TOUT LE MONDE PAR CITATION)
+// DÉTECTION DES RÉPONSES 1 / 2 / 3...
 // ==========================================
 
 export async function handleMenuReply(
@@ -379,7 +386,9 @@ export async function handleMenuReply(
     from,
     text
 ) {
+
     try {
+
         if (!mek?.sender) {
             return false;
         }
@@ -390,29 +399,30 @@ export async function handleMenuReply(
 
         cleanExpiredMenus();
 
-        // On récupère l'ID du message auquel l'utilisateur est en train de répondre
-        const quotedId = getQuotedMessageId(mek);
-        if (!quotedId) {
-            return false;
-        }
+        const userId =
+            mek.sender;
 
-        // On regarde si cet ID correspond à un menu envoyé par le bot
-        const activeMenu = activeMenus.get(quotedId);
+        const message =
+            String(text).trim();
+
+        const activeMenu =
+            activeMenus.get(userId);
+
+        // Pas de menu actif
         if (!activeMenu) {
             return false;
         }
 
-        const userId = mek.sender;
-        const message = String(text).trim();
 
-        // ==================================
+        // ======================================
         // RETOUR AU MENU PRINCIPAL
-        // ==================================
+        // ======================================
 
         if (
             message.toLowerCase() ===
             "menu"
         ) {
+
             await showMainMenu(
                 kaya,
                 mek,
@@ -423,26 +433,34 @@ export async function handleMenuReply(
             return true;
         }
 
-        // ==================================
-        // ACCEPTER UNIQUEMENT LES NOMBRES
-        // ==================================
 
-        if (!/^\d+$/.test(message)) {
+        // ======================================
+        // UNIQUEMENT LES NUMÉROS
+        // ======================================
+
+        if (
+            !/^\d+$/.test(message)
+        ) {
+
             return false;
         }
 
-        const number = Number(message);
+        const number =
+            Number(message);
 
-        // ==================================
+
+        // ======================================
         // NUMÉRO INVALIDE
-        // ==================================
+        // ======================================
 
         if (
             number < 1 ||
             number >
-                activeMenu.sortedCategories
+                activeMenu
+                    .sortedCategories
                     .length
         ) {
+
             await kaya.sendMessage(
                 from,
                 {
@@ -458,58 +476,56 @@ export async function handleMenuReply(
             return true;
         }
 
-        // ==================================
-        // TROUVER LA CATÉGORIE
-        // ==================================
+
+        // ======================================
+        // CATÉGORIE
+        // ======================================
 
         const category =
-            activeMenu.sortedCategories[
-                number - 1
-            ];
+            activeMenu
+                .sortedCategories[
+                    number - 1
+                ];
 
         const commands =
-            activeMenu.categories[
-                category
-            ] || [];
+            activeMenu
+                .categories[
+                    category
+                ] || [];
 
-        const botName = getBotName(userId);
+        const botName =
+            getBotName(userId);
 
-        // ==================================
-        // CONSTRUIRE LE SOUS-MENU
-        // ==================================
+
+        // ======================================
+        // CONSTRUIRE LE MENU
+        // ======================================
 
         const categoryText =
             buildCategoryMenu({
                 category,
                 commands,
-                prefix: activeMenu.prefix,
+                prefix:
+                    activeMenu.prefix,
                 botName
             });
 
-        // ==================================
-        // ENVOYER LA CATÉGORIE ET ENREGISTRER L'ID
-        // ==================================
 
-        const sentCategory = await sendMenuImage(
+        // ======================================
+        // ENVOYER
+        // ======================================
+
+        await sendMenuImage(
             kaya,
             from,
             userId,
             categoryText
         );
 
-        const newMsgId = sentCategory?.key?.id;
-        if (newMsgId) {
-            activeMenus.set(newMsgId, {
-                categories: activeMenu.categories,
-                sortedCategories: activeMenu.sortedCategories,
-                prefix: activeMenu.prefix,
-                createdAt: Date.now()
-            });
-        }
-
         return true;
 
     } catch (error) {
+
         console.error(
             "❌ Erreur handleMenuReply :",
             error
@@ -519,8 +535,9 @@ export async function handleMenuReply(
     }
 }
 
+
 // ==========================================
-// COMMANDE .MENU
+// COMMANDE MENU
 // ==========================================
 
 export default {
@@ -539,14 +556,18 @@ export default {
         args,
         prefix
     ) {
+
         try {
+
             await showMainMenu(
                 kaya,
                 mek,
                 from,
                 prefix
             );
+
         } catch (error) {
+
             console.error(
                 "❌ Erreur dans menu.js :",
                 error
