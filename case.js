@@ -301,10 +301,6 @@ export default async function caseHandler(
 
         switch (type) {
 
-            // ======================================
-            // INTERACTIVE RESPONSE
-            // ======================================
-
             case "interactiveResponseMessage": {
 
                 const paramsJson =
@@ -328,18 +324,11 @@ export default async function caseHandler(
                             parsed.command ||
                             "";
 
-                    } catch {
-                        body = "";
-                    }
+                    } catch {}
                 }
 
                 break;
             }
-
-
-            // ======================================
-            // TEMPLATE BUTTON
-            // ======================================
 
             case "templateButtonReplyMessage":
 
@@ -351,11 +340,6 @@ export default async function caseHandler(
 
                 break;
 
-
-            // ======================================
-            // BUTTON
-            // ======================================
-
             case "buttonsResponseMessage":
 
                 body =
@@ -366,11 +350,6 @@ export default async function caseHandler(
 
                 break;
 
-
-            // ======================================
-            // MESSAGE NORMAL
-            // ======================================
-
             case "conversation":
 
                 body =
@@ -380,25 +359,20 @@ export default async function caseHandler(
 
                 break;
 
-
-            // ======================================
-            // MESSAGE CITÉ / TEXTE
-            // ======================================
-
             case "extendedTextMessage":
 
                 body =
                     mek.message
                         ?.extendedTextMessage
                         ?.text ||
+                    mek.message
+                        ?.extendedTextMessage
+                        ?.contextInfo
+                        ?.externalAdReply
+                        ?.body ||
                     "";
 
                 break;
-
-
-            // ======================================
-            // IMAGE AVEC CAPTION
-            // ======================================
 
             case "imageMessage":
 
@@ -410,11 +384,6 @@ export default async function caseHandler(
 
                 break;
 
-
-            // ======================================
-            // VIDÉO AVEC CAPTION
-            // ======================================
-
             case "videoMessage":
 
                 body =
@@ -425,11 +394,6 @@ export default async function caseHandler(
 
                 break;
 
-
-            // ======================================
-            // AUTRES
-            // ======================================
-
             default:
 
                 body = "";
@@ -438,29 +402,6 @@ export default async function caseHandler(
 
         // ==========================================
         // MENU INTERACTIF
-        // ==========================================
-        //
-        // IMPORTANT :
-        //
-        // Cette partie doit être exécutée AVANT
-        // la détection des commandes et AVANT
-        // l'optimisation.
-        //
-        // Ainsi :
-        //
-        // Répondre "1" au menu
-        // → ouvre la catégorie.
-        //
-        // Envoyer simplement "1"
-        // → ne fait rien.
-        //
-        // Répondre "menu"
-        // au menu/catégorie
-        // → retourne au menu principal.
-        //
-        // Le contrôle du message cité est effectué
-        // dans handleMenuReply().
-        //
         // ==========================================
 
         if (
@@ -583,9 +524,7 @@ export default async function caseHandler(
 
                     args =
                         commandText
-                            ? commandText.split(
-                                /\s+/
-                            )
+                            ? commandText.split(/\s+/)
                             : [];
 
                     const rawCmd =
@@ -638,9 +577,7 @@ export default async function caseHandler(
 
                         args =
                             commandText
-                                ? commandText.split(
-                                    /\s+/
-                                )
+                                ? commandText.split(/\s+/)
                                 : [];
 
                         const rawCmd =
@@ -792,14 +729,6 @@ export default async function caseHandler(
         // ==========================================
         // OPTIMISATION
         // ==========================================
-        //
-        // Le menu a déjà été traité au-dessus.
-        //
-        // Si ce n'est pas une commande, qu'aucun
-        // utilitaire n'est actif et que le chatbot
-        // est désactivé, on arrête ici.
-        //
-        // ==========================================
 
         if (
             !isCommand &&
@@ -827,8 +756,7 @@ export default async function caseHandler(
                 30000
         ) {
 
-            let presenceSent =
-                false;
+            let presenceSent = false;
 
             if (
                 getSetting(
@@ -1415,4 +1343,3 @@ async function executeUtilities(
         }
     }
 }
-
