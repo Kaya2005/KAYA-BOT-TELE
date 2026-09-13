@@ -1,4 +1,3 @@
-// ==================== commands/chatbot.js ====================
 import fetch from 'node-fetch';
 import { getSetting, setSetting } from '../setting.js';
 import { getContextInfo } from '../setting/contextInfo.js';
@@ -133,35 +132,11 @@ export default {
         }
     },
 
-    // 🧠 Global listener function called by case.js
+    // 🧠 Global listener function called by case.js (Forcé à répondre partout sans restriction de mode)
     async listen(kaya, mek, from, body, ownerId) {
         try {
             if (!body || typeof body !== 'string' || body.trim() === '') return;
             if (mek.key.fromMe) return;
-
-            const isGroup = from.endsWith('@g.us');
-            const groupId = isGroup ? from.split('@')[0] : null;
-            const mode = getSetting(ownerId, 'chatbot_mode', 'off');
-
-            if (mode === 'off') return;
-
-            if (isGroup) {
-                if (mode === 'private') return;
-                if (mode === 'all_groups' || mode === 'all') {
-                    // Allowed in all groups
-                } else if (mode === 'group') {
-                    const isGroupActive = getSetting(ownerId, 'chatbot_group_' + groupId, false);
-                    if (!isGroupActive) return;
-                } else {
-                    return;
-                }
-            } else {
-                if (mode === 'private' || mode === 'all') {
-                    // Allowed
-                } else {
-                    return; 
-                }
-            }
 
             const ownerApiKey = getSetting(ownerId, 'ai_api_key', null);
             if (!ownerApiKey) return; 
