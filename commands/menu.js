@@ -1,5 +1,3 @@
-
-
 // ==================== menu.js ====================
 
 import fs from "fs";
@@ -16,11 +14,10 @@ import {
 
 
 // ==========================================
-// MENUS ACTIFS
+// MENUS ACTIFS (Basés sur l'ID du message)
 // ==========================================
 
 const activeMenus = new Map();
-
 const MENU_TIMEOUT = 5 * 60 * 1000;
 
 
@@ -33,21 +30,16 @@ function pad(n) {
 }
 
 function getTime() {
-
     const d = new Date();
-
     return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 function getDate() {
-
     const d = new Date();
-
     return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
 }
 
 function getDayName() {
-
     const days = [
         "Sunday",
         "Monday",
@@ -57,7 +49,6 @@ function getDayName() {
         "Friday",
         "Saturday"
     ];
-
     return days[new Date().getDay()];
 }
 
@@ -72,7 +63,6 @@ function buildHeader({
     totalCmds,
     botName
 }) {
-
     return `
 > ╭┈▉ \`${botName}\` ▉┄◈
 > ┆ ╭────↯
@@ -93,12 +83,10 @@ function buildHeader({
 // ==========================================
 
 async function loadCategories() {
-
-    const commandsDir =
-        path.join(
-            process.cwd(),
-            "commands"
-        );
+    const commandsDir = path.join(
+        process.cwd(),
+        "commands"
+    );
 
     const categories = {};
 
@@ -106,27 +94,19 @@ async function loadCategories() {
         return categories;
     }
 
-    const files =
-        fs.readdirSync(commandsDir)
-            .filter(
-                file =>
-                    file.endsWith(".js")
-            );
+    const files = fs.readdirSync(commandsDir)
+        .filter(file => file.endsWith(".js"));
 
     for (const file of files) {
-
         try {
+            const filePath = path.join(
+                commandsDir,
+                file
+            );
 
-            const filePath =
-                path.join(
-                    commandsDir,
-                    file
-                );
-
-            const cmd =
-                await import(
-                    `file://${filePath}`
-                );
+            const cmd = await import(
+                `file://${filePath}`
+            );
 
             const command =
                 cmd.default || cmd;
@@ -135,11 +115,10 @@ async function loadCategories() {
                 continue;
             }
 
-            const category =
-                (
-                    command.category ||
-                    "General"
-                ).toUpperCase();
+            const category = (
+                command.category ||
+                "General"
+            ).toUpperCase();
 
             if (!categories[category]) {
                 categories[category] = [];
@@ -152,13 +131,10 @@ async function loadCategories() {
                 !categories[category]
                     .includes(commandName)
             ) {
-
-                categories[category]
-                    .push(commandName);
+                categories[category].push(commandName);
             }
 
         } catch (error) {
-
             console.error(
                 `Erreur lors du chargement de ${file} dans menu.js :`,
                 error
@@ -175,20 +151,10 @@ async function loadCategories() {
 // ==========================================
 
 function cleanExpiredMenus() {
-
     const now = Date.now();
-
-    for (
-        const [userId, menu]
-        of activeMenus.entries()
-    ) {
-
-        if (
-            now - menu.createdAt >
-            MENU_TIMEOUT
-        ) {
-
-            activeMenus.delete(userId);
+    for (const [msgId, menu] of activeMenus.entries()) {
+        if (now - menu.createdAt > MENU_TIMEOUT) {
+            activeMenus.delete(msgId);
         }
     }
 }
@@ -204,8 +170,7 @@ async function sendMenuImage(
     sender,
     caption
 ) {
-
-    await sendWithBotImage(
+    return await sendWithBotImage(
         kaya,
         from,
         sender,
@@ -229,41 +194,28 @@ function buildMainMenu({
     user,
     prefix,
     botName,
-    categories,
     sortedCategories,
     totalCmds
 }) {
+    let text = buildHeader({
+        user,
+        prefix,
+        totalCmds,
+        botName
+    });
 
-    let text =
-        buildHeader({
-            user,
-            prefix,
-            totalCmds,
-            botName
-        });
-
-    text +=
-        `\n\n> ╢ *MENU PRINCIPAL* ♰`;
-
-    text +=
-        `\n╭▰▰▰▰▰▰▰▰◈`;
+    text += `\n\n> ╢ *MENU PRINCIPAL* ♰`;
+    text += `\n╭▰▰▰▰▰▰▰▰◈`;
 
     sortedCategories.forEach(
         (category, index) => {
-
-            text +=
-                `\n┆ ➠ *${index + 1}.* ${category}`;
+            text += `\n┆ ➠ *${index + 1}.* ${category}`;
         }
     );
 
-    text +=
-        `\n╰▰▰▰▰▰▰▰◈`;
-
-    text +=
-        `\n\n> ✦ *Répondez avec le numéro de votre choix.*`;
-
-    text +=
-        `\n> ✦ Exemple : *1*`;
+    text += `\n╰▰▰▰▰▰▰▰◈`;
+    text += `\n\n> ✦ *Répondez avec le numéro de votre choix.*`;
+    text += `\n> ✦ Exemple : *1*`;
 
     return text;
 }
@@ -279,14 +231,24 @@ function buildCategoryMenu({
     prefix,
     botName
 }) {
+    if (!commands || commands.length === 0) {
+        return `
+> ╭┈▉ \`${botName}\` ▉┄◈
+> ┆ ╢ *${category} MENU* ♰
+> ╰┄┄┄┄┄┄┄┄┄┄┄┄┄◈
 
-    const commandList =
-        commands
-            .map(
-                command =>
-                    `┆ ➠ ${prefix}${command}`
-            )
-            .join("\n");
+> ⚠️ Aucune commande trouvée.
+
+> ✦ Répondez avec *menu* pour revenir.
+`.trim();
+    }
+
+    const commandList = commands
+        .map(
+            command =>
+                `┆ ➠ ${prefix}${command}`
+        )
+        .join("\n");
 
     return `
 > ╭┈▉ \`${botName}\` ▉┄◈
@@ -303,6 +265,39 @@ ${commandList}
 
 
 // ==========================================
+// RÉCUPÉRER L'ID DU MESSAGE CITÉ
+// ==========================================
+
+function getQuotedMessageId(mek) {
+    try {
+        const msg = mek?.message;
+        if (!msg) return null;
+
+        const contextInfo =
+            msg.extendedTextMessage?.contextInfo ||
+            msg.imageMessage?.contextInfo ||
+            msg.videoMessage?.contextInfo ||
+            msg.documentMessage?.contextInfo ||
+            msg.audioMessage?.contextInfo ||
+            msg.ephemeralMessage?.message?.extendedTextMessage?.contextInfo ||
+            msg.ephemeralMessage?.message?.imageMessage?.contextInfo ||
+            msg.viewOnceMessage?.message?.extendedTextMessage?.contextInfo ||
+            msg.viewOnceMessage?.message?.imageMessage?.contextInfo ||
+            msg.viewOnceMessageV2?.message?.extendedTextMessage?.contextInfo ||
+            msg.viewOnceMessageV2?.message?.imageMessage?.contextInfo;
+
+        return (
+            contextInfo?.stanzaId ||
+            contextInfo?.quotedMessage?.key?.id ||
+            null
+        );
+    } catch {
+        return null;
+    }
+}
+
+
+// ==========================================
 // AFFICHER LE MENU PRINCIPAL
 // ==========================================
 
@@ -312,23 +307,14 @@ async function showMainMenu(
     from,
     prefix
 ) {
-
     cleanExpiredMenus();
 
-    const userId =
-        mek.sender;
+    const userId = mek.sender;
+    const userNumber = userId.split("@")[0];
+    const userMention = `@${userNumber}`;
+    const botName = getBotName(userId);
 
-    const userNumber =
-        userId.split("@")[0];
-
-    const userMention =
-        `@${userNumber}`;
-
-    const botName =
-        getBotName(userId);
-
-    const categories =
-        await loadCategories();
+    const categories = await loadCategories();
 
     const sortedCategories =
         Object.keys(categories)
@@ -346,38 +332,40 @@ async function showMainMenu(
                 0
             );
 
-    // Sauvegarder le menu pour l'utilisateur
-    activeMenus.set(
-        userId,
-        {
-            categories,
-            sortedCategories,
-            prefix,
-            createdAt: Date.now()
-        }
-    );
-
     const menuText =
         buildMainMenu({
             user: userMention,
             prefix,
             botName,
-            categories,
             sortedCategories,
             totalCmds
         });
 
-    await sendMenuImage(
+    const sentMessage = await sendMenuImage(
         kaya,
         from,
         userId,
         menuText
     );
+
+    const messageId = sentMessage?.key?.id;
+
+    if (messageId) {
+        activeMenus.set(
+            messageId,
+            {
+                categories,
+                sortedCategories,
+                prefix,
+                createdAt: Date.now()
+            }
+        );
+    }
 }
 
 
 // ==========================================
-// DÉTECTION DES RÉPONSES 1 / 2 / 3...
+// DÉTECTION DES RÉPONSES (UNIQUEMENT PAR CITATION)
 // ==========================================
 
 export async function handleMenuReply(
@@ -386,9 +374,7 @@ export async function handleMenuReply(
     from,
     text
 ) {
-
     try {
-
         if (!mek?.sender) {
             return false;
         }
@@ -399,19 +385,19 @@ export async function handleMenuReply(
 
         cleanExpiredMenus();
 
-        const userId =
-            mek.sender;
+        // Vérifie si l'utilisateur répond explicitement à un message du bot
+        const quotedId = getQuotedMessageId(mek);
+        if (!quotedId) {
+            return false;
+        }
 
-        const message =
-            String(text).trim();
-
-        const activeMenu =
-            activeMenus.get(userId);
-
-        // Pas de menu actif
+        const activeMenu = activeMenus.get(quotedId);
         if (!activeMenu) {
             return false;
         }
+
+        const userId = mek.sender;
+        const message = String(text).trim();
 
 
         // ======================================
@@ -422,7 +408,6 @@ export async function handleMenuReply(
             message.toLowerCase() ===
             "menu"
         ) {
-
             await showMainMenu(
                 kaya,
                 mek,
@@ -438,15 +423,11 @@ export async function handleMenuReply(
         // UNIQUEMENT LES NUMÉROS
         // ======================================
 
-        if (
-            !/^\d+$/.test(message)
-        ) {
-
+        if (!/^\d+$/.test(message)) {
             return false;
         }
 
-        const number =
-            Number(message);
+        const number = Number(message);
 
 
         // ======================================
@@ -460,7 +441,6 @@ export async function handleMenuReply(
                     .sortedCategories
                     .length
         ) {
-
             await kaya.sendMessage(
                 from,
                 {
@@ -498,34 +478,46 @@ export async function handleMenuReply(
 
 
         // ======================================
-        // CONSTRUIRE LE MENU
+        // CONSTRUIRE LE MENU DE LA CATÉGORIE
         // ======================================
 
         const categoryText =
             buildCategoryMenu({
                 category,
                 commands,
-                prefix:
-                    activeMenu.prefix,
+                prefix: activeMenu.prefix,
                 botName
             });
 
 
         // ======================================
-        // ENVOYER
+        // ENVOYER ET ENREGISTRER LE NOUVEL ID
         // ======================================
 
-        await sendMenuImage(
+        const sentCategory = await sendMenuImage(
             kaya,
             from,
             userId,
             categoryText
         );
 
+        const newMsgId = sentCategory?.key?.id;
+
+        if (newMsgId) {
+            activeMenus.set(
+                newMsgId,
+                {
+                    categories: activeMenu.categories,
+                    sortedCategories: activeMenu.sortedCategories,
+                    prefix: activeMenu.prefix,
+                    createdAt: Date.now()
+                }
+            );
+        }
+
         return true;
 
     } catch (error) {
-
         console.error(
             "❌ Erreur handleMenuReply :",
             error
@@ -556,18 +548,14 @@ export default {
         args,
         prefix
     ) {
-
         try {
-
             await showMainMenu(
                 kaya,
                 mek,
                 from,
                 prefix
             );
-
         } catch (error) {
-
             console.error(
                 "❌ Erreur dans menu.js :",
                 error
