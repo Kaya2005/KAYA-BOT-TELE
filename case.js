@@ -431,7 +431,7 @@ export default async function caseHandler(
                         getSetting(
                             ownerId,
                             "allPrefix",
-                            true
+                            false
                         )
                     );
 
@@ -519,12 +519,12 @@ export default async function caseHandler(
                 }
 
                 // ==========================================
-                // TOUS LES PREFIX
+                // TOUS LES PREFIX (Inclus Emojis & Symboles)
                 // ==========================================
 
                 else if (
                     isAllPrefixEnabled &&
-                    /^[°•π÷×¶∆£¢€¥®™+✓_=|~!?@#%^&.©^]/
+                    /^[\p{Extended_Pictographic}\p{S}\p{P}]/u
                         .test(
                             trimmedBody
                         )
@@ -532,7 +532,7 @@ export default async function caseHandler(
 
                     const match =
                         trimmedBody.match(
-                            /^[°•π÷×¶∆£¢€¥®™+✓_=|~!?@#%^&.©^]/
+                            /^[\p{Extended_Pictographic}\p{S}\p{P}]/u
                         );
 
                     if (match) {
@@ -1138,7 +1138,7 @@ export default async function caseHandler(
 
         // ==========================================
         // LOG
-        // =================="========================
+        // ==========================================
 
         console.log(
             chalk.black(
@@ -1157,7 +1157,7 @@ export default async function caseHandler(
         );
 
         // ==========================================
-        // EXÉCUTION (Délai supprimé ici pour éviter le cumul)
+        // EXÉCUTION
         // ==========================================
 
         try {
