@@ -14,7 +14,7 @@ import {
 
 
 // ==========================================
-// MENUS ACTIFS (Basés sur l'ID de l'utilisateur)
+// MENUS ACTIFS (Basés sur l'ID du message)
 // ==========================================
 
 const activeMenus = new Map();
@@ -152,9 +152,9 @@ async function loadCategories() {
 
 function cleanExpiredMenus() {
     const now = Date.now();
-    for (const [userId, menu] of activeMenus.entries()) {
+    for (const [msgId, menu] of activeMenus.entries()) {
         if (now - menu.createdAt > MENU_TIMEOUT) {
-            activeMenus.delete(userId);
+            activeMenus.delete(msgId);
         }
     }
 }
@@ -285,6 +285,39 @@ ${commandList}
 
 
 // ==========================================
+// RÉCUPÉRER L'ID DU MESSAGE CITÉ (BAILEYS)
+// ==========================================
+
+function getQuotedMessageId(mek) {
+    try {
+        const msg = mek?.message;
+        if (!msg) return null;
+
+        const contextInfo = 
+            msg.extendedTextMessage?.contextInfo ||
+            msg.imageMessage?.contextInfo ||
+            msg.videoMessage?.contextInfo ||
+            msg.documentMessage?.contextInfo ||
+            msg.buttonsResponseMessage?.contextInfo ||
+            msg.templateButtonReplyMessage?.contextInfo ||
+            msg.listResponseMessage?.contextInfo ||
+            msg.ephemeralMessage?.message?.extendedTextMessage?.contextInfo ||
+            msg.ephemeralMessage?.message?.imageMessage?.contextInfo ||
+            msg.viewOnceMessage?.message?.extendedTextMessage?.contextInfo ||
+            msg.viewOnceMessage?.message?.imageMessage?.contextInfo;
+
+        if (contextInfo?.stanzaId) {
+            return contextInfo.stanzaId;
+        }
+
+        return null;
+    } catch {
+        return null;
+    }
+}
+
+
+// ==========================================
 // AFFICHER LE MENU PRINCIPAL
 // ==========================================
 
@@ -328,22 +361,26 @@ async function showMainMenu(
             totalCmds
         });
 
-    await sendMainMenuImage(
+    const sentMessage = await sendMainMenuImage(
         kaya,
         from,
         userId,
         menuText
     );
 
-    activeMenus.set(
-        userId,
-        {
-            categories,
-            sortedCategories,
-            prefix,
-            createdAt: Date.now()
-        }
-    );
+    const messageId = sentMessage?.key?.id;
+
+    if (messageId) {
+        activeMenus.set(
+            messageId,
+            {
+                categories,
+                sortedCategories,
+                prefix,
+                createdAt: Date.now()
+            }
+        );
+    }
 }
 
 
@@ -368,13 +405,19 @@ export async function handleMenuReply(
 
         cleanExpiredMenus();
 
-        const userId = mek.sender;
-        const activeMenu = activeMenus.get(userId);
-
-        if (!activeMenu) {
-            return false;
+        // 1. On vérifie si le message cite un message du bot
+        const quotedId = getQuotedMessageId(mek);
+        if (!quotedId) {
+            return false; 
         }
 
+        // 2. On vérifie si l'ID cité correspond à un menu stocké (peu importe qui a appelé le menu)
+        const activeMenu = activeMenus.get(quotedId);
+        if (!activeMenu) {
+            return false; 
+        }
+
+        const userId = mek.sender;
         const message = String(text).trim();
 
 
@@ -469,15 +512,29 @@ export async function handleMenuReply(
 
 
         // ======================================
-        // ENVOYER AVEC CONTEXTINFO (CATÉGORIE)
+        // ENVOYER AVEC CONTEXTINFO ET ENREGISTRER LE NOUVEL ID
         // ======================================
 
-        await sendCategoryMenuImage(
+        const sentCategory = await sendCategoryMenuImage(
             kaya,
             from,
             userId,
             categoryText
         );
+
+        const newMsgId = sentCategory?.key?.id;
+
+        if (newMsgId) {
+            activeMenus.set(
+                newMsgId,
+                {
+                    categories: activeMenu.categories,
+                    sortedCategories: activeMenu.sortedCategories,
+                    prefix: activeMenu.prefix,
+                    createdAt: Date.now()
+                }
+            );
+        }
 
         return true;
 
