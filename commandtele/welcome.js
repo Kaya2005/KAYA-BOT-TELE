@@ -129,22 +129,31 @@ export default function setupWelcome(bot) {
         } catch (err) {}
     });
 
-    // Restauration de l'écouteur natif qui fonctionnait dans ton ancien code
     bot.on('new_chat_members', async (ctx, next) => {
         try {
+            console.log("📥 Événement new_chat_members détecté dans le chat:", ctx.chat?.id);
+
             if (!ctx.message || !ctx.message.new_chat_members) {
                 return next();
             }
 
             const chatId = ctx.chat.id;
             const config = getConfig(chatId);
-            if (!config.enabled) return next();
+            console.log("⚙️ Configuration welcome pour ce chat:", config);
+
+            if (!config.enabled) {
+                console.log("⚠️ Le module welcome est désactivé pour ce groupe.");
+                return next();
+            }
 
             const botId = ctx.botInfo?.id;
             const newMembers = ctx.message.new_chat_members;
 
             for (const member of newMembers) {
-                if (botId && member.id === botId) continue;
+                if (botId && member.id === botId) {
+                    console.log("🤖 Le bot vient d'être ajouté au groupe.");
+                    continue;
+                }
 
                 const fullName = [member.first_name, member.last_name].filter(Boolean).join(' ');
                 const username = member.username ? `@${member.username}` : 'None';
@@ -172,26 +181,43 @@ export default function setupWelcome(bot) {
                         const photos = profilePhotos.photos[0];
                         photoFileId = photos[photos.length - 1].file_id;
                     }
-                } catch (e) {}
+                } catch (photoErr) {
+                    console.log("ℹ️ Impossible de récupérer la photo de profil :", photoErr.message);
+                }
+
+                const keyboardMarkup = {
+                    inline_keyboard: [[{ text: '𝙺𝙰𝚈𝙰 𝙱𝙾𝚃 | 𝙲𝙰𝙽𝙰𝙻', url: 'https://t.me/kayatech2' }]]
+                };
 
                 try {
                     if (photoFileId) {
                         await ctx.replyWithPhoto(photoFileId, { 
                             caption: welcomeText, 
                             parse_mode: 'HTML', 
-                            reply_markup: { inline_keyboard: [[{ text: '𝙺𝙰𝚈𝙰 𝙱𝙾𝚃 | 𝙲𝙰𝙽𝙰𝙻', url: 'https://t.me/kayatech2' }]] } 
+                            reply_markup: keyboardMarkup 
                         });
+                        console.log("✅ Message de bienvenue avec photo envoyé avec succès !");
                     } else {
                         await ctx.reply(welcomeText, { 
                             parse_mode: 'HTML', 
-                            reply_markup: { inline_keyboard: [[{ text: '𝙺𝙰𝚈𝙰 𝙱𝙾𝚃 | 𝙲𝙰𝙽𝙰𝙻', url: 'https://t.me/kayatech2' }]] } 
+                            reply_markup: keyboardMarkup 
                         });
+                        console.log("✅ Message de bienvenue (texte seul) envoyé avec succès !");
                     }
-                } catch (sendErr) {}
+                } catch (sendErr) {
+                    console.error("❌ Erreur lors de l'envoi du message de bienvenue :", sendErr.message);
+                    if (photoFileId) {
+                        await ctx.reply(welcomeText, { 
+                            parse_mode: 'HTML', 
+                            reply_markup: keyboardMarkup 
+                        }).catch(e => console.error("❌ Erreur critique fallback :", e.message));
+                    }
+                }
             }
 
             return next();
         } catch (err) {
+            console.error("❌ Erreur globale new_chat_members :", err);
             return next();
         }
     });
