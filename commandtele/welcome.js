@@ -1,5 +1,5 @@
 // ==========================================
-// FILE : commandtele/welcome.js (Corrigé & Optimisé)
+// FILE : commandtele/welcome.js (Corrigé & Fonctionnel)
 // ==========================================
 
 import fs from 'fs';
@@ -129,20 +129,23 @@ export default function setupWelcome(bot) {
         } catch (err) {}
     });
 
-    // Utilisation directe de l'événement de message Telegraf pour les nouveaux membres
-    bot.on('message:new_chat_members', async (ctx) => {
+    // Restauration de l'écouteur natif qui fonctionnait dans ton ancien code
+    bot.on('new_chat_members', async (ctx, next) => {
         try {
+            if (!ctx.message || !ctx.message.new_chat_members) {
+                return next();
+            }
+
             const chatId = ctx.chat.id;
             const config = getConfig(chatId);
-            if (!config.enabled) return;
+            if (!config.enabled) return next();
 
             const botId = ctx.botInfo?.id;
             const newMembers = ctx.message.new_chat_members;
-            
-            // Ne rien envoyer si c'est le bot lui-même qui vient d'être ajouté
-            if (botId && newMembers.some(m => m.id === botId)) return;
 
             for (const member of newMembers) {
+                if (botId && member.id === botId) continue;
+
                 const fullName = [member.first_name, member.last_name].filter(Boolean).join(' ');
                 const username = member.username ? `@${member.username}` : 'None';
                 const id = member.id;
@@ -186,6 +189,10 @@ export default function setupWelcome(bot) {
                     }
                 } catch (sendErr) {}
             }
-        } catch (err) {}
+
+            return next();
+        } catch (err) {
+            return next();
+        }
     });
 }
