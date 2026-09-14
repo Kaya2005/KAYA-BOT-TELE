@@ -1,5 +1,5 @@
 // ==========================================
-// FILE : commandtele/welcome.js (Corrigé, Sécurisé et Anti-boucle)
+// FILE : commandtele/welcome.js (Bilingue FR/EN)
 // ==========================================
 
 import fs from 'fs';
@@ -8,98 +8,82 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dbFolder = path.join(__dirname, '../database/welcome');
+const langFilePath = path.join(__dirname, '../database/languages.json');
 
-// Garantir que le dossier existe
 if (!fs.existsSync(dbFolder)) {
     fs.mkdirSync(dbFolder, { recursive: true });
 }
 
-// Cache en mémoire RAM pour éviter la lecture disque répétée
 const memoryCache = new Map();
 
-// Obtenir le chemin du fichier JSON propre à un groupe
+function getLang(chatId) {
+    try {
+        if (fs.existsSync(langFilePath)) {
+            const data = JSON.parse(fs.readFileSync(langFilePath, 'utf8'));
+            return data[String(chatId)] || 'en';
+        }
+    } catch (e) {}
+    return 'en';
+}
+
 function getGroupFilePath(chatId) {
     return path.join(dbFolder, `${chatId}.json`);
 }
 
-// Charge ou crée la configuration d'un groupe
 function getConfig(chatId) {
-    if (memoryCache.has(chatId)) {
-        return memoryCache.get(chatId);
-    }
-
+    if (memoryCache.has(chatId)) return memoryCache.get(chatId);
     const filePath = getGroupFilePath(chatId);
-
     if (fs.existsSync(filePath)) {
         try {
-            const data = fs.readFileSync(filePath, 'utf8');
-            const config = JSON.parse(data);
+            const config = JSON.parse(fs.readFileSync(filePath, 'utf8'));
             memoryCache.set(chatId, config);
             return config;
-        } catch (err) {
-            console.error(`[WELCOME DB READ ERROR] ${chatId}:`, err);
-        }
+        } catch (err) {}
     }
-
     const defaultConfig = { enabled: true };
     saveConfig(chatId, defaultConfig);
     return defaultConfig;
 }
 
-// Sauvegarde la configuration du groupe dans son fichier dédié
 function saveConfig(chatId, config) {
     memoryCache.set(chatId, config);
     try {
-        const filePath = getGroupFilePath(chatId);
-        fs.writeFileSync(filePath, JSON.stringify(config, null, 2), 'utf8');
-    } catch (err) {
-        console.error(`[WELCOME DB SAVE ERROR] ${chatId}:`, err);
-    }
+        fs.writeFileSync(getGroupFilePath(chatId), JSON.stringify(config, null, 2), 'utf8');
+    } catch (err) {}
 }
 
 async function checkAdmin(ctx) {
     if (!ctx.chat || ctx.chat.type === 'private') return true;
-    
-    if (ctx.sender_chat || (ctx.from && ctx.from.id === 1087968824)) {
-        return true;
-    }
-
+    if (ctx.sender_chat || (ctx.from && ctx.from.id === 1087968824)) return true;
     try {
         const member = await ctx.telegram.getChatMember(ctx.chat.id, ctx.from.id);
         return ['creator', 'administrator'].includes(member.status);
-    } catch (err) {
-        return false;
-    }
+    } catch { return false; }
 }
 
-// Affichage du panneau de configuration
 async function handleWelcomeConfig(ctx) {
-    if (!ctx.chat || !['supergroup', 'group'].includes(ctx.chat.type)) {
-        return ctx.reply("<blockquote>This command can only be used in a group.</blockquote>", { 
-            parse_mode: 'HTML', 
-            reply_to_message_id: ctx.message?.message_id 
-        }).catch(() => {});
-    }
-
-    if (!(await checkAdmin(ctx))) {
-        return ctx.reply("<blockquote>⚠️ Only administrators can configure the welcome module.</blockquote>", { 
-            parse_mode: 'HTML', 
-            reply_to_message_id: ctx.message?.message_id 
-        }).catch(() => {});
-    }
+    if (!ctx.chat || !['supergroup', 'group'].includes(ctx.chat.type)) return;
+    if (!(await checkAdmin(ctx))) return;
 
     const chatId = ctx.chat.id;
+    const lng = getLang(chatId);
     const config = getConfig(chatId);
-    const statusText = config.enabled ? "🟢 Enabled (ON)" : "🔴 Disabled (OFF)";
+    
+    const statusText = lng === 'fr' 
+        ? (config.enabled ? "🟢 Activé (ON)" : "🔴 Désactivé (OFF)")
+        : (config.enabled ? "🟢 Enabled (ON)" : "🔴 Disabled (OFF)");
 
-    const text = `<blockquote>⚙️ <b>Welcome Module Management</b>\n\nCurrent Status: ${statusText}\n\nChoose an option:</blockquote>`;
+    const text = lng === 'fr'
+        ? `<blockquote>⚙️ <b>Gestion du Module Bienvenue</b>\n\nStatut actuel : ${statusText}\n\nChoisissez une option :</blockquote>`
+        : `<blockquote>⚙️ <b>Welcome Module Management</b>\n\nCurrent Status: ${statusText}\n\nChoose an option:</blockquote>`;
+
     const keyboard = {
         parse_mode: 'HTML',
         reply_markup: {
             inline_keyboard: [
                 [
-                    { text: '✅ Welcome ON', callback_data: 'welcome_on' },
-                    { text: '❌ Welcome OFF', callback_data: 'welcome_off' }
+                    { text: lng === 'fr' ? '✅ Bienvenue ON' : '✅ Welcome ON', callback_data: 'welcome_on' },
+                    { text: lng === 'fr' ? '❌ Bienvenue OFF' : '❌ Welcome OFF', callback_data: 'welcome_off' }
                 ]
             ]
         }
@@ -108,10 +92,7 @@ async function handleWelcomeConfig(ctx) {
     if (ctx.callbackQuery) {
         await ctx.editMessageText(text, keyboard).catch(() => ctx.reply(text, keyboard).catch(() => {}));
     } else {
-        await ctx.reply(text, { 
-            ...keyboard, 
-            reply_to_message_id: ctx.message?.message_id 
-        }).catch(() => {});
+        await ctx.reply(text, { ...keyboard, reply_to_message_id: ctx.message?.message_id }).catch(() => {});
     }
 }
 
@@ -120,60 +101,44 @@ export default function setupWelcome(bot) {
     bot.hears(/^welcome$/i, handleWelcomeConfig);
 
     bot.action('menu_welcome', async (ctx) => {
-        try {
-            await ctx.answerCbQuery();
-        } catch (e) {}
+        try { await ctx.answerCbQuery(); } catch (e) {}
         await handleWelcomeConfig(ctx);
     });
 
     bot.action(/^welcome_(on|off)$/, async (ctx) => {
         try {
             if (!(await checkAdmin(ctx))) {
-                return await ctx.answerCbQuery("⚠️ Action restricted to administrators!", { show_alert: true });
+                const lng = getLang(ctx.chat.id);
+                return await ctx.answerCbQuery(lng === 'fr' ? "⚠️ Action réservée aux administrateurs !" : "⚠️ Action restricted to administrators!", { show_alert: true });
             }
 
             const action = ctx.match[1];
             const chatId = ctx.chat.id;
+            const lng = getLang(chatId);
             const config = getConfig(chatId);
 
             config.enabled = (action === 'on');
             saveConfig(chatId, config);
 
-            const statusText = config.enabled 
-                ? "<blockquote>🟢 The Welcome module has been <b>ENABLED</b>.</blockquote>" 
-                : "<blockquote>🔴 The Welcome module has been <b>DISABLED</b>.</blockquote>";
+            const statusText = lng === 'fr'
+                ? (config.enabled ? "<blockquote>🟢 Le module de bienvenue a été <b>ACTIVÉ</b>.</blockquote>" : "<blockquote>🔴 Le module de bienvenue a été <b>DÉSACTIVÉ</b>.</blockquote>")
+                : (config.enabled ? "<blockquote>🟢 The Welcome module has been <b>ENABLED</b>.</blockquote>" : "<blockquote>🔴 The Welcome module has been <b>DISABLED</b>.</blockquote>");
 
-            await ctx.answerCbQuery(config.enabled ? "Welcome enabled!" : "Welcome disabled!");
-            await ctx.editMessageText(statusText, {
-                parse_mode: 'HTML',
-                reply_markup: { inline_keyboard: [] }
-            }).catch(() => {});
-        } catch (err) {
-            try {
-                await ctx.answerCbQuery("An error occurred.", { show_alert: true });
-            } catch (e) {}
-        }
+            await ctx.answerCbQuery(config.enabled ? (lng === 'fr' ? "Bienvenue activé !" : "Welcome enabled!") : (lng === 'fr' ? "Bienvenue désactivé !" : "Welcome disabled!"));
+            await ctx.editMessageText(statusText, { parse_mode: 'HTML', reply_markup: { inline_keyboard: [] } }).catch(() => {});
+        } catch (err) {}
     });
 
-    // Envoi du message de bienvenue aux nouveaux membres (Sécurisé et anti-boucle)
     bot.on('new_chat_members', async (ctx, next) => {
         try {
-            if (!ctx.message || !ctx.message.new_chat_members) {
-                return next();
-            }
-
-            // Vérification anti-boucle : Ignore si le bot lui-même fait partie des nouveaux membres
+            if (!ctx.message || !ctx.message.new_chat_members) return next();
             const botId = ctx.botInfo?.id;
             const newMembers = ctx.message.new_chat_members;
-            if (botId && newMembers.some(m => m.id === botId)) {
-                return next();
-            }
+            if (botId && newMembers.some(m => m.id === botId)) return next();
 
             const chatId = ctx.chat.id;
             const config = getConfig(chatId);
-            if (!config.enabled) {
-                return next();
-            }
+            if (!config.enabled) return next();
 
             for (const member of newMembers) {
                 const fullName = [member.first_name, member.last_name].filter(Boolean).join(' ');
@@ -195,44 +160,25 @@ export default function setupWelcome(bot) {
 ┆❏ 🆔 ɪᴅ : ${id}
 ╰▰▰▰▰▰▰▰◈</blockquote>`;
 
-                const options = {
-                    parse_mode: 'HTML',
-                    reply_markup: {
-                        inline_keyboard: [
-                            [{ text: '𝙺𝙰𝚈𝙰 𝙱𝙾𝚃 | 𝙲𝙰𝙽𝙰𝙻', url: 'https://t.me/kayatech2' }]
-                        ]
-                    }
-                };
-
                 let photoFileId = null;
                 try {
                     const profilePhotos = await ctx.telegram.getUserProfilePhotos(member.id, { limit: 1 });
-                    if (profilePhotos && profilePhotos.total_count > 0) {
+                    if (profilePhotos?.total_count > 0) {
                         const photos = profilePhotos.photos[0];
                         photoFileId = photos[photos.length - 1].file_id;
                     }
-                } catch (e) {
-                    // Ignore silencieusement si la photo est inaccessible ou restreinte
-                }
+                } catch (e) {}
 
-                // Envoi protégé pour chaque membre (évite le crash si le bot n'est plus dans le groupe)
                 try {
                     if (photoFileId) {
-                        await ctx.replyWithPhoto(photoFileId, { 
-                            caption: welcomeText,
-                            ...options 
-                        });
+                        await ctx.replyWithPhoto(photoFileId, { caption: welcomeText, parse_mode: 'HTML', reply_markup: { inline_keyboard: [[{ text: '𝙺𝙰𝚈𝙰 𝙱𝙾𝚃 | 𝙲𝙰𝙽𝙰𝙻', url: 'https://t.me/kayatech2' }]] } });
                     } else {
-                        await ctx.reply(welcomeText, options);
+                        await ctx.reply(welcomeText, { parse_mode: 'HTML', reply_markup: { inline_keyboard: [[{ text: '𝙺𝙰𝚈𝙰 𝙱𝙾𝚃 | 𝙲𝙰𝙽𝙰𝙻', url: 'https://t.me/kayatech2' }]] } });
                     }
-                } catch (sendErr) {
-                    console.error(`[WELCOME SEND ERROR] Could not send message in chat ${chatId}:`, sendErr.message);
-                }
+                } catch (sendErr) {}
             }
-            
             return next();
         } catch (err) {
-            console.error("[WELCOME ERROR CRITICAL]:", err.message);
             return next();
         }
     });

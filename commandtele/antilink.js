@@ -7,6 +7,7 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dbFolder = path.join(__dirname, '../database/antilink');
+const langFilePath = path.join(__dirname, '../database/languages.json');
 
 // Garantir que le dossier existe
 if (!fs.existsSync(dbFolder)) {
@@ -19,6 +20,16 @@ const memoryCache = new Map();
 // Obtenir le chemin du fichier JSON propre à un groupe
 function getGroupFilePath(chatId) {
     return path.join(dbFolder, `${chatId}.json`);
+}
+
+function getLang(chatId) {
+    try {
+        if (fs.existsSync(langFilePath)) {
+            const data = JSON.parse(fs.readFileSync(langFilePath, 'utf8'));
+            return data[String(chatId)] || 'en';
+        }
+    } catch (e) {}
+    return 'en';
 }
 
 // Charge ou crée la configuration d'un groupe
@@ -93,20 +104,34 @@ async function handleAntiLinkConfig(ctx) {
     }
 
     const chatId = ctx.chat.id;
+    const lng = getLang(chatId);
     const config = getConfig(chatId);
     
-    const statusText = config.enabled ? "🟢 Enabled (ON)" : "🔴 Disabled (OFF)";
-    const modeText = config.mode === 'restrict' ? `🛡️ Restrict (${Math.round(config.duration / 60)} min)` : "🗑️ Delete only";
+    const statusText = lng === 'fr' 
+        ? (config.enabled ? "🟢 Activé (ON)" : "🔴 Désactivé (OFF)")
+        : (config.enabled ? "🟢 Enabled (ON)" : "🔴 Disabled (OFF)");
 
-    const text = `<blockquote>⚙️ <b>AntiLink Module Management</b>\n\nCurrent Status: ${statusText}\nMode: ${modeText}\n\nChoose an option:</blockquote>`;
+    const modeText = config.mode === 'restrict' 
+        ? (lng === 'fr' ? `🛡️ Restreindre (${Math.round(config.duration / 60)} min)` : `🛡️ Restrict (${Math.round(config.duration / 60)} min)`)
+        : (lng === 'fr' ? "🗑️ Supprimer uniquement" : "🗑️ Delete only");
+
+    const text = lng === 'fr'
+        ? `<blockquote>⚙️ <b>Gestion du Module AntiLink</b>\n\nStatut actuel : ${statusText}\nMode : ${modeText}\n\nChoisissez une option :</blockquote>`
+        : `<blockquote>⚙️ <b>AntiLink Module Management</b>\n\nCurrent Status: ${statusText}\nMode: ${modeText}\n\nChoose an option:</blockquote>`;
     
     const keyboard = {
         parse_mode: 'HTML',
         reply_markup: {
             inline_keyboard: [
                 [
-                    { text: config.enabled ? '❌ Turn OFF' : '✅ Turn ON', callback_data: config.enabled ? 'antilink_off' : 'antilink_on' },
-                    { text: config.mode === 'restrict' ? '🔄 Mode: Delete' : '🔄 Mode: Restrict', callback_data: config.mode === 'restrict' ? 'antilink_mode_delete' : 'antilink_mode_restrict' }
+                    { 
+                        text: config.enabled ? (lng === 'fr' ? '❌ Désactiver' : '❌ Turn OFF') : (lng === 'fr' ? '✅ Activer' : '✅ Turn ON'), 
+                        callback_data: config.enabled ? 'antilink_off' : 'antilink_on' 
+                    },
+                    { 
+                        text: config.mode === 'restrict' ? (lng === 'fr' ? '🔄 Mode : Supprimer' : '🔄 Mode: Delete') : (lng === 'fr' ? '🔄 Mode : Restreindre' : '🔄 Mode: Restrict'), 
+                        callback_data: config.mode === 'restrict' ? 'antilink_mode_delete' : 'antilink_mode_restrict' 
+                    }
                 ],
                 ...(config.mode === 'restrict' ? [[
                     { text: '⏱️ 5m', callback_data: 'antilink_dur_300' },
@@ -141,18 +166,20 @@ export default function setupAntiLink(bot) {
     // Clics ON / OFF
     bot.action(/^antilink_(on|off)$/, async (ctx) => {
         try {
+            const chatId = ctx.chat.id;
+            const lng = getLang(chatId);
+
             if (!(await checkAdmin(ctx))) {
-                return await ctx.answerCbQuery("⚠️ Action restricted to administrators!", { show_alert: true });
+                return await ctx.answerCbQuery(lng === 'fr' ? "⚠️ Action réservée aux administrateurs !" : "⚠️ Action restricted to administrators!", { show_alert: true });
             }
 
             const action = ctx.match[1];
-            const chatId = ctx.chat.id;
             const config = getConfig(chatId);
             
             config.enabled = (action === 'on');
             saveConfig(chatId, config);
 
-            await ctx.answerCbQuery(config.enabled ? "AntiLink enabled!" : "AntiLink disabled!");
+            await ctx.answerCbQuery(config.enabled ? (lng === 'fr' ? "AntiLink activé !" : "AntiLink enabled!") : (lng === 'fr' ? "AntiLink désactivé !" : "AntiLink disabled!"));
             await handleAntiLinkConfig(ctx);
         } catch (err) {
             console.error("[ANTILINK ACTION ERROR]:", err);
@@ -163,18 +190,20 @@ export default function setupAntiLink(bot) {
     // Changement de Mode (delete / restrict)
     bot.action(/^antilink_mode_(delete|restrict)$/, async (ctx) => {
         try {
+            const chatId = ctx.chat.id;
+            const lng = getLang(chatId);
+
             if (!(await checkAdmin(ctx))) {
-                return await ctx.answerCbQuery("⚠️ Action restricted to administrators!", { show_alert: true });
+                return await ctx.answerCbQuery(lng === 'fr' ? "⚠️ Action réservée aux administrateurs !" : "⚠️ Action restricted to administrators!", { show_alert: true });
             }
 
             const newMode = ctx.match[1];
-            const chatId = ctx.chat.id;
             const config = getConfig(chatId);
             
             config.mode = newMode;
             saveConfig(chatId, config);
 
-            await ctx.answerCbQuery(`Mode set to ${newMode}!`);
+            await ctx.answerCbQuery(lng === 'fr' ? `Mode défini sur ${newMode} !` : `Mode set to ${newMode}!`);
             await handleAntiLinkConfig(ctx);
         } catch (err) {
             console.error("[ANTILINK MODE ERROR]:", err);
@@ -185,12 +214,14 @@ export default function setupAntiLink(bot) {
     // Changement de durée de restriction
     bot.action(/^antilink_dur_(\d+)$/, async (ctx) => {
         try {
+            const chatId = ctx.chat.id;
+            const lng = getLang(chatId);
+
             if (!(await checkAdmin(ctx))) {
-                return await ctx.answerCbQuery("⚠️ Action restricted to administrators!", { show_alert: true });
+                return await ctx.answerCbQuery(lng === 'fr' ? "⚠️ Action réservée aux administrateurs !" : "⚠️ Action restricted to administrators!", { show_alert: true });
             }
 
             const duration = parseInt(ctx.match[1], 10);
-            const chatId = ctx.chat.id;
             const config = getConfig(chatId);
             
             config.duration = duration;
@@ -199,7 +230,7 @@ export default function setupAntiLink(bot) {
             const mins = Math.round(duration / 60);
             const timeLabel = mins >= 60 ? `${mins / 60}h` : `${mins}m`;
 
-            await ctx.answerCbQuery(`Duration set to ${timeLabel}!`);
+            await ctx.answerCbQuery(lng === 'fr' ? `Durée définie sur ${timeLabel} !` : `Duration set to ${timeLabel}!`);
             await handleAntiLinkConfig(ctx);
         } catch (err) {
             console.error("[ANTILINK DURATION ERROR]:", err);
@@ -267,10 +298,15 @@ export default function setupAntiLink(bot) {
                     }
                 }
 
-                // Message d'avertissement
+                // Message d'avertissement bilingue
+                const lng = getLang(chatId);
                 const actionDesc = config.mode === 'restrict' 
-                    ? `links are not allowed here! You have been restricted for ${Math.round(config.duration / 60)} minute(s).` 
-                    : `links are not allowed here!`;
+                    ? (lng === 'fr' 
+                        ? `les liens sont interdits ici ! Vous avez été restreint pour ${Math.round(config.duration / 60)} minute(s).` 
+                        : `links are not allowed here! You have been restricted for ${Math.round(config.duration / 60)} minute(s).`) 
+                    : (lng === 'fr' 
+                        ? `les liens sont interdits ici !` 
+                        : `links are not allowed here!`);
 
                 await ctx.reply(`<blockquote>⚠️ ${userMention}, ${actionDesc}</blockquote>`, { 
                     parse_mode: 'HTML',

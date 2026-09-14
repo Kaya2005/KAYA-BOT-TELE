@@ -9,6 +9,7 @@ import fetch from 'node-fetch';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dbFolder = path.join(__dirname, '../database/chatbot');
 const apiKeyPath = path.join(__dirname, '../database/openrouter_key.json');
+const langFilePath = path.join(__dirname, '../database/languages.json');
 
 // Ensure the directory exists
 if (!fs.existsSync(dbFolder)) {
@@ -21,6 +22,16 @@ const memoryCache = new Map();
 // Get the specific JSON file path for a group
 function getGroupFilePath(chatId) {
     return path.join(dbFolder, `${chatId}.json`);
+}
+
+function getLang(chatId) {
+    try {
+        if (fs.existsSync(langFilePath)) {
+            const data = JSON.parse(fs.readFileSync(langFilePath, 'utf8'));
+            return data[String(chatId)] || 'en';
+        }
+    } catch (e) {}
+    return 'en';
 }
 
 // Load or create a group's configuration
@@ -108,17 +119,24 @@ async function handleChatbotConfig(ctx) {
     }
 
     const chatId = ctx.chat.id;
+    const lng = getLang(chatId);
     const config = getConfig(chatId);
-    const statusText = config.enabled ? "🟢 Enabled (ON)" : "🔴 Disabled (OFF)";
+    
+    const statusText = lng === 'fr' 
+        ? (config.enabled ? "🟢 Activé (ON)" : "🔴 Désactivé (OFF)")
+        : (config.enabled ? "🟢 Enabled (ON)" : "🔴 Disabled (OFF)");
 
-    const text = `<blockquote>🤖 <b>AI Chatbot Management (OpenRouter)</b>\n\nCurrent Status: ${statusText}\n\nChoose an option:</blockquote>`;
+    const text = lng === 'fr'
+        ? `<blockquote>🤖 <b>Gestion du Chatbot IA (OpenRouter)</b>\n\nStatut actuel : ${statusText}\n\nChoisissez une option :</blockquote>`
+        : `<blockquote>🤖 <b>AI Chatbot Management (OpenRouter)</b>\n\nCurrent Status: ${statusText}\n\nChoose an option:</blockquote>`;
+
     const keyboard = {
         parse_mode: 'HTML',
         reply_markup: {
             inline_keyboard: [
                 [
-                    { text: '✅ Chatbot ON', callback_data: 'chatbot_on' },
-                    { text: '❌ Chatbot OFF', callback_data: 'chatbot_off' }
+                    { text: lng === 'fr' ? '✅ Chatbot ON' : '✅ Chatbot ON', callback_data: 'chatbot_on' },
+                    { text: lng === 'fr' ? '❌ Chatbot OFF' : '❌ Chatbot OFF', callback_data: 'chatbot_off' }
                 ]
             ]
         }
@@ -137,30 +155,47 @@ async function handleChatbotConfig(ctx) {
 export default function setupChatbot(bot) {
     // OpenRouter API Key command
     bot.command('setopenrouterkey', async (ctx) => {
+        const chatId = ctx.chat ? ctx.chat.id : null;
+        const lng = chatId ? getLang(chatId) : 'en';
+
+        if (!(await checkAdmin(ctx))) {
+            const msg = lng === 'fr' ? '<blockquote>❌ Action réservée aux administrateurs.</blockquote>' : '<blockquote>❌ Action restricted to administrators.</blockquote>';
+            return ctx.reply(msg, { parse_mode: 'HTML' });
+        }
         const text = ctx.message.text.split(' ')[1];
         if (!text) {
-            return ctx.reply('<blockquote>⚠️ Usage: <code>/setopenrouterkey sk-or-v1-...</code></blockquote>', { parse_mode: 'HTML' });
+            const msg = lng === 'fr' ? '<blockquote>⚠️ Utilisation : <code>/setopenrouterkey sk-or-v1-...</code></blockquote>' : '<blockquote>⚠️ Usage: <code>/setopenrouterkey sk-or-v1-...</code></blockquote>';
+            return ctx.reply(msg, { parse_mode: 'HTML' });
         }
         saveOpenRouterKey(text);
-        return ctx.reply('<blockquote>✅ OpenRouter API key successfully registered for the Telegram chatbot!</blockquote>', { parse_mode: 'HTML' });
+        const successMsg = lng === 'fr' ? '<blockquote>✅ Clé API OpenRouter enregistrée avec succès pour le chatbot Telegram !</blockquote>' : '<blockquote>✅ OpenRouter API key successfully registered for the Telegram chatbot!</blockquote>';
+        return ctx.reply(successMsg, { parse_mode: 'HTML' });
     });
 
     // /chatbot command
     bot.command('chatbot', async (ctx) => {
         const args = ctx.message.text.split(' ')[1]?.toLowerCase();
         const chatId = ctx.chat.id;
+        const lng = getLang(chatId);
 
         if (args === 'on' || args === 'off') {
-            if (!(await checkAdmin(ctx))) return ctx.reply('<blockquote>❌ Action restricted to administrators.</blockquote>', { parse_mode: 'HTML' });
+            if (!(await checkAdmin(ctx))) {
+                const msg = lng === 'fr' ? '<blockquote>❌ Action réservée aux administrateurs.</blockquote>' : '<blockquote>❌ Action restricted to administrators.</blockquote>';
+                return ctx.reply(msg, { parse_mode: 'HTML' });
+            }
             
             const config = getConfig(chatId);
             config.enabled = (args === 'on');
             saveConfig(chatId, config);
 
             if (config.enabled) {
-                return ctx.reply('<blockquote>🤖 AI Chatbot (OpenRouter) enabled for this group! Mention me or reply to my messages to chat.</blockquote>', { parse_mode: 'HTML' });
+                const msg = lng === 'fr' 
+                    ? '<blockquote>🤖 Chatbot IA (OpenRouter) activé pour ce groupe ! Mentionnez-moi ou répondez à mes messages pour discuter.</blockquote>'
+                    : '<blockquote>🤖 AI Chatbot (OpenRouter) enabled for this group! Mention me or reply to my messages to chat.</blockquote>';
+                return ctx.reply(msg, { parse_mode: 'HTML' });
             } else {
-                return ctx.reply('<blockquote>🤖 Chatbot disabled for this group.</blockquote>', { parse_mode: 'HTML' });
+                const msg = lng === 'fr' ? '<blockquote>🤖 Chatbot désactivé pour ce groupe.</blockquote>' : '<blockquote>🤖 Chatbot disabled for this group.</blockquote>';
+                return ctx.reply(msg, { parse_mode: 'HTML' });
             }
         }
 
@@ -169,6 +204,11 @@ export default function setupChatbot(bot) {
 
     // Main menu button (groupmenu)
     bot.action('menu_chatbot', async (ctx) => {
+        const chatId = ctx.chat ? ctx.chat.id : null;
+        const lng = chatId ? getLang(chatId) : 'en';
+        if (!(await checkAdmin(ctx))) {
+            return await ctx.answerCbQuery(lng === 'fr' ? "⚠️ Action réservée aux administrateurs !" : "⚠️ Action restricted to administrators!", { show_alert: true });
+        }
         await ctx.answerCbQuery();
         await handleChatbotConfig(ctx);
     });
@@ -176,22 +216,24 @@ export default function setupChatbot(bot) {
     // ON / OFF actions from inline buttons
     bot.action(/^chatbot_(on|off)$/, async (ctx) => {
         try {
+            const chatId = ctx.chat.id;
+            const lng = getLang(chatId);
+
             if (!(await checkAdmin(ctx))) {
-                return await ctx.answerCbQuery("⚠️ Action restricted to administrators!", { show_alert: true });
+                return await ctx.answerCbQuery(lng === 'fr' ? "⚠️ Action réservée aux administrateurs !" : "⚠️ Action restricted to administrators!", { show_alert: true });
             }
 
             const action = ctx.match[1];
-            const chatId = ctx.chat.id;
             const config = getConfig(chatId);
 
             config.enabled = (action === 'on');
             saveConfig(chatId, config);
 
-            const statusText = config.enabled 
-                ? "<blockquote>🟢 The AI Chatbot has been <b>ENABLED</b> for this group.</blockquote>" 
-                : "<blockquote>🔴 The AI Chatbot has been <b>DISABLED</b>.</blockquote>";
+            const statusText = lng === 'fr' 
+                ? (config.enabled ? "<blockquote>🟢 Le chatbot IA a été <b>ACTIVÉ</b> pour ce groupe.</blockquote>" : "<blockquote>🔴 Le chatbot IA a été <b>DÉSACTIVÉ</b>.</blockquote>")
+                : (config.enabled ? "<blockquote>🟢 The AI Chatbot has been <b>ENABLED</b> for this group.</blockquote>" : "<blockquote>🔴 The AI Chatbot has been <b>DISABLED</b>.</blockquote>");
 
-            await ctx.answerCbQuery(config.enabled ? "Chatbot enabled!" : "Chatbot disabled!");
+            await ctx.answerCbQuery(config.enabled ? (lng === 'fr' ? "Chatbot activé !" : "Chatbot enabled!") : (lng === 'fr' ? "Chatbot désactivé !" : "Chatbot disabled!"));
             await ctx.editMessageText(statusText, {
                 parse_mode: 'HTML',
                 reply_markup: { inline_keyboard: [] }
@@ -224,9 +266,13 @@ export default function setupChatbot(bot) {
                 if (!cleanQuery) return next();
 
                 const apiKey = getOpenRouterKey();
+                const lng = getLang(chatId);
 
                 if (!apiKey) {
-                    await ctx.reply('<blockquote>⚠️ The administrator has not configured the OpenRouter API key with <code>/setopenrouterkey</code>.</blockquote>', { 
+                    const warnMsg = lng === 'fr'
+                        ? '<blockquote>⚠️ L\'administrateur n\'a pas configuré la clé API OpenRouter avec <code>/setopenrouterkey</code>.</blockquote>'
+                        : '<blockquote>⚠️ The administrator has not configured the OpenRouter API key with <code>/setopenrouterkey</code>.</blockquote>';
+                    await ctx.reply(warnMsg, { 
                         parse_mode: 'HTML', 
                         reply_to_message_id: message.message_id 
                     });
@@ -266,7 +312,12 @@ export default function setupChatbot(bot) {
                     answer = json.error?.message || "Oops, there's a technical bug right now, try again later lol";
                 }
 
-                await ctx.reply(answer, {
+                const userName = ctx.from?.first_name || "toi";
+                const userId = ctx.from?.id;
+                const mention = userId ? `<a href="tg://user?id=${userId}">${userName}</a>` : userName;
+
+                await ctx.reply(`${mention} ${answer}`, {
+                    parse_mode: 'HTML',
                     reply_to_message_id: message.message_id
                 });
                 return;
