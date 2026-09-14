@@ -1,5 +1,5 @@
 // ==========================================
-// FICHIER : commandtele/groupmenu.js (Optimisé & Bilingue)
+// FICHIER : commandtele/groupmenu.js (Optimisé & Corrigé)
 // ==========================================
 import fs from 'fs';
 import path from 'path';
@@ -105,9 +105,6 @@ export default function setupGroupMenu(bot) {
         const msg = lang === 'fr' ? "✅ Langue définie sur Français 🇫🇷" : "✅ Language set to English 🇬🇧";
         await ctx.answerCbQuery(msg);
         
-        // Relancer le menu principal après changement
-        ctx.message = { message_id: ctx.callbackQuery.message.message_id };
-        // Simule un retour ou actualise
         const now = new Date();
         const time = now.toLocaleTimeString('en-GB', { timeZone: 'Africa/Lubumbashi', hour: '2-digit', minute:'2-digit' });
         const text = lang === 'fr' 
