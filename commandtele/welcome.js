@@ -1,5 +1,5 @@
 // ==========================================
-// FILE : commandtele/welcome.js (Bilingue FR/EN)
+// FILE : commandtele/welcome.js (Corrigé & Optimisé)
 // ==========================================
 
 import fs from 'fs';
@@ -129,16 +129,18 @@ export default function setupWelcome(bot) {
         } catch (err) {}
     });
 
-    bot.on('new_chat_members', async (ctx, next) => {
+    // Utilisation directe de l'événement de message Telegraf pour les nouveaux membres
+    bot.on('message:new_chat_members', async (ctx) => {
         try {
-            if (!ctx.message || !ctx.message.new_chat_members) return next();
-            const botId = ctx.botInfo?.id;
-            const newMembers = ctx.message.new_chat_members;
-            if (botId && newMembers.some(m => m.id === botId)) return next();
-
             const chatId = ctx.chat.id;
             const config = getConfig(chatId);
-            if (!config.enabled) return next();
+            if (!config.enabled) return;
+
+            const botId = ctx.botInfo?.id;
+            const newMembers = ctx.message.new_chat_members;
+            
+            // Ne rien envoyer si c'est le bot lui-même qui vient d'être ajouté
+            if (botId && newMembers.some(m => m.id === botId)) return;
 
             for (const member of newMembers) {
                 const fullName = [member.first_name, member.last_name].filter(Boolean).join(' ');
@@ -146,8 +148,8 @@ export default function setupWelcome(bot) {
                 const id = member.id;
 
                 const now = new Date();
-                const time = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-                const date = now.toLocaleDateString('en-GB');
+                const time = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Lubumbashi' });
+                const date = now.toLocaleDateString('en-GB', { timeZone: 'Africa/Lubumbashi' });
 
                 const welcomeText = `<blockquote>▰▰▰▰▰▰▰▰▰▰
 ➠ ᴜsᴇʀ : ${fullName}
@@ -171,15 +173,19 @@ export default function setupWelcome(bot) {
 
                 try {
                     if (photoFileId) {
-                        await ctx.replyWithPhoto(photoFileId, { caption: welcomeText, parse_mode: 'HTML', reply_markup: { inline_keyboard: [[{ text: '𝙺𝙰𝚈𝙰 𝙱𝙾𝚃 | 𝙲𝙰𝙽𝙰𝙻', url: 'https://t.me/kayatech2' }]] } });
+                        await ctx.replyWithPhoto(photoFileId, { 
+                            caption: welcomeText, 
+                            parse_mode: 'HTML', 
+                            reply_markup: { inline_keyboard: [[{ text: '𝙺𝙰𝚈𝙰 𝙱𝙾𝚃 | 𝙲𝙰𝙽𝙰𝙻', url: 'https://t.me/kayatech2' }]] } 
+                        });
                     } else {
-                        await ctx.reply(welcomeText, { parse_mode: 'HTML', reply_markup: { inline_keyboard: [[{ text: '𝙺𝙰𝚈𝙰 𝙱𝙾𝚃 | 𝙲𝙰𝙽𝙰𝙻', url: 'https://t.me/kayatech2' }]] } });
+                        await ctx.reply(welcomeText, { 
+                            parse_mode: 'HTML', 
+                            reply_markup: { inline_keyboard: [[{ text: '𝙺𝙰𝚈𝙰 𝙱𝙾𝚃 | 𝙲𝙰𝙽𝙰𝙻', url: 'https://t.me/kayatech2' }]] } 
+                        });
                     }
                 } catch (sendErr) {}
             }
-            return next();
-        } catch (err) {
-            return next();
-        }
+        } catch (err) {}
     });
 }

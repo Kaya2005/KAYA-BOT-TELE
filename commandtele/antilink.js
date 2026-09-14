@@ -1,5 +1,5 @@
 // ==========================================
-// FILE : commandtele/antilink.js
+// FILE : commandtele/antilink.js (Corrigé)
 // ==========================================
 import fs from 'fs';
 import path from 'path';
@@ -34,14 +34,12 @@ function getLang(chatId) {
 
 // Charge ou crée la configuration d'un groupe
 function getConfig(chatId) {
-    // 1. Retour direct si en mémoire
     if (memoryCache.has(chatId)) {
         return memoryCache.get(chatId);
     }
 
     const filePath = getGroupFilePath(chatId);
 
-    // 2. Lecture depuis le fichier du groupe s'il existe
     if (fs.existsSync(filePath)) {
         try {
             const data = fs.readFileSync(filePath, 'utf8');
@@ -53,13 +51,11 @@ function getConfig(chatId) {
         }
     }
 
-    // 3. Configuration par défaut
     const defaultConfig = { enabled: true, mode: 'delete', duration: 300 };
     saveConfig(chatId, defaultConfig);
     return defaultConfig;
 }
 
-// Sauvegarde la configuration du groupe dans son fichier dédié
 function saveConfig(chatId, config) {
     memoryCache.set(chatId, config);
     try {
@@ -73,7 +69,6 @@ function saveConfig(chatId, config) {
 async function checkAdmin(ctx) {
     if (!ctx.chat || ctx.chat.type === 'private') return true;
     
-    // Autoriser automatiquement les administrateurs anonymes / propriétaires de canal
     if (ctx.sender_chat || (ctx.from && ctx.from.id === 1087968824)) {
         return true;
     }
@@ -82,12 +77,10 @@ async function checkAdmin(ctx) {
         const member = await ctx.telegram.getChatMember(ctx.chat.id, ctx.from.id);
         return ['creator', 'administrator'].includes(member.status);
     } catch (err) {
-        console.error("[ANTILINK] Admin check error:", err);
         return false;
     }
 }
 
-// Panneau de configuration AntiLink
 async function handleAntiLinkConfig(ctx) {
     if (!ctx.chat || !['supergroup', 'group'].includes(ctx.chat.type)) {
         return ctx.reply("<blockquote>This command can only be used in a group.</blockquote>", { 
@@ -153,17 +146,14 @@ async function handleAntiLinkConfig(ctx) {
 }
 
 export default function setupAntiLink(bot) {
-    // Triggers par commande et texte brut
     bot.command('antilink', handleAntiLinkConfig);
     bot.hears(/^antilink$/i, handleAntiLinkConfig);
 
-    // Trigger via bouton du menu principal
     bot.action('menu_antilink', async (ctx) => {
         await ctx.answerCbQuery();
         await handleAntiLinkConfig(ctx);
     });
 
-    // Clics ON / OFF
     bot.action(/^antilink_(on|off)$/, async (ctx) => {
         try {
             const chatId = ctx.chat.id;
@@ -182,12 +172,10 @@ export default function setupAntiLink(bot) {
             await ctx.answerCbQuery(config.enabled ? (lng === 'fr' ? "AntiLink activé !" : "AntiLink enabled!") : (lng === 'fr' ? "AntiLink désactivé !" : "AntiLink disabled!"));
             await handleAntiLinkConfig(ctx);
         } catch (err) {
-            console.error("[ANTILINK ACTION ERROR]:", err);
             await ctx.answerCbQuery("An error occurred.", { show_alert: true });
         }
     });
 
-    // Changement de Mode (delete / restrict)
     bot.action(/^antilink_mode_(delete|restrict)$/, async (ctx) => {
         try {
             const chatId = ctx.chat.id;
@@ -206,12 +194,10 @@ export default function setupAntiLink(bot) {
             await ctx.answerCbQuery(lng === 'fr' ? `Mode défini sur ${newMode} !` : `Mode set to ${newMode}!`);
             await handleAntiLinkConfig(ctx);
         } catch (err) {
-            console.error("[ANTILINK MODE ERROR]:", err);
             await ctx.answerCbQuery("An error occurred.", { show_alert: true });
         }
     });
 
-    // Changement de durée de restriction
     bot.action(/^antilink_dur_(\d+)$/, async (ctx) => {
         try {
             const chatId = ctx.chat.id;
@@ -233,12 +219,10 @@ export default function setupAntiLink(bot) {
             await ctx.answerCbQuery(lng === 'fr' ? `Durée définie sur ${timeLabel} !` : `Duration set to ${timeLabel}!`);
             await handleAntiLinkConfig(ctx);
         } catch (err) {
-            console.error("[ANTILINK DURATION ERROR]:", err);
             await ctx.answerCbQuery("An error occurred.", { show_alert: true });
         }
     });
 
-    // Surveillance des liens
     bot.on('message', async (ctx, next) => {
         try {
             if (!ctx.chat || !['supergroup', 'group'].includes(ctx.chat.type)) {
@@ -269,36 +253,45 @@ export default function setupAntiLink(bot) {
                         return next();
                     }
                 } catch (err) {
-                    console.error("[ANTILINK] Error verifying admin:", err);
                     return next();
                 }
 
-                // Suppression du message contenant le lien
+                // 1. Suppression du message contenant le lien
                 await ctx.deleteMessage().catch(() => {});
                 
                 const userId = ctx.from?.id;
                 const firstName = ctx.from?.first_name || 'Utilisateur';
                 const userMention = userId ? `<a href="tg://user?id=${userId}">${firstName}</a>` : firstName;
 
-                // Restriction de l'utilisateur si mode 'restrict'
+                // 2. Restriction de l'utilisateur si mode 'restrict'
                 if (config.mode === 'restrict' && userId) {
                     try {
                         const untilDate = Math.floor(Date.now() / 1000) + config.duration;
                         await ctx.telegram.restrictChatMember(chatId, userId, {
+                            until_date: untilDate,
                             permissions: {
                                 can_send_messages: false,
-                                can_send_media_messages: false,
+                                can_send_audios: false,
+                                can_send_documents: false,
+                                can_send_photos: false,
+                                can_send_videos: false,
+                                can_send_video_notes: false,
+                                can_send_voice_notes: false,
+                                can_send_polls: false,
                                 can_send_other_messages: false,
-                                can_add_web_page_previews: false
-                            },
-                            until_date: untilDate
+                                can_add_web_page_previews: false,
+                                can_change_info: false,
+                                can_invite_users: false,
+                                can_pin_messages: false,
+                                can_manage_topics: false
+                            }
                         });
                     } catch (restrictErr) {
                         console.error("[ANTILINK] Error restricting user:", restrictErr);
                     }
                 }
 
-                // Message d'avertissement bilingue
+                // 3. Message d'avertissement bilingue
                 const lng = getLang(chatId);
                 const actionDesc = config.mode === 'restrict' 
                     ? (lng === 'fr' 
@@ -323,7 +316,6 @@ export default function setupAntiLink(bot) {
             return next();
             
         } catch (err) {
-            console.error("[ANTILINK ERROR]", err);
             return next();
         }
     });
