@@ -1,5 +1,5 @@
 // ==========================================
-// FICHIER : bot.js (Mis à jour avec setupLanguage)
+// FICHIER : bot.js (Intégration complète rétablie)
 // ==========================================
 import './config.js'; 
 import fs from 'fs';
@@ -34,7 +34,6 @@ const langData = {
         selectLang: "Please select your preferred language:",
         langChanged: "✅ Language successfully changed to English 🇬🇧",
         adminOnly: "❌ Only group administrators can change the bot's language.",
-        groupMenuTitle: "🤖 TELEGRAM GROUP SETUP",
     },
     fr: {
         welcome: "Bienvenue ! Choisissez une option ci-dessous pour connecter votre WhatsApp, ajouter le bot à votre groupe ou choisir votre langue.",
@@ -44,7 +43,6 @@ const langData = {
         selectLang: "Veuillez choisir votre langue préférée :",
         langChanged: "✅ Langue changée avec succès en Français 🇫🇷",
         adminOnly: "❌ Seuls les administrateurs du groupe peuvent modifier la langue du bot.",
-        groupMenuTitle: "🤖 CONFIGURATION DU GROUPE TELEGRAM",
     }
 };
 
@@ -67,7 +65,6 @@ const isAdminOrOwner = async (ctx, userId) => {
     }
 };
 
-// ================= HELPERS EXISTANTS =================
 const saveUser = (userId) => {
     try {
         let users = [];
@@ -79,6 +76,48 @@ const saveUser = (userId) => {
             fs.writeFileSync(usersFilePath, JSON.stringify(users, null, 2));
         }
     } catch (e) {}
+};
+
+const ensurePrivate = (ctx) => {
+    if (isOwner(ctx)) return true;
+    if (!ctx.chat || ctx.chat.type !== 'private') {
+        const botUsername = ctx.botInfo?.username || 'KayaMdBot';
+        ctx.reply('<blockquote>❌ Please write to me in private to use this command.</blockquote>', {
+            parse_mode: 'HTML',
+            reply_to_message_id: ctx.message?.message_id,
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: '💬 Open Bot in Private', url: `https://t.me/${botUsername}` }],
+                    [{ text: '🔒 Groupe Privé', url: PRIVATE_GROUP_LINK }]
+                ]
+            }
+        });
+        return false;
+    }
+    return true;
+};
+
+const checkChannels = async (ctx) => {
+    if (isOwner(ctx)) return true;
+
+    for (const channel of REQUIRED_CHANNELS) {
+        try {
+            const member = await ctx.telegram.getChatMember(channel, ctx.from.id);
+            if (['left', 'kicked'].includes(member.status)) return false;
+        } catch { return false; }
+    }
+    return true;
+};
+
+const getActiveSessions = () => {
+    if (!fs.existsSync(pairingFolder)) return [];
+    return fs.readdirSync(pairingFolder, { withFileTypes: true })
+        .filter(dirent => dirent.isDirectory())
+        .map(dirent => dirent.name)
+        .filter(folderName => {
+            const credsPath = path.join(pairingFolder, folderName, 'creds.json');
+            return fs.existsSync(credsPath);
+        });
 };
 
 const getMenu = (userName, isAdmin, chatId) => {
@@ -127,7 +166,7 @@ setupWelcome(bot);
 setupAntiLink(bot);
 setupGroupMenu(bot);
 setupChatbot(bot);
-setupLanguage(bot); // Intégration du module de langue externe
+setupLanguage(bot);
 
 // ================= COMMANDES =================
 bot.start(async (ctx) => {
@@ -176,7 +215,6 @@ bot.start(async (ctx) => {
     }
 });
 
-// Gestion des actions de langue pour le menu de démarrage (compatible avec le module externe)
 bot.action(/^setlang_(fr|en)$/, async (ctx) => {
     const selectedLang = ctx.match[1];
     const chatId = ctx.chat.id;
@@ -270,7 +308,248 @@ bot.command('group', async (ctx) => {
 });
 
 bot.command('ping', async (ctx) => {
-    ctx.reply('<blockquote>▉ 𝐊𝐀𝐘𝐀 𝐁𝐎𝐓 ▉\n\n✅ <b>Status:</b> Online / En ligne</blockquote>', { parse_mode: 'HTML' });
+    ctx.reply('<blockquote>▉ 𝐊𝐀𝐘𝐀 𝐁𝐎𝐓 ▉\n\n✅ <b>Status:</b> Online / En ligne</blockquote>', { 
+        parse_mode: 'HTML',
+        reply_to_message_id: ctx.message?.message_id,
+        reply_markup: {
+            inline_keyboard: [
+                [{ text: '𝚉𝙾𝙽𝙴 〽️𝙲𝙷𝙰𝚃', url: PRIVATE_GROUP_LINK }]
+            ]
+        }
+    });
 });
 
-bot.launch().then(() => console.log('▉ KAYA BOT is online with active token & multi-language support.'));
+bot.command('connect', async (ctx) => {
+    if (!ensurePrivate(ctx)) return;
+
+    const activeSessions = getActiveSessions();
+    if (activeSessions.length >= 60) {
+        return ctx.reply('<blockquote>❌ <b>Error:</b> Server capacity reached (60/60). Please try again later.</blockquote>', { 
+            parse_mode: 'HTML',
+            reply_to_message_id: ctx.message?.message_id 
+        });
+    }
+
+    if (!(await checkChannels(ctx))) {
+        return ctx.reply('<blockquote>⚠️ Restricted access. Please join our channels to continue:</blockquote>', {
+            parse_mode: 'HTML',
+            reply_to_message_id: ctx.message?.message_id,
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: '💬 KAYA TECH | CHAT', url: 'https://t.me/+nctwjD43hDk0ODBk' }],
+                    [{ text: '📢 KAYA TECH | CHANNEL', url: 'https://t.me/kayatech2' }],
+                    [{ text: '🛠️ SHELD SOCIETY🪚', url: 'https://t.me/society243' }],
+                    [{ text: '✅ I Have Joined', callback_data: 'check_join' }]
+                ]
+            }
+        });
+    }
+
+    const text = ctx.message.text.split(' ')[1];
+    if (!text) return ctx.reply('<blockquote>⚠️ Usage: <code>/connect 243xxxxxx</code></blockquote>', { 
+        parse_mode: 'HTML',
+        reply_to_message_id: ctx.message?.message_id 
+    });
+    
+    const number = text.replace(/\D/g, '');
+    if (number.length < 9) return ctx.reply('<blockquote>❌ Invalid number. Minimum 9 digits required.</blockquote>', { 
+        parse_mode: 'HTML',
+        reply_to_message_id: ctx.message?.message_id 
+    });
+    
+    const jid = number + "@s.whatsapp.net";
+    const teleId = ctx.from.id;
+    const userName = ctx.from.first_name || "Unknown";
+    
+    const requestPath = path.join(pairingFolder, `request_${teleId}.json`);
+    fs.writeFileSync(requestPath, JSON.stringify({ jid, name: userName }));
+    
+    ctx.reply('<blockquote>⏳ Initialization... please wait.</blockquote>', { 
+        parse_mode: 'HTML',
+        reply_to_message_id: ctx.message?.message_id 
+    });
+    
+    let attempts = 0;
+    let cuObj = null;
+    const pairingFile = path.join(pairingFolder, `pairing_${teleId}.json`);
+
+    while (attempts < 20) {
+        if (fs.existsSync(pairingFile)) {
+            try {
+                cuObj = JSON.parse(fs.readFileSync(pairingFile, 'utf-8'));
+                break;
+            } catch (e) { }
+        }
+        await new Promise(r => setTimeout(r, 1000));
+        attempts++;
+    }
+    
+    if (cuObj) {
+        const pairingStyle = `<blockquote>▰▰▰▰▰▰▰▰▰▰\n> ╢ PAIRING CODE ♰\n╭▰▰▰▰▰▰▰◈\n┆🔑 Code: <code>${cuObj.code}</code>\n╰▰▰▰▰▰▰▰◈</blockquote>`;
+        ctx.reply(pairingStyle, { 
+            parse_mode: 'HTML',
+            reply_to_message_id: ctx.message?.message_id,
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: '𝚉𝙾𝙽𝙴 〽️𝙲𝙷𝙰𝚃', url: PRIVATE_GROUP_LINK }]
+                ]
+            }
+        });
+    } else {
+        ctx.reply('<blockquote>❌ Error: Pairing code could not be generated.</blockquote>', { 
+            parse_mode: 'HTML',
+            reply_to_message_id: ctx.message?.message_id 
+        });
+    }
+});
+
+bot.action('check_join', async (ctx) => {
+    if (await checkChannels(ctx)) {
+        await ctx.editMessageText('✅ You can connect now.');
+        ctx.answerCbQuery('✅ Access authorized.');
+    } else {
+        ctx.answerCbQuery('❌ You must join the required channels first.', { show_alert: true });
+    }
+});
+
+bot.command('listpair', async (ctx) => {
+    if (!isOwner(ctx)) return;
+    if (!ensurePrivate(ctx)) return;
+
+    const activeSessions = getActiveSessions();
+    if (activeSessions.length === 0) return ctx.reply('<blockquote>No devices linked.</blockquote>', { 
+        parse_mode: 'HTML',
+        reply_to_message_id: ctx.message?.message_id 
+    });
+
+    let text = `<blockquote>> ╢ CONNECTED : ${activeSessions.length}/60 ♰\n`;
+    
+    activeSessions.forEach((number, i) => {
+        let userName = "Unknown";
+        let teleId = "N/A";
+        
+        try {
+            const metaPath = path.join(pairingFolder, number, 'metadata.json');
+            if (fs.existsSync(metaPath)) {
+                const data = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+                userName = data.userName || "Unknown";
+                teleId = data.teleId || "N/A";
+            }
+        } catch (e) {}
+
+        text += `┆❏ ${i + 1}. <b>${userName}</b> (${number}) [TeleID: ${teleId}]\n`;
+    });
+    
+    text += `</blockquote>`;
+    ctx.reply(text, { 
+        parse_mode: 'HTML',
+        reply_to_message_id: ctx.message?.message_id 
+    });
+});
+
+bot.command('delpair', async (ctx) => {
+    if (!isOwner(ctx)) return; 
+    if (!ensurePrivate(ctx)) return;
+
+    const arg = ctx.message.text.split(' ')[1];
+    if (!arg) return ctx.reply('<blockquote>⚠️ Usage: <code>/delpair [teleId or number]</code></blockquote>', { 
+        parse_mode: 'HTML',
+        reply_to_message_id: ctx.message?.message_id 
+    });
+    
+    let teleId = arg.replace(/\D/g, '');
+    let foundNumber = null;
+
+    const activeSessions = getActiveSessions();
+    for (const number of activeSessions) {
+        try {
+            const metaPath = path.join(pairingFolder, number, 'metadata.json');
+            if (fs.existsSync(metaPath)) {
+                const data = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+                if (String(data.teleId) === teleId || number === teleId) {
+                    foundNumber = number;
+                    teleId = String(data.teleId || teleId);
+                    break;
+                }
+            }
+        } catch (e) {}
+    }
+
+    if (foundNumber) {
+        forceCleanupSession(foundNumber, teleId);
+        return ctx.reply(`<blockquote>✅ Session for <code>${foundNumber}</code> disconnected successfully.</blockquote>`, { 
+            parse_mode: 'HTML',
+            reply_to_message_id: ctx.message?.message_id 
+        });
+    }
+
+    if (fs.existsSync(path.join(pairingFolder, teleId))) {
+        forceCleanupSession(teleId, "default");
+        return ctx.reply(`<blockquote>✅ Session <code>${teleId}</code> disconnected successfully.</blockquote>`, { 
+            parse_mode: 'HTML',
+            reply_to_message_id: ctx.message?.message_id 
+        });
+    }
+
+    ctx.reply('<blockquote>❌ Session not found.</blockquote>', { 
+        parse_mode: 'HTML',
+        reply_to_message_id: ctx.message?.message_id 
+    });
+});
+
+bot.command('broadcast', async (ctx) => {
+    if (!isOwner(ctx)) return;
+    if (!ensurePrivate(ctx)) return;
+
+    const messageText = ctx.message.text.split(' ').slice(1).join(' ');
+    if (!messageText) {
+        return ctx.reply('<blockquote>⚠️ Usage: <code>/broadcast Votre message ici...</code></blockquote>', { 
+            parse_mode: 'HTML',
+            reply_to_message_id: ctx.message?.message_id 
+        });
+    }
+
+    let targetIds = [];
+    try {
+        if (fs.existsSync(usersFilePath)) {
+            targetIds = JSON.parse(fs.readFileSync(usersFilePath, 'utf8'));
+        }
+    } catch (e) {}
+
+    if (targetIds.length === 0) {
+        return ctx.reply('<blockquote>❌ Aucun utilisateur enregistré pour le moment.</blockquote>', { 
+            parse_mode: 'HTML',
+            reply_to_message_id: ctx.message?.message_id 
+        });
+    }
+
+    await ctx.reply(`<blockquote>⏳ Diffusion en cours vers <b>${targetIds.length}</b> utilisateur(s)...</blockquote>`, { 
+        parse_mode: 'HTML' 
+    });
+
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const teleId of targetIds) {
+        try {
+            await bot.telegram.sendMessage(
+                teleId, 
+                `<blockquote>📢 <b>ANNONCE - KAYA BOT</b>\n\n${messageText}</blockquote>`, 
+                { parse_mode: 'HTML' }
+            );
+            successCount++;
+        } catch (error) {
+            failCount++;
+        }
+        await new Promise(r => setTimeout(r, 50)); 
+    }
+
+    await ctx.reply(
+        `<blockquote>✅ <b>Diffusion terminée !</b>\n\n` +
+        `📤 Envoyés avec succès : <b>${successCount}</b>\n` +
+        `❌ Échecs (utilisateurs ayant bloqué le bot) : <b>${failCount}</b></blockquote>`, 
+        { parse_mode: 'HTML' }
+    );
+});
+
+bot.launch().then(() => console.log('▉ KAYA BOT is online with active token & full commands.'));
