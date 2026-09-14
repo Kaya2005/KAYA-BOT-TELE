@@ -204,7 +204,7 @@ bot.start(async (ctx) => {
             reply_to_message_id: ctx.message?.message_id,
             reply_markup: {
                 inline_keyboard: [
-                    [{ text: '🔒 Groupe Privé', url: PRIVATE_GROUP_LINK }],
+                    [{ text: '𝚉𝙾𝙽𝙴 〽️𝙲𝙷𝙰𝚃', url: PRIVATE_GROUP_LINK }],
                     [
                         { text: '🇫🇷 FR', callback_data: 'setlang_fr' },
                         { text: '🇬🇧 EN', callback_data: 'setlang_en' }
@@ -260,7 +260,7 @@ bot.action('start_bot', async (ctx) => {
         parse_mode: 'HTML',
         reply_markup: {
             inline_keyboard: [
-                [{ text: '🔒 Rejoindre le Groupe Privé', url: PRIVATE_GROUP_LINK }]
+                [{ text: '𝚉𝙾𝙽𝙴 〽️𝙲𝙷𝙰𝚃', url: PRIVATE_GROUP_LINK }]
             ]
         }
     }).catch(async () => {
@@ -336,9 +336,9 @@ bot.command('connect', async (ctx) => {
             reply_to_message_id: ctx.message?.message_id,
             reply_markup: {
                 inline_keyboard: [
-                    [{ text: '💬 KAYA TECH | CHAT', url: 'https://t.me/+nctwjD43hDk0ODBk' }],
-                    [{ text: '📢 KAYA TECH | CHANNEL', url: 'https://t.me/kayatech2' }],
-                    [{ text: '🛠️ SHELD SOCIETY🪚', url: 'https://t.me/society243' }],
+                    [{ text: '𝙺𝙰𝚈𝙰 𝙱𝙾𝚃 | 𝙲𝙷𝙰𝚃', url: 'https://t.me/+nctwjD43hDk0ODBk' }],
+                    [{ text: '𝙺𝙰𝚈𝙰 𝙱𝙾𝚃 | 𝙲𝙰𝙽𝙰𝙻', url: 'https://t.me/kayatech2' }],
+                    [{ text: '𝙎𝙊𝙐𝙇 𝙎𝙊𝘾𝙄𝙀𝙏𝙔🪶', url: 'https://t.me/society243' }],
                     [{ text: '✅ I Have Joined', callback_data: 'check_join' }]
                 ]
             }
