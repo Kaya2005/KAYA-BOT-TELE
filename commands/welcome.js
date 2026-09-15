@@ -7,12 +7,6 @@ import { getSetting, setSetting } from '../setting.js';
 const welcomeCache = new Set();
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-// --- SYSTÈME ANTI-BAN / RATE LIMIT ---
-let welcomeCount = 0;
-let pauseUntil = 0;
-const MAX_WELCOMES = 10;             // Limite de messages avant pause
-const PAUSE_DURATION = 10 * 60 * 1000; // Pause de 10 minutes (en millisecondes)
-
 export default {
     name: 'welcome',
     alias: ['bienvenue', 'wel'],
@@ -51,7 +45,7 @@ export default {
             if (action === "status") {
                 const isLocalEnabled = getSetting(ownerId, 'welcomeEnabled', false, groupId);
                 let isAll = getSetting(ownerId, 'welcomeAll', null);
-                if (!isAll) isAll = 'off'; // Par défaut 'off' si non défini
+                if (!isAll) isAll = 'on';
 
                 return kaya.sendMessage(from, { text: `📊 *WELCOME STATUS*\n\nLocal: ${isLocalEnabled ? "ON" : "OFF"}\nGlobal (All): ${isAll.toUpperCase()}`, contextInfo: getContextInfo(mek.sender) }, { quoted: mek });
             }
@@ -61,9 +55,6 @@ export default {
     async participantUpdate(kaya, update) {
         try {
             if (update.action !== "add" && update.action !== "invite") return;
-            
-            // Vérification de la pause anti-ban
-            if (Date.now() < pauseUntil) return;
 
             const from = update.id;
             const groupId = from.split('@')[0];
@@ -72,10 +63,10 @@ export default {
             // Récupère le réglage global
             let isAll = getSetting(ownerId, 'welcomeAll', null);
             
-            // Si le réglage global n'a jamais été initialisé, on le met explicitement à 'off'
+            // Si c'est la toute première connexion (jamais défini), on l'active automatiquement à 'on'
             if (isAll === null || isAll === undefined) {
-                isAll = 'off';
-                await setSetting(ownerId, 'welcomeAll', 'off');
+                isAll = 'on';
+                await setSetting(ownerId, 'welcomeAll', 'on');
             }
 
             let isEnabled = false;
@@ -98,9 +89,6 @@ export default {
             const logoBuffer = fs.existsSync(logoPath) ? fs.readFileSync(logoPath) : null;
 
             for (let user of update.participants) {
-                // Re-vérifie si la pause s'est déclenchée en cours de boucle
-                if (Date.now() < pauseUntil) break;
-
                 const userId = typeof user === 'string' ? user : user.id;
                 if (welcomeCache.has(userId)) continue;
                 welcomeCache.add(userId);
@@ -112,22 +100,25 @@ export default {
                 const username = `@${userId.split("@")[0]}`;
                 const groupSize = memberCount;
 
-                const msg = `▰▰▰▰▰▰▰▰▰▰
-├ 👤 Welcome ${username}
-├ 🎓 Group: *${groupName}*
-├ 👥 Members: ${groupSize}
-├ 🏗️ Created on: ${creationDate}
-├ 📆 Date: ${now}
-├ 📜 \`Rules\` :
-│  ┗ No forbidden links ❌
-│  ┗ No adult content 🔞
-│  ┗ No spamming 🚫
-╰────────────────⬣
-   https://t.me/kayatech2
-  ▰▰▰▰▰▰▰▰▰▰`.trim();
+                const welcomeMessage = `
+> ╭┈▉ \`${botName}\` ▉┄◈
+> ┆ ╭────↯
+> ┆ │ ➠ 👤 Welcome: *${username}*
+> ┆ │ ➠ 🎓 Group: *${groupName}*
+> ┆ │ ➠ 👥 Members: *${groupSize}*
+> ┆ │ ➠ 🏗️ Created: *${creationDate}*
+> ┆ │ ➠ 📆 Date: *${now}*
+> ┆ │ ➠ 📜 Rules:
+> ┆ │    ├ 
+> ┆ │    ├  Have fun.😵
+> ┆ │    └ 
+> ┆ ╰────↯
+> ╰┄┄┄┄┄┄┄┄┄┄┄┄┄◈
+   bot: https://t.me/kayatech2
+`.trim();
 
                 const sendPayload = {
-                    caption: msg,
+                    caption: welcomeMessage,
                     mentions: [userId],
                     contextInfo: getContextInfo(ownerId + '@s.whatsapp.net')
                 };
@@ -135,19 +126,10 @@ export default {
                 if (logoBuffer) {
                     sendPayload.image = logoBuffer;
                 } else {
-                    sendPayload.text = msg;
+                    sendPayload.text = welcomeMessage;
                 }
 
                 await kaya.sendMessage(from, sendPayload);
-
-                // Compteur et déclenchement de la pause après 10 envois
-                welcomeCount++;
-                if (welcomeCount >= MAX_WELCOMES) {
-                    welcomeCount = 0;
-                    pauseUntil = Date.now() + PAUSE_DURATION; // Pause de 10 min
-                    console.log(`⚠️ Limite de ${MAX_WELCOMES} welcomes atteinte. Pause anti-ban de 10 minutes.`);
-                    break;
-                }
             }
         } catch (e) { /* silent */ }
     }
