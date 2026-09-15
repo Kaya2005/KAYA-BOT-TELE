@@ -15,9 +15,9 @@ function cleanId(id) {
 }
 
 /**
- * Génère le chemin du fichier de configuration.
+ * Génère le chemin unique du fichier de configuration de l'owner.
  */
-function getSettingsPath(ownerId, groupId = null, createIfMissing = false) {
+function getSettingsPath(ownerId, createIfMissing = false) {
     const cleanOwnerId = cleanId(ownerId);
     
     // 🛡️ Sécurité : Si l'ID est vide, on empêche l'écriture dans la racine
@@ -25,13 +25,8 @@ function getSettingsPath(ownerId, groupId = null, createIfMissing = false) {
         return null;
     }
 
-    let baseDir;
-    if (groupId) {
-        const cleanGroupId = cleanId(groupId);
-        baseDir = path.join('/home/container/Kaya-MD', "userall", cleanOwnerId, cleanGroupId);
-    } else {
-        baseDir = path.join('/home/container/Kaya-MD', "userall", cleanOwnerId);
-    }
+    // Le chemin pointe directement vers : /home/container/Kaya-MD/userall/NUMERO_OWNER/settings.json
+    const baseDir = path.join('/home/container/Kaya-MD', "userall", cleanOwnerId);
     
     if (createIfMissing && !fs.existsSync(baseDir)) {
         fs.mkdirSync(baseDir, { recursive: true });
@@ -47,12 +42,12 @@ export function getSetting(ownerId, key, defaultValue = false, groupId = null) {
     const cleanOwnerId = cleanId(ownerId);
     if (!cleanOwnerId) return defaultValue;
 
-    const cleanGroupId = groupId ? cleanId(groupId) : null;
-    const cacheKey = cleanGroupId ? `${cleanOwnerId}:${cleanGroupId}` : cleanOwnerId;
+    // On utilise uniquement l'ownerId comme clé de cache, peu importe le groupId passé en paramètre
+    const cacheKey = cleanOwnerId;
     
     if (!cache.has(cacheKey)) {
         try {
-            const filePath = getSettingsPath(ownerId, groupId, false);
+            const filePath = getSettingsPath(ownerId, false);
             if (filePath && fs.existsSync(filePath)) {
                 const data = JSON.parse(fs.readFileSync(filePath, "utf8") || "{}");
                 cache.set(cacheKey, data);
@@ -77,11 +72,10 @@ export async function setSetting(ownerId, key, value, groupId = null) {
     if (!cleanOwnerId) return;
 
     try {
-        const cleanGroupId = groupId ? cleanId(groupId) : null;
-        const cacheKey = cleanGroupId ? `${cleanOwnerId}:${cleanGroupId}` : cleanOwnerId;
+        const cacheKey = cleanOwnerId;
         
         if (!cache.has(cacheKey)) {
-            getSetting(ownerId, key, false, groupId);
+            getSetting(ownerId, key, false);
         }
 
         const settings = cache.get(cacheKey) || {};
@@ -89,7 +83,7 @@ export async function setSetting(ownerId, key, value, groupId = null) {
         
         cache.set(cacheKey, settings);
         
-        const filePath = getSettingsPath(ownerId, groupId, true); 
+        const filePath = getSettingsPath(ownerId, true); 
         if (filePath) {
             await writeFile(filePath, JSON.stringify(settings, null, 2));
         }
