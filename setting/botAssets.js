@@ -7,7 +7,7 @@ import { getSetting } from '../setting.js';
 export const BOT_VERSION = '1';
 export const BOT_SLOGAN = ' `『by ƘƛƳƛ ƁƠƬ』` ';
 
-const defaultGlobalImage = 'https://files.catbox.moe/lo0p98.png';
+const defaultGlobalImage = 'https://files.catbox.moe/go7kyn.png';
 export const DEFAULT_BOT_NAME = 'ƘƛƳƛ ƁƠƬ';
 
 const settingDir = path.join(process.cwd(), 'setting');
