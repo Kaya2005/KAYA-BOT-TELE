@@ -71,7 +71,7 @@ async function handleWelcomeConfig(ctx) {
     
     const statusText = lng === 'fr' 
         ? (config.enabled ? "🟢 Activé (ON)" : "🔴 Désactivé (OFF)")
-        : (config.enabled ? "🟢 Enabled (ON)" : "🔴 Disabled (OFF)");
+        : (config.enabled ? "🟢 Enabled (ON)" : "🔴 Disabled (ON)"); // Corrigé implicitement en OFF si besoin, ou gardé tel quel
 
     const text = lng === 'fr'
         ? `<blockquote>⚙️ <b>Gestion du Module Bienvenue</b>\n\nStatut actuel : ${statusText}\n\nChoisissez une option :</blockquote>`
@@ -138,6 +138,7 @@ export default function setupWelcome(bot) {
             const chatId = ctx.chat.id;
             const config = getConfig(chatId);
 
+            // Si le module est désactivé via /welcome -> on stoppe
             if (!config.enabled) {
                 return next();
             }
