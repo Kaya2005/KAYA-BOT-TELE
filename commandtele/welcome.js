@@ -159,9 +159,8 @@ export default function setupWelcome(bot) {
                 const time = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Lubumbashi' });
                 const date = now.toLocaleDateString('en-GB', { timeZone: 'Africa/Lubumbashi' });
 
-                const welcomeText = `<blockquote>🎉 Welcome <b>${fullName}</b> to "<b>${groupName}</b>" !
-
-▰▰▰▰▰▰▰▰▰▰
+                const welcomeText = `<blockquote>🎉 Welcome <b>${fullName}</b> to <b>${groupName}</b> !
+▰▰▰▰▰▰▰▰
 ➠ ᴛɪᴍᴇ : ${time}
 ➠ ᴅᴀᴛᴇ : ${date}
 ╭▰▰▰▰▰▰▰◈
