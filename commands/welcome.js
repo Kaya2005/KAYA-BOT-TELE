@@ -49,7 +49,7 @@ export default {
 
                 return kaya.sendMessage(from, { text: `📊 *WELCOME STATUS*\n\nLocal: ${isLocalEnabled ? "ON" : "OFF"}\nGlobal (All): ${isAll.toUpperCase()}`, contextInfo: getContextInfo(mek.sender) }, { quoted: mek });
             }
-        } catch (e) { console.error('❌ welcome.js error:', e); }
+        } catch (e) { /* silent */ }
     },
 
     async participantUpdate(kaya, update) {
@@ -60,10 +60,8 @@ export default {
             const groupId = from.split('@')[0];
             const ownerId = kaya.user.id.split(':')[0];
             
-            // Récupère le réglage global
             let isAll = getSetting(ownerId, 'welcomeAll', null);
             
-            // Si c'est la toute première connexion (jamais défini), on l'active automatiquement à 'on'
             if (isAll === null || isAll === undefined) {
                 isAll = 'on';
                 await setSetting(ownerId, 'welcomeAll', 'on');
@@ -82,8 +80,11 @@ export default {
             const metadata = await kaya.groupMetadata(from).catch(() => ({}));
             const groupName = metadata.subject || "this group";
             const memberCount = metadata.participants ? metadata.participants.length : 0;
-            const creationDate = metadata.creation ? new Date(metadata.creation * 1000).toLocaleDateString() : "Unknown";
-            const now = new Date().toLocaleDateString();
+            const creationDate = metadata.creation ? new Date(metadata.creation * 1000).toLocaleDateString('en-GB', { timeZone: 'Africa/Lubumbashi' }) : "Unknown";
+            
+            const nowObj = new Date();
+            const time = nowObj.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Lubumbashi' });
+            const date = nowObj.toLocaleDateString('en-GB', { timeZone: 'Africa/Lubumbashi' });
 
             const logoPath = path.join(process.cwd(), 'setting', 'logo.png');
             const logoBuffer = fs.existsSync(logoPath) ? fs.readFileSync(logoPath) : null;
@@ -97,25 +98,20 @@ export default {
                 const randomDelay = Math.floor(Math.random() * 1000) + 4000;
                 await delay(randomDelay);
 
-                const username = `@${userId.split("@")[0]}`;
-                const groupSize = memberCount;
+                const userTag = `@${userId.split("@")[0]}`;
+                
+                // Récupération sécurisée du nom d'affichage du membre depuis les métadonnées du groupe si dispo
+                const participantObj = metadata.participants?.find(p => p.id === userId);
+                const username = participantObj?.name || participantObj?.notify || userId.split('@')[0];
 
-                const welcomeMessage = `
-> ╭┈▉ \`${botName}\` ▉┄◈
-> ┆ ╭────↯
-> ┆ │ ➠ 👤 Welcome: *${username}*
-> ┆ │ ➠ 🎓 Group: *${groupName}*
-> ┆ │ ➠ 👥 Members: *${groupSize}*
-> ┆ │ ➠ 🏗️ Created: *${creationDate}*
-> ┆ │ ➠ 📆 Date: *${now}*
-> ┆ │ ➠ 📜 Rules:
-> ┆ │    ├ 
-> ┆ │    ├  Have fun.😵
-> ┆ │    └ 
-> ┆ ╰────↯
-> ╰┄┄┄┄┄┄┄┄┄┄┄┄┄◈
-   bot: https://t.me/kayatech2
-`.trim();
+                const welcomeMessage = `🎉 Welcome ${userTag} to "<b>${groupName}</b>" !
+▰▰▰▰▰▰▰▰▰▰
+➠ ᴛɪᴍᴇ : ${time}
+➠ ᴄʀᴇᴀᴛɪᴏɴ : ${creationDate}
+➠ ᴍᴇᴍʙᴇʀs : ${memberCount}
+╭▰▰▰▰▰▰▰◈
+┆❏ 🙋 ᴜsᴇʀɴᴀᴍᴇ : ${username}
+╰▰▰▰▰▰▰▰◈`.trim();
 
                 const sendPayload = {
                     caption: welcomeMessage,
