@@ -1,4 +1,3 @@
-// setting.js
 import fs from "fs";
 import path from "path";
 import { writeFile } from "fs/promises";
@@ -7,88 +6,227 @@ import { writeFile } from "fs/promises";
 const cache = new Map();
 
 /**
- * Extrait un ID numérique propre (ex: "243xxxx:12@s.whatsapp.net" -> "243xxxx")
+ * Nettoie un ID
  */
 function cleanId(id) {
     if (!id) return '';
-    return String(id).split('@')[0].split(':')[0].replace(/[^0-9]/g, '');
+
+    return String(id)
+        .split('@')[0]
+        .split(':')[0]
+        .replace(/[^0-9]/g, '');
 }
 
 /**
- * Génère le chemin unique du fichier de configuration de l'owner.
+ * Chemin du fichier settings.json
  */
 function getSettingsPath(ownerId, createIfMissing = false) {
     const cleanOwnerId = cleanId(ownerId);
-    
-    // 🛡️ Sécurité : Si l'ID est vide, on empêche l'écriture dans la racine
+
     if (!cleanOwnerId) {
         return null;
     }
 
-    // Le chemin pointe directement vers : /home/container/Kaya-MD/userall/NUMERO_OWNER/settings.json
-    const baseDir = path.join('/home/container/Kaya-MD', "userall", cleanOwnerId);
-    
-    if (createIfMissing && !fs.existsSync(baseDir)) {
-        fs.mkdirSync(baseDir, { recursive: true });
+    const baseDir = path.join(
+        '/home/container/Kaya-MD',
+        'userall',
+        cleanOwnerId
+    );
+
+    if (
+        createIfMissing &&
+        !fs.existsSync(baseDir)
+    ) {
+        fs.mkdirSync(baseDir, {
+            recursive: true
+        });
     }
-    
-    return path.join(baseDir, "settings.json");
+
+    return path.join(
+        baseDir,
+        'settings.json'
+    );
+}
+
+/**
+ * Charge les paramètres de l'owner
+ */
+function loadSettings(ownerId) {
+    const cleanOwnerId = cleanId(ownerId);
+
+    if (!cleanOwnerId) {
+        return {};
+    }
+
+    if (cache.has(cleanOwnerId)) {
+        return cache.get(cleanOwnerId);
+    }
+
+    try {
+        const filePath = getSettingsPath(
+            ownerId,
+            false
+        );
+
+        let settings = {};
+
+        if (
+            filePath &&
+            fs.existsSync(filePath)
+        ) {
+            settings = JSON.parse(
+                fs.readFileSync(
+                    filePath,
+                    'utf8'
+                ) || '{}'
+            );
+        }
+
+        cache.set(
+            cleanOwnerId,
+            settings
+        );
+
+        return settings;
+
+    } catch (e) {
+        console.error(
+            `[SETTING] Erreur lecture ${cleanOwnerId}:`,
+            e
+        );
+
+        const settings = {};
+
+        cache.set(
+            cleanOwnerId,
+            settings
+        );
+
+        return settings;
+    }
 }
 
 /**
  * Récupère un réglage
+ *
+ * Les réglages globaux sont stockés directement :
+ *
+ * welcomeAll: "on"
+ *
+ * Les réglages de groupe sont stockés ainsi :
+ *
+ * welcomeEnabled: {
+ *     "120363xxxx": true,
+ *     "120364xxxx": false
+ * }
  */
-export function getSetting(ownerId, key, defaultValue = false, groupId = null) {
-    const cleanOwnerId = cleanId(ownerId);
-    if (!cleanOwnerId) return defaultValue;
+export function getSetting(
+    ownerId,
+    key,
+    defaultValue = false,
+    groupId = null
+) {
+    const settings = loadSettings(ownerId);
 
-    // On utilise uniquement l'ownerId comme clé de cache, peu importe le groupId passé en paramètre
-    const cacheKey = cleanOwnerId;
-    
-    if (!cache.has(cacheKey)) {
-        try {
-            const filePath = getSettingsPath(ownerId, false);
-            if (filePath && fs.existsSync(filePath)) {
-                const data = JSON.parse(fs.readFileSync(filePath, "utf8") || "{}");
-                cache.set(cacheKey, data);
-            } else {
-                cache.set(cacheKey, {});
-            }
-        } catch (e) {
-            console.error(`[SETTING] Erreur lecture ${cacheKey}:`, e);
-            return defaultValue;
+    /*
+     * Réglage spécifique à un groupe
+     */
+    if (groupId !== null) {
+        const cleanGroupId = cleanId(groupId);
+
+        if (
+            settings[key] &&
+            typeof settings[key] === 'object' &&
+            !Array.isArray(settings[key])
+        ) {
+            return Object.prototype.hasOwnProperty.call(
+                settings[key],
+                cleanGroupId
+            )
+                ? settings[key][cleanGroupId]
+                : defaultValue;
         }
+
+        return defaultValue;
     }
 
-    const settings = cache.get(cacheKey);
-    return settings && settings.hasOwnProperty(key) ? settings[key] : defaultValue;
+    /*
+     * Réglage global
+     */
+    return Object.prototype.hasOwnProperty.call(
+        settings,
+        key
+    )
+        ? settings[key]
+        : defaultValue;
 }
 
 /**
- * Enregistre un réglage (Asynchrone)
+ * Enregistre un réglage
  */
-export async function setSetting(ownerId, key, value, groupId = null) {
+export async function setSetting(
+    ownerId,
+    key,
+    value,
+    groupId = null
+) {
     const cleanOwnerId = cleanId(ownerId);
-    if (!cleanOwnerId) return;
+
+    if (!cleanOwnerId) {
+        return;
+    }
 
     try {
-        const cacheKey = cleanOwnerId;
-        
-        if (!cache.has(cacheKey)) {
-            getSetting(ownerId, key, false);
+        const settings = loadSettings(ownerId);
+
+        /*
+         * Réglage spécifique à un groupe
+         */
+        if (groupId !== null) {
+            const cleanGroupId = cleanId(groupId);
+
+            if (
+                !settings[key] ||
+                typeof settings[key] !== 'object' ||
+                Array.isArray(settings[key])
+            ) {
+                settings[key] = {};
+            }
+
+            settings[key][cleanGroupId] = value;
+
+        } else {
+            /*
+             * Réglage global
+             */
+            settings[key] = value;
         }
 
-        const settings = cache.get(cacheKey) || {};
-        settings[key] = value;
-        
-        cache.set(cacheKey, settings);
-        
-        const filePath = getSettingsPath(ownerId, true); 
+        cache.set(
+            cleanOwnerId,
+            settings
+        );
+
+        const filePath = getSettingsPath(
+            ownerId,
+            true
+        );
+
         if (filePath) {
-            await writeFile(filePath, JSON.stringify(settings, null, 2));
+            await writeFile(
+                filePath,
+                JSON.stringify(
+                    settings,
+                    null,
+                    2
+                )
+            );
         }
-        
+
     } catch (e) {
-        console.error(`[SETTING] Erreur sauvegarde ${ownerId}:`, e);
+        console.error(
+            `[SETTING] Erreur sauvegarde ${cleanOwnerId}:`,
+            e
+        );
     }
 }
