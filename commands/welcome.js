@@ -98,19 +98,18 @@ export default {
                 const randomDelay = Math.floor(Math.random() * 1000) + 4000;
                 await delay(randomDelay);
 
-                const userTag = `@${userId.split("@")[0]}`;
-                
-                // Récupération sécurisée du nom d'affichage du membre depuis les métadonnées du groupe si dispo
-                const participantObj = metadata.participants?.find(p => p.id === userId);
-                const username = participantObj?.name || participantObj?.notify || userId.split('@')[0];
+                const userNumber = userId.split("@")[0];
+                const userTag = `@${userNumber}`;
 
-                const welcomeMessage = `🎉 Welcome ${userTag} to "<b>${groupName}</b>" !
+                const welcomeMessage = `🎉 Welcome to "${groupName}" !
+
 ▰▰▰▰▰▰▰▰▰▰
 ➠ ᴛɪᴍᴇ : ${time}
+➠ ᴅᴀᴛᴇ : ${date}
 ➠ ᴄʀᴇᴀᴛɪᴏɴ : ${creationDate}
 ➠ ᴍᴇᴍʙᴇʀs : ${memberCount}
 ╭▰▰▰▰▰▰▰◈
-┆❏ 🙋 ᴜsᴇʀɴᴀᴍᴇ : ${username}
+┆❏ 🙋 ᴜsᴇʀɴᴀᴍᴇ : ${userTag}
 ╰▰▰▰▰▰▰▰◈`.trim();
 
                 const sendPayload = {
