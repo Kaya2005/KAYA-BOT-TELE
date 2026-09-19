@@ -1,5 +1,5 @@
 // ==========================================
-// FILE : commandtele/welcome.js (Corrigé & Fonctionnel)
+// FILE : commandtele/welcome.js (Corrigé, Fonctionnel & Sans Logs)
 // ==========================================
 
 import fs from 'fs';
@@ -131,27 +131,23 @@ export default function setupWelcome(bot) {
 
     bot.on('new_chat_members', async (ctx, next) => {
         try {
-            console.log("📥 Événement new_chat_members détecté dans le chat:", ctx.chat?.id);
-
             if (!ctx.message || !ctx.message.new_chat_members) {
                 return next();
             }
 
             const chatId = ctx.chat.id;
             const config = getConfig(chatId);
-            console.log("⚙️ Configuration welcome pour ce chat:", config);
 
             if (!config.enabled) {
-                console.log("⚠️ Le module welcome est désactivé pour ce groupe.");
                 return next();
             }
 
             const botId = ctx.botInfo?.id;
             const newMembers = ctx.message.new_chat_members;
+            const groupName = ctx.chat.title || "ce groupe";
 
             for (const member of newMembers) {
                 if (botId && member.id === botId) {
-                    console.log("🤖 Le bot vient d'être ajouté au groupe.");
                     continue;
                 }
 
@@ -163,12 +159,11 @@ export default function setupWelcome(bot) {
                 const time = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Lubumbashi' });
                 const date = now.toLocaleDateString('en-GB', { timeZone: 'Africa/Lubumbashi' });
 
-                const welcomeText = `<blockquote>▰▰▰▰▰▰▰▰▰▰
-➠ ᴜsᴇʀ : ${fullName}
+                const welcomeText = `<blockquote>🎉 Welcome <b>${fullName}</b> to "<b>${groupName}</b>" !
+
+▰▰▰▰▰▰▰▰▰▰
 ➠ ᴛɪᴍᴇ : ${time}
 ➠ ᴅᴀᴛᴇ : ${date}
-
-    🇼​🇪​🇱​🇨​🇴​🇲​🇪​ 
 ╭▰▰▰▰▰▰▰◈
 ┆❏ 🙋 ᴜsᴇʀɴᴀᴍᴇ : ${username}
 ┆❏ 🆔 ɪᴅ : ${id}
@@ -181,9 +176,7 @@ export default function setupWelcome(bot) {
                         const photos = profilePhotos.photos[0];
                         photoFileId = photos[photos.length - 1].file_id;
                     }
-                } catch (photoErr) {
-                    console.log("ℹ️ Impossible de récupérer la photo de profil :", photoErr.message);
-                }
+                } catch (photoErr) {}
 
                 const keyboardMarkup = {
                     inline_keyboard: [[{ text: '𝙺𝙰𝚈𝙰 𝙱𝙾𝚃 | 𝙲𝙰𝙽𝙰𝙻', url: 'https://t.me/kayatech2' }]]
@@ -196,28 +189,24 @@ export default function setupWelcome(bot) {
                             parse_mode: 'HTML', 
                             reply_markup: keyboardMarkup 
                         });
-                        console.log("✅ Message de bienvenue avec photo envoyé avec succès !");
                     } else {
                         await ctx.reply(welcomeText, { 
                             parse_mode: 'HTML', 
                             reply_markup: keyboardMarkup 
                         });
-                        console.log("✅ Message de bienvenue (texte seul) envoyé avec succès !");
                     }
                 } catch (sendErr) {
-                    console.error("❌ Erreur lors de l'envoi du message de bienvenue :", sendErr.message);
                     if (photoFileId) {
                         await ctx.reply(welcomeText, { 
                             parse_mode: 'HTML', 
                             reply_markup: keyboardMarkup 
-                        }).catch(e => console.error("❌ Erreur critique fallback :", e.message));
+                        }).catch(e => {});
                     }
                 }
             }
 
             return next();
         } catch (err) {
-            console.error("❌ Erreur globale new_chat_members :", err);
             return next();
         }
     });
