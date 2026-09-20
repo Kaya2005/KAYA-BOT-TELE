@@ -1,5 +1,5 @@
 // ==========================================
-// FICHIER : bot.js (Intégration complète rétablie avec mention automatique)
+// FICHIER : bot.js (Intégration complète rétablie - Sans groupe privé sur /connect)
 // ==========================================
 import './config.js'; 
 import fs from 'fs';
@@ -87,8 +87,7 @@ const ensurePrivate = (ctx) => {
             reply_to_message_id: ctx.message?.message_id,
             reply_markup: {
                 inline_keyboard: [
-                    [{ text: '💬 Open Bot in Private', url: `https://t.me/${botUsername}` }],
-                    [{ text: '🔒 Groupe Privé', url: PRIVATE_GROUP_LINK }]
+                    [{ text: '💬 Open Bot in Private', url: `https://t.me/${botUsername}` }]
                 ]
             }
         });
@@ -126,20 +125,19 @@ const getMenu = (userName, isAdmin, chatId) => {
     const time = now.toLocaleTimeString('en-GB', { timeZone: 'Africa/Lubumbashi', hour: '2-digit', minute:'2-digit' });
     const date = now.toLocaleDateString('en-GB', { timeZone: 'Africa/Lubumbashi', day: '2-digit', month: '2-digit', year: 'numeric' });
     
-    let menu = `<blockquote>▰▰▰▰▰▰▰▰▰▰
+    let menu = `<blockquote>
+ ▰▰▰▰▰▰▰▰▰
 ➠ User   : <b>${userName}</b>
 ➠ Lang   : <b>${lng.toUpperCase()}</b>
 ➠ Time   : <b>${time}</b>
 ➠ Date   : <b>${date}</b>
 ______________________
-
-> ╢ WHATSAPP CONNECTION ♰
+𝚆𝙷𝙰𝚃𝚂𝙰𝙿𝙿 𝙲𝙾𝙽𝙽𝙴𝙲𝚃
 ╭▰▰▰▰▰▰▰◈
 ┆❏ /connect
 ┆❏ /ping
 ╰▰▰▰▰▰▰▰◈
-
-> ╢ TELEGRAM GROUPS ♰
+𝚃𝙴𝙻𝙴𝙶𝚁𝙰𝙼 𝙶𝚁𝙾𝚄𝙿𝚂
 ╭▰▰▰▰▰▰▰◈
 ┆❏ /group
 ┆❏ /groupmenu
