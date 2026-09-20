@@ -1,5 +1,5 @@
 // ==========================================
-// FICHIER : bot.js (Intégration complète rétablie - Sans groupe privé sur /connect)
+// FICHIER : bot.js (Mise à jour : Suppression Zone Chat, réduction description & /connect -> pair)
 // ==========================================
 import './config.js'; 
 import fs from 'fs';
@@ -22,12 +22,11 @@ const adminFilePath = path.join(__dirname, './database/admintele.json');
 const usersFilePath = path.join(__dirname, './database/users.json');
 const pairingFolder = path.join(__dirname, './richstore/pairing');
 const REQUIRED_CHANNELS = ['-1004453499318', '@kayatech2', '@society243'];
-const PRIVATE_GROUP_LINK = 'https://t.me/+WLdroZnDmstjMWNk';
 
 // ================= DICTIONNAIRE DE LANGUES =================
 const langData = {
     en: {
-        welcome: "Welcome! Choose an option below to connect your WhatsApp, add the bot to your group, or select your language.",
+        welcome: "Welcome! Connect your WhatsApp or add the bot to your group.",
         btnStart: "🚀 Start Menu (WhatsApp)",
         btnGroup: "➕ Add Bot to Group",
         btnLang: "🌐 Language: English 🇬🇧",
@@ -36,7 +35,7 @@ const langData = {
         adminOnly: "❌ Only group administrators can change the bot's language.",
     },
     fr: {
-        welcome: "Bienvenue ! Choisissez une option ci-dessous pour connecter votre WhatsApp, ajouter le bot à votre groupe ou choisir votre langue.",
+        welcome: "Bienvenue ! Connectez votre WhatsApp ou ajoutez le bot à votre groupe.",
         btnStart: "🚀 Menu Principal (WhatsApp)",
         btnGroup: "➕ Ajouter le bot au groupe",
         btnLang: "🌐 Langue : Français 🇫🇷",
@@ -134,7 +133,7 @@ const getMenu = (userName, isAdmin, chatId) => {
 ______________________
 𝚆𝙷𝙰𝚃𝚂𝙰𝙿𝙿 𝙲𝙾𝙽𝙽𝙴𝙲𝚃
 ╭▰▰▰▰▰▰▰◈
-┆❏ /connect
+┆❏ /pair
 ┆❏ /ping
 ╰▰▰▰▰▰▰▰◈
 𝚃𝙴𝙻𝙴𝙶𝚁𝙰𝙼 𝙶𝚁𝙾𝚄𝙿𝚂
@@ -153,13 +152,11 @@ ______________________
 // 🚀 Initialisation
 const bot = new Telegraf(BOT_TOKEN);
 
-// Middleware global pour enregistrer l'utilisateur et injecter la fonction de mention `ctx.userMention()`
 bot.use((ctx, next) => {
     if (ctx.from) {
         saveUser(ctx.from.id);
     }
     
-    // Fonction helper de mention disponible directement via ctx.userMention()
     ctx.userMention = () => {
         const userId = ctx.from?.id;
         const userName = ctx.from?.first_name || "User";
@@ -195,7 +192,6 @@ bot.start(async (ctx) => {
             reply_markup: { 
                 inline_keyboard: [
                     [{ text: t.btnStart, callback_data: 'start_bot' }],
-                    [{ text: '𝚉𝙾𝙽𝙴 〽️𝙲𝙷𝙰𝚃', url: PRIVATE_GROUP_LINK }],
                     [{ text: t.btnGroup, callback_data: 'info_group' }],
                     [
                         { text: '🇫🇷 Français', callback_data: 'setlang_fr' },
@@ -211,7 +207,6 @@ bot.start(async (ctx) => {
             reply_to_message_id: ctx.message?.message_id,
             reply_markup: {
                 inline_keyboard: [
-                    [{ text: '𝚉𝙾𝙽𝙴 〽️𝙲𝙷𝙰𝚃', url: PRIVATE_GROUP_LINK }],
                     [
                         { text: '🇫🇷 FR', callback_data: 'setlang_fr' },
                         { text: '🇬🇧 EN', callback_data: 'setlang_en' }
@@ -248,7 +243,6 @@ bot.action(/^setlang_(fr|en)$/, async (ctx) => {
                 reply_markup: {
                     inline_keyboard: [
                         [{ text: t.btnStart, callback_data: 'start_bot' }],
-                        [{ text: '𝚉𝙾𝙽𝙴 〽️𝙲𝙷𝙰𝚃', url: PRIVATE_GROUP_LINK }],
                         [{ text: t.btnGroup, callback_data: 'info_group' }],
                         [
                             { text: '🇫🇷 Français', callback_data: 'setlang_fr' },
@@ -265,19 +259,11 @@ bot.action('start_bot', async (ctx) => {
     const chatId = ctx.chat.id;
     await ctx.editMessageCaption(getMenu(ctx.from.first_name, isOwner(ctx), chatId), { 
         parse_mode: 'HTML',
-        reply_markup: {
-            inline_keyboard: [
-                [{ text: '𝚉𝙾𝙽𝙴 〽️𝙲𝙷𝙰𝚃', url: PRIVATE_GROUP_LINK }]
-            ]
-        }
+        reply_markup: { inline_keyboard: [] }
     }).catch(async () => {
         await ctx.reply(getMenu(ctx.from.first_name, isOwner(ctx), chatId), { 
             parse_mode: 'HTML',
-            reply_markup: {
-                inline_keyboard: [
-                    [{ text: '𝚉𝙾𝙽𝙴 〽️𝙲𝙷𝙰𝚃', url: PRIVATE_GROUP_LINK }]
-                ]
-            }
+            reply_markup: { inline_keyboard: [] }
         });
     });
 });
@@ -295,8 +281,7 @@ bot.action('info_group', async (ctx) => {
         reply_to_message_id: ctx.message?.message_id,
         reply_markup: {
             inline_keyboard: [
-                [{ text: '➕ Add to my Group', url: `https://t.me/${botUsername}?startgroup=true` }],
-                [{ text: '𝚉𝙾𝙽𝙴 〽️𝙲𝙷𝙰𝚃', url: PRIVATE_GROUP_LINK }]
+                [{ text: '➕ Add to my Group', url: `https://t.me/${botUsername}?startgroup=true` }]
             ]
         }
     });
@@ -318,16 +303,11 @@ bot.command('ping', async (ctx) => {
     const mention = ctx.userMention();
     ctx.reply(`<blockquote>▉ 𝐊𝐀𝐘𝐀 𝐁𝐎𝐓 ▉\n\n👤 User : ${mention}\n✅ <b>Status:</b> Online / En ligne</blockquote>`, { 
         parse_mode: 'HTML',
-        reply_to_message_id: ctx.message?.message_id,
-        reply_markup: {
-            inline_keyboard: [
-                [{ text: '𝚉𝙾𝙽𝙴 〽️𝙲𝙷𝙰𝚃', url: PRIVATE_GROUP_LINK }]
-            ]
-        }
+        reply_to_message_id: ctx.message?.message_id
     });
 });
 
-bot.command('connect', async (ctx) => {
+bot.command('pair', async (ctx) => {
     if (!ensurePrivate(ctx)) return;
 
     const mention = ctx.userMention();
@@ -347,7 +327,7 @@ bot.command('connect', async (ctx) => {
                 inline_keyboard: [
                     [{ text: '𝙺𝙰𝚈𝙰 𝙱𝙾𝚃 | 𝙲𝙷𝙰𝚃', url: 'https://t.me/+nctwjD43hDk0ODBk' }],
                     [{ text: '𝙺𝙰𝚈𝙰 𝙱𝙾𝚃 | 𝙲𝙰𝙽𝙰𝙻', url: 'https://t.me/kayatech2' }],
-                    [{ text: '𝙎1𝙊𝙐𝙇 𝙎𝙊𝘾𝙄𝙀𝙏𝙔🪶', url: 'https://t.me/society243' }],
+                    [{ text: '𝙎1𝙊𝙐𝙇 𝙎0𝘾𝙄𝙀𝙏𝙔🪶', url: 'https://t.me/society243' }],
                     [{ text: '✅ I Have Joined', callback_data: 'check_join' }]
                 ]
             }
@@ -355,7 +335,7 @@ bot.command('connect', async (ctx) => {
     }
 
     const text = ctx.message.text.split(' ')[1];
-    if (!text) return ctx.reply(`<blockquote>⚠️ ${mention}, Usage: <code>/connect 243xxxxxx</code></blockquote>`, { 
+    if (!text) return ctx.reply(`<blockquote>⚠️ ${mention}, Usage: <code>/pair 243xxxxxx</code></blockquote>`, { 
         parse_mode: 'HTML',
         reply_to_message_id: ctx.message?.message_id 
     });
@@ -397,12 +377,7 @@ bot.command('connect', async (ctx) => {
         const pairingStyle = `<blockquote>▰▰▰▰▰▰▰▰▰▰\n> ╢ PAIRING CODE ♰\n👤 User: ${mention}\n╭▰▰▰▰▰▰▰◈\n┆🔑 Code: <code>${cuObj.code}</code>\n╰▰▰▰▰▰▰▰◈</blockquote>`;
         ctx.reply(pairingStyle, { 
             parse_mode: 'HTML',
-            reply_to_message_id: ctx.message?.message_id,
-            reply_markup: {
-                inline_keyboard: [
-                    [{ text: '𝚉𝙾𝙽𝙴 〽️𝙲𝙷𝙰𝚃', url: PRIVATE_GROUP_LINK }]
-                ]
-            }
+            reply_to_message_id: ctx.message?.message_id
         });
     } else {
         ctx.reply(`<blockquote>❌ ${mention}, Error: Pairing code could not be generated.</blockquote>`, { 
@@ -546,7 +521,7 @@ bot.command('broadcast', async (ctx) => {
         try {
             await bot.telegram.sendMessage(
                 teleId, 
-                `<blockquote>📢 <b>ANNONCE - KAYA BOT</b>\n\n${messageText}</blockquote>`, 
+                `<blockquote>📢 <b>ANNONCE - KAYA BOT</b>\n\n${messageTest}</blockquote>`, 
                 { parse_mode: 'HTML' }
             );
             successCount++;
