@@ -1,5 +1,5 @@
 // ==========================================
-// FICHIER : bot.js (Intégration complète rétablie)
+// FICHIER : bot.js (Intégration complète rétablie avec mention automatique)
 // ==========================================
 import './config.js'; 
 import fs from 'fs';
@@ -155,10 +155,19 @@ ______________________
 // 🚀 Initialisation
 const bot = new Telegraf(BOT_TOKEN);
 
+// Middleware global pour enregistrer l'utilisateur et injecter la fonction de mention `ctx.userMention()`
 bot.use((ctx, next) => {
     if (ctx.from) {
         saveUser(ctx.from.id);
     }
+    
+    // Fonction helper de mention disponible directement via ctx.userMention()
+    ctx.userMention = () => {
+        const userId = ctx.from?.id;
+        const userName = ctx.from?.first_name || "User";
+        return userId ? `<a href="tg://user?id=${userId}">${userName}</a>` : userName;
+    };
+
     return next();
 });
 
@@ -308,7 +317,8 @@ bot.command('group', async (ctx) => {
 });
 
 bot.command('ping', async (ctx) => {
-    ctx.reply('<blockquote>▉ 𝐊𝐀𝐘𝐀 𝐁𝐎𝐓 ▉\n\n✅ <b>Status:</b> Online / En ligne</blockquote>', { 
+    const mention = ctx.userMention();
+    ctx.reply(`<blockquote>▉ 𝐊𝐀𝐘𝐀 𝐁𝐎𝐓 ▉\n\n👤 User : ${mention}\n✅ <b>Status:</b> Online / En ligne</blockquote>`, { 
         parse_mode: 'HTML',
         reply_to_message_id: ctx.message?.message_id,
         reply_markup: {
@@ -322,23 +332,24 @@ bot.command('ping', async (ctx) => {
 bot.command('connect', async (ctx) => {
     if (!ensurePrivate(ctx)) return;
 
+    const mention = ctx.userMention();
     const activeSessions = getActiveSessions();
     if (activeSessions.length >= 60) {
-        return ctx.reply('<blockquote>❌ <b>Error:</b> Server capacity reached (60/60). Please try again later.</blockquote>', { 
+        return ctx.reply(`<blockquote>❌ ${mention}, <b>Error:</b> Server capacity reached (60/60). Please try again later.</blockquote>`, { 
             parse_mode: 'HTML',
             reply_to_message_id: ctx.message?.message_id 
         });
     }
 
     if (!(await checkChannels(ctx))) {
-        return ctx.reply('<blockquote>⚠️ Restricted access. Please join our channels to continue:</blockquote>', {
+        return ctx.reply(`<blockquote>⚠️ ${mention}, restricted access. Please join our channels to continue:</blockquote>`, {
             parse_mode: 'HTML',
             reply_to_message_id: ctx.message?.message_id,
             reply_markup: {
                 inline_keyboard: [
                     [{ text: '𝙺𝙰𝚈𝙰 𝙱𝙾𝚃 | 𝙲𝙷𝙰𝚃', url: 'https://t.me/+nctwjD43hDk0ODBk' }],
                     [{ text: '𝙺𝙰𝚈𝙰 𝙱𝙾𝚃 | 𝙲𝙰𝙽𝙰𝙻', url: 'https://t.me/kayatech2' }],
-                    [{ text: '𝙎𝙊𝙐𝙇 𝙎𝙊𝘾𝙄𝙀𝙏𝙔🪶', url: 'https://t.me/society243' }],
+                    [{ text: '𝙎1𝙊𝙐𝙇 𝙎𝙊𝘾𝙄𝙀𝙏𝙔🪶', url: 'https://t.me/society243' }],
                     [{ text: '✅ I Have Joined', callback_data: 'check_join' }]
                 ]
             }
@@ -346,13 +357,13 @@ bot.command('connect', async (ctx) => {
     }
 
     const text = ctx.message.text.split(' ')[1];
-    if (!text) return ctx.reply('<blockquote>⚠️ Usage: <code>/connect 243xxxxxx</code></blockquote>', { 
+    if (!text) return ctx.reply(`<blockquote>⚠️ ${mention}, Usage: <code>/connect 243xxxxxx</code></blockquote>`, { 
         parse_mode: 'HTML',
         reply_to_message_id: ctx.message?.message_id 
     });
     
     const number = text.replace(/\D/g, '');
-    if (number.length < 9) return ctx.reply('<blockquote>❌ Invalid number. Minimum 9 digits required.</blockquote>', { 
+    if (number.length < 9) return ctx.reply(`<blockquote>❌ ${mention}, Invalid number. Minimum 9 digits required.</blockquote>`, { 
         parse_mode: 'HTML',
         reply_to_message_id: ctx.message?.message_id 
     });
@@ -364,7 +375,7 @@ bot.command('connect', async (ctx) => {
     const requestPath = path.join(pairingFolder, `request_${teleId}.json`);
     fs.writeFileSync(requestPath, JSON.stringify({ jid, name: userName }));
     
-    ctx.reply('<blockquote>⏳ Initialization... please wait.</blockquote>', { 
+    ctx.reply(`<blockquote>⏳ ${mention}, Initialization... please wait.</blockquote>`, { 
         parse_mode: 'HTML',
         reply_to_message_id: ctx.message?.message_id 
     });
@@ -385,7 +396,7 @@ bot.command('connect', async (ctx) => {
     }
     
     if (cuObj) {
-        const pairingStyle = `<blockquote>▰▰▰▰▰▰▰▰▰▰\n> ╢ PAIRING CODE ♰\n╭▰▰▰▰▰▰▰◈\n┆🔑 Code: <code>${cuObj.code}</code>\n╰▰▰▰▰▰▰▰◈</blockquote>`;
+        const pairingStyle = `<blockquote>▰▰▰▰▰▰▰▰▰▰\n> ╢ PAIRING CODE ♰\n👤 User: ${mention}\n╭▰▰▰▰▰▰▰◈\n┆🔑 Code: <code>${cuObj.code}</code>\n╰▰▰▰▰▰▰▰◈</blockquote>`;
         ctx.reply(pairingStyle, { 
             parse_mode: 'HTML',
             reply_to_message_id: ctx.message?.message_id,
@@ -396,7 +407,7 @@ bot.command('connect', async (ctx) => {
             }
         });
     } else {
-        ctx.reply('<blockquote>❌ Error: Pairing code could not be generated.</blockquote>', { 
+        ctx.reply(`<blockquote>❌ ${mention}, Error: Pairing code could not be generated.</blockquote>`, { 
             parse_mode: 'HTML',
             reply_to_message_id: ctx.message?.message_id 
         });
@@ -416,13 +427,14 @@ bot.command('listpair', async (ctx) => {
     if (!isOwner(ctx)) return;
     if (!ensurePrivate(ctx)) return;
 
+    const mention = ctx.userMention();
     const activeSessions = getActiveSessions();
-    if (activeSessions.length === 0) return ctx.reply('<blockquote>No devices linked.</blockquote>', { 
+    if (activeSessions.length === 0) return ctx.reply(`<blockquote>${mention}, No devices linked.</blockquote>`, { 
         parse_mode: 'HTML',
         reply_to_message_id: ctx.message?.message_id 
     });
 
-    let text = `<blockquote>> ╢ CONNECTED : ${activeSessions.length}/60 ♰\n`;
+    let text = `<blockquote>👤 User : ${mention}\n> ╢ CONNECTED : ${activeSessions.length}/60 ♰\n`;
     
     activeSessions.forEach((number, i) => {
         let userName = "Unknown";
@@ -451,8 +463,9 @@ bot.command('delpair', async (ctx) => {
     if (!isOwner(ctx)) return; 
     if (!ensurePrivate(ctx)) return;
 
+    const mention = ctx.userMention();
     const arg = ctx.message.text.split(' ')[1];
-    if (!arg) return ctx.reply('<blockquote>⚠️ Usage: <code>/delpair [teleId or number]</code></blockquote>', { 
+    if (!arg) return ctx.reply(`<blockquote>⚠️ ${mention}, Usage: <code>/delpair [teleId or number]</code></blockquote>`, { 
         parse_mode: 'HTML',
         reply_to_message_id: ctx.message?.message_id 
     });
@@ -477,7 +490,7 @@ bot.command('delpair', async (ctx) => {
 
     if (foundNumber) {
         forceCleanupSession(foundNumber, teleId);
-        return ctx.reply(`<blockquote>✅ Session for <code>${foundNumber}</code> disconnected successfully.</blockquote>`, { 
+        return ctx.reply(`<blockquote>✅ ${mention}, Session for <code>${foundNumber}</code> disconnected successfully.</blockquote>`, { 
             parse_mode: 'HTML',
             reply_to_message_id: ctx.message?.message_id 
         });
@@ -485,13 +498,13 @@ bot.command('delpair', async (ctx) => {
 
     if (fs.existsSync(path.join(pairingFolder, teleId))) {
         forceCleanupSession(teleId, "default");
-        return ctx.reply(`<blockquote>✅ Session <code>${teleId}</code> disconnected successfully.</blockquote>`, { 
+        return ctx.reply(`<blockquote>✅ ${mention}, Session <code>${teleId}</code> disconnected successfully.</blockquote>`, { 
             parse_mode: 'HTML',
             reply_to_message_id: ctx.message?.message_id 
         });
     }
 
-    ctx.reply('<blockquote>❌ Session not found.</blockquote>', { 
+    ctx.reply(`<blockquote>❌ ${mention}, Session not found.</blockquote>`, { 
         parse_mode: 'HTML',
         reply_to_message_id: ctx.message?.message_id 
     });
@@ -501,9 +514,10 @@ bot.command('broadcast', async (ctx) => {
     if (!isOwner(ctx)) return;
     if (!ensurePrivate(ctx)) return;
 
+    const mention = ctx.userMention();
     const messageText = ctx.message.text.split(' ').slice(1).join(' ');
     if (!messageText) {
-        return ctx.reply('<blockquote>⚠️ Usage: <code>/broadcast Votre message ici...</code></blockquote>', { 
+        return ctx.reply(`<blockquote>⚠️ ${mention}, Usage: <code>/broadcast Votre message ici...</code></blockquote>`, { 
             parse_mode: 'HTML',
             reply_to_message_id: ctx.message?.message_id 
         });
@@ -517,13 +531,13 @@ bot.command('broadcast', async (ctx) => {
     } catch (e) {}
 
     if (targetIds.length === 0) {
-        return ctx.reply('<blockquote>❌ Aucun utilisateur enregistré pour le moment.</blockquote>', { 
+        return ctx.reply(`<blockquote>❌ ${mention}, Aucun utilisateur enregistré pour le moment.</blockquote>`, { 
             parse_mode: 'HTML',
             reply_to_message_id: ctx.message?.message_id 
         });
     }
 
-    await ctx.reply(`<blockquote>⏳ Diffusion en cours vers <b>${targetIds.length}</b> utilisateur(s)...</blockquote>`, { 
+    await ctx.reply(`<blockquote>⏳ ${mention}, Diffusion en cours vers <b>${targetIds.length}</b> utilisateur(s)...</blockquote>`, { 
         parse_mode: 'HTML' 
     });
 
@@ -545,7 +559,7 @@ bot.command('broadcast', async (ctx) => {
     }
 
     await ctx.reply(
-        `<blockquote>✅ <b>Diffusion terminée !</b>\n\n` +
+        `<blockquote>✅ ${mention}, <b>Diffusion terminée !</b>\n\n` +
         `📤 Envoyés avec succès : <b>${successCount}</b>\n` +
         `❌ Échecs (utilisateurs ayant bloqué le bot) : <b>${failCount}</b></blockquote>`, 
         { parse_mode: 'HTML' }
