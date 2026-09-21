@@ -23,7 +23,7 @@ export default {
 *📍 Location:* Lubumbashi
 *💻 Skill:* Full-stack Developer
 
-*Contact:* https://wa.me/243999585890
+*Contact:* t.me/Kaya243
 
 *Note:* Feel free to contact the owner for support or business inquiries.
 `.trim();
