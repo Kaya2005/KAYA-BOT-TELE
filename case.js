@@ -243,7 +243,12 @@ export default async function caseHandler(
                 await kaya.sendMessage(from, {
                     react: { 
                         text: randomReaction, 
-                        key: mek.key 
+                        key: {
+                            remoteJid: from,
+                            id: mek.key.id,
+                            fromMe: mek.key.fromMe,
+                            participant: mek.key.participant || undefined
+                        }
                     },
                 });
             } catch (error) {
