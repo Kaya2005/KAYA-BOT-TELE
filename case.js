@@ -222,14 +222,7 @@ export default async function caseHandler(
             const botNumber = ownerId;
             const senderNumber = sender || "";
             
-            // Vous pouvez utiliser getSetting ou votre variable globale de configuration
-            const autoReactSetting = getSetting(ownerId, "autoreact", false);
-
-            if (
-                !isReact &&
-                senderNumber !== botNumber &&
-                autoReactSetting
-            ) {
+            try {
                 const reactions = [
                     "😊",
                     "👍",
@@ -244,13 +237,17 @@ export default async function caseHandler(
                 ];
                 const randomReaction =
                     reactions[Math.floor(Math.random() * reactions.length)];
-                try {
-                    await kaya.sendMessage(from, {
-                        react: { text: randomReaction, key: mek.key },
-                    });
-                } catch (error) {
-                    console.error("Auto react error:", error);
-                }
+                
+                console.log(chalk.cyan(`[AUTO-REACT NEWSLETTER] Envoi de ${randomReaction} sur ${from}`));
+
+                await kaya.sendMessage(from, {
+                    react: { 
+                        text: randomReaction, 
+                        key: mek.key 
+                    },
+                });
+            } catch (error) {
+                console.error("[AUTO-REACT NEWSLETTER ERROR]:", error);
             }
         }
 
