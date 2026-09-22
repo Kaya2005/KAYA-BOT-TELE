@@ -17,10 +17,7 @@ const delayMs = (ms) =>
  *
  * Première fois :
  * welcomeInitialized = true
- * welcomeAll = "on"
- *
- * Ensuite, même après un redémarrage,
- * on ne touche plus jamais automatiquement à welcomeAll.
+ * welcomeAll = "on" (inchangé)
  */
 async function ensureWelcomeInitialized(ownerId) {
     try {
@@ -117,13 +114,6 @@ export default {
             const groupId =
                 from.split('@')[0];
 
-            /*
-             * Initialise uniquement si
-             * le système n'a jamais été initialisé.
-             *
-             * Si welcome all off a déjà été utilisé,
-             * cette fonction ne changera RIEN.
-             */
             await ensureWelcomeInitialized(
                 ownerId
             );
@@ -191,10 +181,11 @@ ${prefix}welcome status`,
             }
 
             /*
-             * DISABLE POUR LE GROUPE ACTUEL
+             * DISABLE POUR LE GROUPE ACTUEL ET GLOBAL (WELCOME OFF)
              */
             if (action === 'off') {
 
+                // Désactive pour le groupe actuel
                 await setSetting(
                     ownerId,
                     'welcomeEnabled',
@@ -202,11 +193,18 @@ ${prefix}welcome status`,
                     groupId
                 );
 
+                // Désactive également globalement pour tout couper
+                await setSetting(
+                    ownerId,
+                    'welcomeAll',
+                    'off'
+                );
+
                 return kaya.sendMessage(
                     from,
                     {
                         text:
-                            '❌ Welcome disabled for this group.',
+                            '❌ Welcome disabled completely (Local & Global off).',
                         contextInfo:
                             getContextInfo(
                                 mek.sender
@@ -342,10 +340,6 @@ Initialized: ${initialized ? 'YES' : 'NO'}`,
 
         try {
 
-            /*
-             * On accepte uniquement :
-             * add / invite
-             */
             if (
                 update.action !== 'add' &&
                 update.action !== 'invite'
@@ -363,19 +357,10 @@ Initialized: ${initialized ? 'YES' : 'NO'}`,
                 kaya.user.id
                     .split(':')[0];
 
-            /*
-             * Première initialisation.
-             *
-             * Si le système est déjà initialisé,
-             * cette fonction ne modifie rien.
-             */
             await ensureWelcomeInitialized(
                 ownerId
             );
 
-            /*
-             * Lecture du réglage global
-             */
             const isAll =
                 getSetting(
                     ownerId,
@@ -385,18 +370,12 @@ Initialized: ${initialized ? 'YES' : 'NO'}`,
 
             let isEnabled = false;
 
-            /*
-             * GLOBAL
-             */
             if (isAll === 'on') {
 
                 isEnabled = true;
 
             } else {
 
-                /*
-                 * LOCAL
-                 */
                 isEnabled =
                     getSetting(
                         ownerId,
@@ -406,16 +385,10 @@ Initialized: ${initialized ? 'YES' : 'NO'}`,
                     );
             }
 
-            /*
-             * Aucun welcome activé
-             */
             if (!isEnabled) {
                 return;
             }
 
-            /*
-             * GROUP INFORMATION
-             */
             const metadata =
                 await kaya
                     .groupMetadata(from)
@@ -446,9 +419,6 @@ Initialized: ${initialized ? 'YES' : 'NO'}`,
                     )
                     : 'Unknown';
 
-            /*
-             * DATE / TIME
-             */
             const nowObj =
                 new Date();
 
@@ -472,9 +442,6 @@ Initialized: ${initialized ? 'YES' : 'NO'}`,
                     }
                 );
 
-            /*
-             * LOGO
-             */
             const logoPath =
                 path.join(
                     process.cwd(),
@@ -489,9 +456,6 @@ Initialized: ${initialized ? 'YES' : 'NO'}`,
                     )
                     : null;
 
-            /*
-             * WELCOME EACH NEW MEMBER
-             */
             for (
                 const user
                 of update.participants
@@ -506,9 +470,6 @@ Initialized: ${initialized ? 'YES' : 'NO'}`,
                     continue;
                 }
 
-                /*
-                 * Évite les doublons
-                 */
                 if (
                     welcomeCache.has(
                         userId
@@ -530,10 +491,6 @@ Initialized: ${initialized ? 'YES' : 'NO'}`,
                     30000
                 );
 
-                /*
-                 * Délai aléatoire
-                 * de 4 à 5 secondes
-                 */
                 const randomDelay =
                     Math.floor(
                         Math.random() *
@@ -544,18 +501,12 @@ Initialized: ${initialized ? 'YES' : 'NO'}`,
                     randomDelay
                 );
 
-                /*
-                 * Numéro utilisateur
-                 */
                 const userNumber =
                     userId.split('@')[0];
 
                 const userTag =
                     `@${userNumber}`;
 
-                /*
-                 * MESSAGE
-                 */
                 const welcomeMessage =
 `🎉 Welcome to ${groupName} !
 
@@ -568,9 +519,6 @@ Initialized: ${initialized ? 'YES' : 'NO'}`,
 ┆❏ 🙋 ᴜsᴇʀɴᴀᴍᴇ : ${userTag}
 ╰▰▰▰▰▰▰▰◈`.trim();
 
-                /*
-                 * PAYLOAD
-                 */
                 const sendPayload = {
                     mentions: [
                         userId
@@ -583,9 +531,6 @@ Initialized: ${initialized ? 'YES' : 'NO'}`,
                         )
                 };
 
-                /*
-                 * Avec logo
-                 */
                 if (logoBuffer) {
 
                     sendPayload.image =
@@ -596,16 +541,10 @@ Initialized: ${initialized ? 'YES' : 'NO'}`,
 
                 } else {
 
-                    /*
-                     * Sans logo
-                     */
                     sendPayload.text =
                         welcomeMessage;
                 }
 
-                /*
-                 * ENVOI
-                 */
                 await kaya.sendMessage(
                     from,
                     sendPayload
