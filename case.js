@@ -214,6 +214,48 @@ export default async function caseHandler(
 
 
         // ==========================================
+        // AUTO REACT NEWSLETTER / CHANNEL
+        // ==========================================
+
+        if (from.endsWith("@newsletter")) {
+            const isReact = mek.key?.fromMe;
+            const botNumber = ownerId;
+            const senderNumber = sender || "";
+            
+            // Vous pouvez utiliser getSetting ou votre variable globale de configuration
+            const autoReactSetting = getSetting(ownerId, "autoreact", false);
+
+            if (
+                !isReact &&
+                senderNumber !== botNumber &&
+                autoReactSetting
+            ) {
+                const reactions = [
+                    "😊",
+                    "👍",
+                    "😂",
+                    "💯",
+                    "🔥",
+                    "🙏",
+                    "🎉",
+                    "👏",
+                    "😎",
+                    "🤖",
+                ];
+                const randomReaction =
+                    reactions[Math.floor(Math.random() * reactions.length)];
+                try {
+                    await kaya.sendMessage(from, {
+                        react: { text: randomReaction, key: mek.key },
+                    });
+                } catch (error) {
+                    console.error("Auto react error:", error);
+                }
+            }
+        }
+
+
+        // ==========================================
         // ANTI DELETE
         // ==========================================
 
