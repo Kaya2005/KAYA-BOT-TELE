@@ -61,9 +61,12 @@ export default function setupTagAll(bot) {
                 ? args 
                 : (lng === 'fr' ? "🔔 Appel général !" : "🔔 General roll call!");
 
-            const senderName = ctx.from?.first_name || "Admin";
+            // Utilise la mention propre de l'utilisateur si elle existe, sinon le nom brut
+            const senderMention = typeof ctx.userMention === 'function' 
+                ? ctx.userMention() 
+                : (ctx.from?.first_name || "Admin");
             
-            const text = `<blockquote>📢 <b>TAGALL</b>\n\n${customMessage}\n\n<i>Demandé par : ${senderName}</i></blockquote>`;
+            const text = `<blockquote>📢 <b>TAGALL</b>\n\n${customMessage}\n\n<i>Demandé par : ${senderMention}</i></blockquote>`;
 
             await ctx.reply(text, {
                 parse_mode: 'HTML',
@@ -75,7 +78,7 @@ export default function setupTagAll(bot) {
                 }
             });
 
-            // Supprime le message de commande si le bot est admin
+            // Supprime le message de commande si le bot a les droits d'administration nécessaires
             await ctx.deleteMessage().catch(() => {});
 
         } catch (err) {
