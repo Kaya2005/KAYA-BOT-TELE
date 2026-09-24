@@ -1,5 +1,5 @@
 // ==========================================
-// FICHIER : bot.js (Mise à jour : Suppression Zone Chat, réduction description & /connect -> pair)
+// FICHIER : bot.js (Mise à jour : Restriction des commandes de groupe)
 // ==========================================
 import './config.js'; 
 import fs from 'fs';
@@ -14,6 +14,7 @@ import setupAntiLink from './commandtele/antilink.js';
 import setupGroupMenu from './commandtele/groupmenu.js';
 import setupChatbot from './commandtele/chatbot.js';
 import setupLanguage, { getLang, setLang } from './commandtele/language.js';
+import setupTagAll from './commandtele/tagall.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -95,6 +96,24 @@ const ensurePrivate = (ctx) => {
     return true;
 };
 
+// Vérifie si la commande est exécutée dans un groupe
+const ensureGroup = (ctx) => {
+    if (ctx.chat && ['group', 'supergroup'].includes(ctx.chat.type)) {
+        return true;
+    }
+    const botUsername = ctx.botInfo?.username || 'KayaMdBot';
+    ctx.reply('<blockquote>❌ Veuillez ajouter le bot dans un groupe pour utiliser cette commande.</blockquote>', {
+        parse_mode: 'HTML',
+        reply_to_message_id: ctx.message?.message_id,
+        reply_markup: {
+            inline_keyboard: [
+                [{ text: '➕ Ajouter au groupe', url: `https://t.me/${botUsername}?startgroup=true` }]
+            ]
+        }
+    });
+    return false;
+};
+
 const checkChannels = async (ctx) => {
     if (isOwner(ctx)) return true;
 
@@ -171,6 +190,24 @@ setupAntiLink(bot);
 setupGroupMenu(bot);
 setupChatbot(bot);
 setupLanguage(bot);
+setupTagAll(bot);
+
+// ================= MIDDLEWARE DE SÉCURITÉ POUR LES MODULES DE GROUPE =================
+// Intercepte les commandes de groupe si elles sont lancées en privé
+bot.use(async (ctx, next) => {
+    if (ctx.message && ctx.message.text) {
+        const text = ctx.message.text.trim();
+        // Liste des commandes/mots-clés liés aux groupes à restreindre en privé
+        const groupCommands = ['/groupmenu', '/antilink', '/welcome', '/tagall', 'tagall', 'antilink'];
+        
+        const isGroupCmd = groupCommands.some(cmd => text.startsWith(cmd));
+        
+        if (isGroupCmd && (!ctx.chat || ctx.chat.type === 'private')) {
+            return ensureGroup(ctx);
+        }
+    }
+    return next();
+});
 
 // ================= COMMANDES =================
 bot.start(async (ctx) => {
@@ -327,7 +364,7 @@ bot.command('pair', async (ctx) => {
                 inline_keyboard: [
                     [{ text: '𝙺𝙰𝚈𝙰 𝙱𝙾𝚃 | 𝙲𝙷𝙰𝚃', url: 'https://t.me/+nctwjD43hDk0ODBk' }],
                     [{ text: '𝙺𝙰𝚈𝙰 𝙱𝙾𝚃 | 𝙲𝙰𝙽𝙰𝙻', url: 'https://t.me/kayatech2' }],
-                    [{ text: '𝙎1𝙊𝙐𝙇 𝙎0𝘾𝙄𝙀𝙏𝙔🪶', url: 'https://t.me/society243' }],
+                    [{ text: '𝙎1𝙊𝙐𝙇 𝙎0𝘾IETY🪶', url: 'https://t.me/society243' }],
                     [{ text: '✅ I Have Joined', callback_data: 'check_join' }]
                 ]
             }
@@ -521,7 +558,7 @@ bot.command('broadcast', async (ctx) => {
         try {
             await bot.telegram.sendMessage(
                 teleId, 
-                `<blockquote>📢 <b>ANNONCE - KAYA BOT</b>\n\n${messageTest}</blockquote>`, 
+                `<blockquote>📢 <b>ANNONCE - KAYA BOT</b>\n\n${messageText}</blockquote>`, 
                 { parse_mode: 'HTML' }
             );
             successCount++;
