@@ -185,19 +185,12 @@ bot.use((ctx, next) => {
     return next();
 });
 
-setupWelcome(bot);
-setupAntiLink(bot);
-setupGroupMenu(bot);
-setupChatbot(bot);
-setupLanguage(bot);
-setupTagAll(bot);
-
 // ================= MIDDLEWARE DE SÉCURITÉ POUR LES MODULES DE GROUPE =================
-// Intercepte les commandes de groupe si elles sont lancées en privé
+// Intercepte en amont toutes les commandes de groupe si elles sont lancées en privé
 bot.use(async (ctx, next) => {
     if (ctx.message && ctx.message.text) {
         const text = ctx.message.text.trim();
-        // Liste des commandes/mots-clés liés aux groupes à restreindre en privé
+        // Liste des commandes ou déclencheurs liés aux groupes
         const groupCommands = ['/groupmenu', '/antilink', '/welcome', '/tagall', 'tagall', 'antilink'];
         
         const isGroupCmd = groupCommands.some(cmd => text.startsWith(cmd));
@@ -208,6 +201,13 @@ bot.use(async (ctx, next) => {
     }
     return next();
 });
+
+setupWelcome(bot);
+setupAntiLink(bot);
+setupGroupMenu(bot);
+setupChatbot(bot);
+setupLanguage(bot);
+setupTagAll(bot);
 
 // ================= COMMANDES =================
 bot.start(async (ctx) => {
