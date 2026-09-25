@@ -1,5 +1,5 @@
 // ==========================================
-// FICHIER : bot.js (Corrigé & 100% Bilingue FR/EN)
+// FICHIER : bot.js (Corrigé & Support multi-préfixes global)
 // ==========================================
 import './config.js'; 
 import fs from 'fs';
@@ -244,6 +244,25 @@ ______________________
 // 🚀 Initialisation
 const bot = new Telegraf(BOT_TOKEN);
 
+// ================= MIDDLEWARE UNIVERSEL DE NORMALISATION DES PRÉFIXES =================
+bot.use((ctx, next) => {
+    if (ctx.message && ctx.message.text) {
+        let text = ctx.message.text.trim();
+        // Si le message commence par un préfixe (/, ., !), on le normalise avec un slash /
+        if (/^[\.\!\/]/.test(text)) {
+            ctx.message.text = '/' + text.slice(1);
+        } else {
+            // S'il n'y a pas de préfixe, on regarde si c'est un mot-clé connu pour l'ajouter automatiquement
+            const firstWord = text.split(/\s+/)[0].toLowerCase();
+            const knownCommands = ['pair', 'ping', 'group', 'groupmenu', 'antilink', 'welcome', 'tagall', 'listpair', 'delpair', 'groups', 'broadcast', 'language', 'lang'];
+            if (knownCommands.includes(firstWord)) {
+                ctx.message.text = '/' + text;
+            }
+        }
+    }
+    return next();
+});
+
 // ================= MIDDLEWARE D'ENREGISTREMENT DES MEMBRES & GROUPES =================
 bot.use(async (ctx, next) => {
     try {
@@ -308,7 +327,7 @@ bot.use((ctx, next) => {
 bot.use(async (ctx, next) => {
     if (ctx.message && ctx.message.text) {
         const text = ctx.message.text.trim();
-        const groupCommands = ['/groupmenu', '/antilink', '/welcome', '/tagall', 'tagall', 'antilink'];
+        const groupCommands = ['/groupmenu', '/antilink', '/welcome', '/tagall'];
         
         const isGroupCmd = groupCommands.some(cmd => text.startsWith(cmd));
         
