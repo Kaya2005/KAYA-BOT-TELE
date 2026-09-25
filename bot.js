@@ -1,5 +1,5 @@
 // ==========================================
-// FICHIER : bot.js (Mise à jour : Restriction des commandes de groupe)
+// FICHIER : bot.js (Corrigé & 100% Bilingue FR/EN)
 // ==========================================
 import './config.js'; 
 import fs from 'fs';
@@ -24,7 +24,7 @@ const usersFilePath = path.join(__dirname, './database/users.json');
 const pairingFolder = path.join(__dirname, './richstore/pairing');
 const REQUIRED_CHANNELS = ['-1004453499318', '@kayatech2', '@society243'];
 
-// ================= DICTIONNAIRE DE LANGUES =================
+// ================= DICTIONNAIRE DE LANGUES COMPLET =================
 const langData = {
     en: {
         welcome: "Welcome! Connect your WhatsApp or add the bot to your group.",
@@ -34,6 +34,36 @@ const langData = {
         selectLang: "Please select your preferred language:",
         langChanged: "✅ Language successfully changed to English 🇬🇧",
         adminOnly: "❌ Only group administrators can change the bot's language.",
+        needPrivate: "❌ Please write to me in private to use this command.",
+        btnOpenPrivate: "💬 Open Bot in Private",
+        needGroup: "❌ Please add the bot to a group to use this command.",
+        btnAddGroup: "➕ Add to Group",
+        logoNotFound: "❌ Error: The logo.png image is missing.",
+        statusOnline: "Online / En ligne",
+        serverFull: "Error: Server capacity reached (60/60). Please try again later.",
+        restrictedAccess: "Restricted access. Please join our channels to continue:",
+        btnChat: "𝙺𝙰𝚈𝙰 𝙱𝙾𝚃 | 𝙲𝙷𝙰𝚃",
+        btnChannel: "𝙺𝙰𝚈𝙰 𝙱𝙾𝚃 | 𝙲𝙰𝙽𝙰𝙻",
+        btnSociety: "𝙎1𝙊𝙐𝙇 𝙎0𝘾IETY🪶",
+        btnJoined: "✅ I Have Joined",
+        joinSuccess: "✅ You can connect now.",
+        accessAuthorized: "✅ Access authorized.",
+        joinError: "❌ You must join the required channels first.",
+        pairUsage: "Usage: /pair 243xxxxxx",
+        invalidNumber: "Invalid number. Minimum 9 digits required.",
+        initWait: "Initialization... please wait.",
+        codeError: "Error: Pairing code could not be generated.",
+        noDevices: "No devices linked.",
+        delPairUsage: "Usage: /delpair [teleId or number]",
+        sessionDisconnected: "Session disconnected successfully.",
+        sessionNotFound: "Session not found.",
+        broadcastUsage: "Usage: /broadcast Your message here...",
+        noUsers: "No registered users at the moment.",
+        broadcasting: "Broadcasting in progress to",
+        usersCount: "user(s)...",
+        broadcastDone: "Broadcast finished!",
+        sentSuccess: "Successfully sent:",
+        fails: "Failures (users who blocked the bot):"
     },
     fr: {
         welcome: "Bienvenue ! Connectez votre WhatsApp ou ajoutez le bot à votre groupe.",
@@ -43,6 +73,36 @@ const langData = {
         selectLang: "Veuillez choisir votre langue préférée :",
         langChanged: "✅ Langue changée avec succès en Français 🇫🇷",
         adminOnly: "❌ Seuls les administrateurs du groupe peuvent modifier la langue du bot.",
+        needPrivate: "❌ Veuillez m'écrire en privé pour utiliser cette commande.",
+        btnOpenPrivate: "💬 Ouvrir le bot en privé",
+        needGroup: "❌ Veuillez ajouter le bot dans un groupe pour utiliser cette commande.",
+        btnAddGroup: "➕ Ajouter au groupe",
+        logoNotFound: "❌ Erreur : L'image logo.png est introuvable.",
+        statusOnline: "Online / En ligne",
+        serverFull: "Erreur : Capacité du serveur atteinte (60/60). Veuillez réessayer plus tard.",
+        restrictedAccess: "Accès restreint. Veuillez rejoindre nos canaux pour continuer :",
+        btnChat: "𝙺𝙰𝚈𝙰 𝙱𝙾𝚃 | 𝙲𝙷𝙰𝚃",
+        btnChannel: "𝙺𝙰𝚈𝙰 𝙱𝙾𝚃 | 𝙲𝙰𝙽𝙰𝙻",
+        btnSociety: "𝙎1𝙊𝙐𝙇 𝙎0𝘾IETY🪶",
+        btnJoined: "✅ J'ai rejoint",
+        joinSuccess: "✅ Vous pouvez vous connecter maintenant.",
+        accessAuthorized: "✅ Accès autorisé.",
+        joinError: "❌ Vous devez d'abord rejoindre les canaux requis.",
+        pairUsage: "Utilisation : /pair 243xxxxxx",
+        invalidNumber: "Numéro invalide. Minimum 9 chiffres requis.",
+        initWait: "Initialisation... veuillez patienter.",
+        codeError: "Erreur : Le code d'appairage n'a pas pu être généré.",
+        noDevices: "Aucun appareil lié.",
+        delPairUsage: "Utilisation : /delpair [teleId ou numéro]",
+        sessionDisconnected: "Session déconnectée avec succès.",
+        sessionNotFound: "Session introuvable.",
+        broadcastUsage: "Utilisation : /broadcast Votre message ici...",
+        noUsers: "Aucun utilisateur enregistré pour le moment.",
+        broadcasting: "Diffusion en cours vers",
+        usersCount: "utilisateur(s)...",
+        broadcastDone: "Diffusion terminée !",
+        sentSuccess: "Envoyés avec succès :",
+        fails: "Échecs (utilisateurs ayant bloqué le bot) :"
     }
 };
 
@@ -81,13 +141,17 @@ const saveUser = (userId) => {
 const ensurePrivate = (ctx) => {
     if (isOwner(ctx)) return true;
     if (!ctx.chat || ctx.chat.type !== 'private') {
+        const chatId = ctx.chat ? ctx.chat.id : ctx.from.id;
+        const lng = getLang(chatId);
+        const t = langData[lng] || langData['en'];
         const botUsername = ctx.botInfo?.username || 'KayaMdBot';
-        ctx.reply('<blockquote>❌ Please write to me in private to use this command.</blockquote>', {
+        
+        ctx.reply(`<blockquote>${t.needPrivate}</blockquote>`, {
             parse_mode: 'HTML',
             reply_to_message_id: ctx.message?.message_id,
             reply_markup: {
                 inline_keyboard: [
-                    [{ text: '💬 Open Bot in Private', url: `https://t.me/${botUsername}` }]
+                    [{ text: t.btnOpenPrivate, url: `https://t.me/${botUsername}` }]
                 ]
             }
         });
@@ -96,18 +160,22 @@ const ensurePrivate = (ctx) => {
     return true;
 };
 
-// Vérifie si la commande est exécutée dans un groupe
+// Vérifie si la commande est exécutée dans un groupe (Bilingue)
 const ensureGroup = (ctx) => {
     if (ctx.chat && ['group', 'supergroup'].includes(ctx.chat.type)) {
         return true;
     }
+    const chatId = ctx.chat ? ctx.chat.id : ctx.from.id;
+    const lng = getLang(chatId);
+    const t = langData[lng] || langData['en'];
     const botUsername = ctx.botInfo?.username || 'KayaMdBot';
-    ctx.reply('<blockquote>❌ Veuillez ajouter le bot dans un groupe pour utiliser cette commande.</blockquote>', {
+
+    ctx.reply(`<blockquote>${t.needGroup}</blockquote>`, {
         parse_mode: 'HTML',
         reply_to_message_id: ctx.message?.message_id,
         reply_markup: {
             inline_keyboard: [
-                [{ text: '➕ Ajouter au groupe', url: `https://t.me/${botUsername}?startgroup=true` }]
+                [{ text: t.btnAddGroup, url: `https://t.me/${botUsername}?startgroup=true` }]
             ]
         }
     });
@@ -171,6 +239,40 @@ ______________________
 // 🚀 Initialisation
 const bot = new Telegraf(BOT_TOKEN);
 
+// ================= MIDDLEWARE D'ENREGISTREMENT DES MEMBRES (POUR TAGALL) =================
+const membersFilePath = path.join(__dirname, './database/members.json');
+
+bot.use(async (ctx, next) => {
+    try {
+        if (ctx.chat && ['supergroup', 'group'].includes(ctx.chat.type) && ctx.from && !ctx.from.is_bot) {
+            let data = {};
+            if (fs.existsSync(membersFilePath)) {
+                try {
+                    data = JSON.parse(fs.readFileSync(membersFilePath, 'utf8'));
+                } catch (e) {
+                    data = {};
+                }
+            }
+
+            const chatId = String(ctx.chat.id);
+            if (!data[chatId]) {
+                data[chatId] = {};
+            }
+
+            data[chatId][String(ctx.from.id)] = {
+                id: ctx.from.id,
+                name: ctx.from.first_name || 'Membre'
+            };
+
+            fs.writeFileSync(membersFilePath, JSON.stringify(data, null, 2), 'utf8');
+        }
+    } catch (err) {
+        console.error("[MEMBER TRACKER ERROR]:", err);
+    }
+    return next();
+});
+// ==========================================================================================
+
 bot.use((ctx, next) => {
     if (ctx.from) {
         saveUser(ctx.from.id);
@@ -186,11 +288,9 @@ bot.use((ctx, next) => {
 });
 
 // ================= MIDDLEWARE DE SÉCURITÉ POUR LES MODULES DE GROUPE =================
-// Intercepte en amont toutes les commandes de groupe si elles sont lancées en privé
 bot.use(async (ctx, next) => {
     if (ctx.message && ctx.message.text) {
         const text = ctx.message.text.trim();
-        // Liste des commandes ou déclencheurs liés aux groupes
         const groupCommands = ['/groupmenu', '/antilink', '/welcome', '/tagall', 'tagall', 'antilink'];
         
         const isGroupCmd = groupCommands.some(cmd => text.startsWith(cmd));
@@ -211,15 +311,16 @@ setupTagAll(bot);
 
 // ================= COMMANDES =================
 bot.start(async (ctx) => {
-    const logoPath = path.join(__dirname, 'setting', 'logo.png');
-    if (!fs.existsSync(logoPath)) {
-        return ctx.reply("❌ Erreur : L'image logo.png est introuvable.");
-    }
-
-    const photo = { source: fs.readFileSync(logoPath) };
     const chatId = ctx.chat.id;
     const lng = getLang(chatId);
     const t = langData[lng] || langData['en'];
+
+    const logoPath = path.join(__dirname, 'setting', 'logo.png');
+    if (!fs.existsSync(logoPath)) {
+        return ctx.reply(t.logoNotFound);
+    }
+
+    const photo = { source: fs.readFileSync(logoPath) };
 
     if (ctx.chat.type === 'private') {
         await ctx.replyWithPhoto(photo, {
@@ -313,32 +414,45 @@ bot.action('info_group', async (ctx) => {
         : `<blockquote>🤖 <b>TELEGRAM GROUP SETUP</b>\n\nTo use moderation commands:\n1️⃣ Add the bot.\n2️⃣ Promote as <b>Admin</b>.\n3️⃣ Use <code>/groupmenu</code>!</blockquote>`;
 
     const botUsername = ctx.botInfo?.username || 'KayaMdBot';
+    const t = langData[lng] || langData['en'];
     await ctx.reply(text, {
         parse_mode: 'HTML',
         reply_to_message_id: ctx.message?.message_id,
         reply_markup: {
             inline_keyboard: [
-                [{ text: '➕ Add to my Group', url: `https://t.me/${botUsername}?startgroup=true` }]
+                [{ text: t.btnAddGroup, url: `https://t.me/${botUsername}?startgroup=true` }]
             ]
         }
     });
 });
 
 bot.command('group', async (ctx) => {
+    const chatId = ctx.chat.id;
+    const lng = getLang(chatId);
+    const t = langData[lng] || langData['en'];
     const botUsername = ctx.botInfo?.username || 'KayaMdBot';
-    await ctx.reply(`<blockquote>🤖 <b>TELEGRAM GROUP SETUP</b>\nUse <code>/groupmenu</code> inside your group after making the bot admin.</blockquote>`, {
+    
+    const text = lng === 'fr'
+        ? `<blockquote>🤖 <b>CONFIGURATION DU GROUPE TELEGRAM</b>\nUtilisez <code>/groupmenu</code> dans votre groupe après avoir rendu le bot admin.</blockquote>`
+        : `<blockquote>🤖 <b>TELEGRAM GROUP SETUP</b>\nUse <code>/groupmenu</code> inside your group after making the bot admin.</blockquote>`;
+
+    await ctx.reply(text, {
         parse_mode: 'HTML',
         reply_markup: {
             inline_keyboard: [
-                [{ text: '➕ Add to my Group', url: `https://t.me/${botUsername}?startgroup=true` }]
+                [{ text: t.btnAddGroup, url: `https://t.me/${botUsername}?startgroup=true` }]
             ]
         }
     });
 });
 
 bot.command('ping', async (ctx) => {
+    const chatId = ctx.chat.id;
+    const lng = getLang(chatId);
+    const t = langData[lng] || langData['en'];
     const mention = ctx.userMention();
-    ctx.reply(`<blockquote>▉ 𝐊𝐀𝐘𝐀 𝐁𝐎𝐓 ▉\n\n👤 User : ${mention}\n✅ <b>Status:</b> Online / En ligne</blockquote>`, { 
+    
+    ctx.reply(`<blockquote>▉ 𝐊𝐀𝐘𝐀 𝐁𝐎𝐓 ▉\n\n👤 User : ${mention}\n✅ <b>Status:</b> ${t.statusOnline}</blockquote>`, { 
         parse_mode: 'HTML',
         reply_to_message_id: ctx.message?.message_id
     });
@@ -347,38 +461,42 @@ bot.command('ping', async (ctx) => {
 bot.command('pair', async (ctx) => {
     if (!ensurePrivate(ctx)) return;
 
+    const chatId = ctx.chat.id;
+    const lng = getLang(chatId);
+    const t = langData[lng] || langData['en'];
     const mention = ctx.userMention();
     const activeSessions = getActiveSessions();
+    
     if (activeSessions.length >= 60) {
-        return ctx.reply(`<blockquote>❌ ${mention}, <b>Error:</b> Server capacity reached (60/60). Please try again later.</blockquote>`, { 
+        return ctx.reply(`<blockquote>❌ ${mention}, <b>${t.serverFull}</b></blockquote>`, { 
             parse_mode: 'HTML',
             reply_to_message_id: ctx.message?.message_id 
         });
     }
 
     if (!(await checkChannels(ctx))) {
-        return ctx.reply(`<blockquote>⚠️ ${mention}, restricted access. Please join our channels to continue:</blockquote>`, {
+        return ctx.reply(`<blockquote>⚠️ ${mention}, ${t.restrictedAccess}</blockquote>`, {
             parse_mode: 'HTML',
             reply_to_message_id: ctx.message?.message_id,
             reply_markup: {
                 inline_keyboard: [
-                    [{ text: '𝙺𝙰𝚈𝙰 𝙱𝙾𝚃 | 𝙲𝙷𝙰𝚃', url: 'https://t.me/+nctwjD43hDk0ODBk' }],
-                    [{ text: '𝙺𝙰𝚈𝙰 𝙱𝙾𝚃 | 𝙲𝙰𝙽𝙰𝙻', url: 'https://t.me/kayatech2' }],
-                    [{ text: '𝙎1𝙊𝙐𝙇 𝙎0𝘾IETY🪶', url: 'https://t.me/society243' }],
-                    [{ text: '✅ I Have Joined', callback_data: 'check_join' }]
+                    [{ text: t.btnChat, url: 'https://t.me/+nctwjD43hDk0ODBk' }],
+                    [{ text: t.btnChannel, url: 'https://t.me/kayatech2' }],
+                    [{ text: t.btnSociety, url: 'https://t.me/society243' }],
+                    [{ text: t.btnJoined, callback_data: 'check_join' }]
                 ]
             }
         });
     }
 
     const text = ctx.message.text.split(' ')[1];
-    if (!text) return ctx.reply(`<blockquote>⚠️ ${mention}, Usage: <code>/pair 243xxxxxx</code></blockquote>`, { 
+    if (!text) return ctx.reply(`<blockquote>⚠️ ${mention}, ${t.pairUsage}</blockquote>`, { 
         parse_mode: 'HTML',
         reply_to_message_id: ctx.message?.message_id 
     });
     
     const number = text.replace(/\D/g, '');
-    if (number.length < 9) return ctx.reply(`<blockquote>❌ ${mention}, Invalid number. Minimum 9 digits required.</blockquote>`, { 
+    if (number.length < 9) return ctx.reply(`<blockquote>❌ ${mention}, ${t.invalidNumber}</blockquote>`, { 
         parse_mode: 'HTML',
         reply_to_message_id: ctx.message?.message_id 
     });
@@ -390,7 +508,7 @@ bot.command('pair', async (ctx) => {
     const requestPath = path.join(pairingFolder, `request_${teleId}.json`);
     fs.writeFileSync(requestPath, JSON.stringify({ jid, name: userName }));
     
-    ctx.reply(`<blockquote>⏳ ${mention}, Initialization... please wait.</blockquote>`, { 
+    ctx.reply(`<blockquote>⏳ ${mention}, ${t.initWait}</blockquote>`, { 
         parse_mode: 'HTML',
         reply_to_message_id: ctx.message?.message_id 
     });
@@ -417,7 +535,7 @@ bot.command('pair', async (ctx) => {
             reply_to_message_id: ctx.message?.message_id
         });
     } else {
-        ctx.reply(`<blockquote>❌ ${mention}, Error: Pairing code could not be generated.</blockquote>`, { 
+        ctx.reply(`<blockquote>❌ ${mention}, ${t.codeError}</blockquote>`, { 
             parse_mode: 'HTML',
             reply_to_message_id: ctx.message?.message_id 
         });
@@ -425,11 +543,15 @@ bot.command('pair', async (ctx) => {
 });
 
 bot.action('check_join', async (ctx) => {
+    const chatId = ctx.chat.id;
+    const lng = getLang(chatId);
+    const t = langData[lng] || langData['en'];
+
     if (await checkChannels(ctx)) {
-        await ctx.editMessageText('✅ You can connect now.');
-        ctx.answerCbQuery('✅ Access authorized.');
+        await ctx.editMessageText(t.joinSuccess);
+        ctx.answerCbQuery(t.accessAuthorized);
     } else {
-        ctx.answerCbQuery('❌ You must join the required channels first.', { show_alert: true });
+        ctx.answerCbQuery(t.joinError, { show_alert: true });
     }
 });
 
@@ -439,7 +561,11 @@ bot.command('listpair', async (ctx) => {
 
     const mention = ctx.userMention();
     const activeSessions = getActiveSessions();
-    if (activeSessions.length === 0) return ctx.reply(`<blockquote>${mention}, No devices linked.</blockquote>`, { 
+    const chatId = ctx.chat.id;
+    const lng = getLang(chatId);
+    const t = langData[lng] || langData['en'];
+
+    if (activeSessions.length === 0) return ctx.reply(`<blockquote>${mention}, ${t.noDevices}</blockquote>`, { 
         parse_mode: 'HTML',
         reply_to_message_id: ctx.message?.message_id 
     });
@@ -474,8 +600,12 @@ bot.command('delpair', async (ctx) => {
     if (!ensurePrivate(ctx)) return;
 
     const mention = ctx.userMention();
+    const chatId = ctx.chat.id;
+    const lng = getLang(chatId);
+    const t = langData[lng] || langData['en'];
+    
     const arg = ctx.message.text.split(' ')[1];
-    if (!arg) return ctx.reply(`<blockquote>⚠️ ${mention}, Usage: <code>/delpair [teleId or number]</code></blockquote>`, { 
+    if (!arg) return ctx.reply(`<blockquote>⚠️ ${mention}, ${t.delPairUsage}</blockquote>`, { 
         parse_mode: 'HTML',
         reply_to_message_id: ctx.message?.message_id 
     });
@@ -500,7 +630,7 @@ bot.command('delpair', async (ctx) => {
 
     if (foundNumber) {
         forceCleanupSession(foundNumber, teleId);
-        return ctx.reply(`<blockquote>✅ ${mention}, Session for <code>${foundNumber}</code> disconnected successfully.</blockquote>`, { 
+        return ctx.reply(`<blockquote>✅ ${mention}, Session <code>${foundNumber}</code> ${t.sessionDisconnected}</blockquote>`, { 
             parse_mode: 'HTML',
             reply_to_message_id: ctx.message?.message_id 
         });
@@ -508,13 +638,13 @@ bot.command('delpair', async (ctx) => {
 
     if (fs.existsSync(path.join(pairingFolder, teleId))) {
         forceCleanupSession(teleId, "default");
-        return ctx.reply(`<blockquote>✅ ${mention}, Session <code>${teleId}</code> disconnected successfully.</blockquote>`, { 
+        return ctx.reply(`<blockquote>✅ ${mention}, Session <code>${teleId}</code> ${t.sessionDisconnected}</blockquote>`, { 
             parse_mode: 'HTML',
             reply_to_message_id: ctx.message?.message_id 
         });
     }
 
-    ctx.reply(`<blockquote>❌ ${mention}, Session not found.</blockquote>`, { 
+    ctx.reply(`<blockquote>❌ ${mention}, ${t.sessionNotFound}</blockquote>`, { 
         parse_mode: 'HTML',
         reply_to_message_id: ctx.message?.message_id 
     });
@@ -525,9 +655,13 @@ bot.command('broadcast', async (ctx) => {
     if (!ensurePrivate(ctx)) return;
 
     const mention = ctx.userMention();
+    const chatId = ctx.chat.id;
+    const lng = getLang(chatId);
+    const t = langData[lng] || langData['en'];
+    
     const messageText = ctx.message.text.split(' ').slice(1).join(' ');
     if (!messageText) {
-        return ctx.reply(`<blockquote>⚠️ ${mention}, Usage: <code>/broadcast Votre message ici...</code></blockquote>`, { 
+        return ctx.reply(`<blockquote>⚠️ ${mention}, ${t.broadcastUsage}</blockquote>`, { 
             parse_mode: 'HTML',
             reply_to_message_id: ctx.message?.message_id 
         });
@@ -541,13 +675,13 @@ bot.command('broadcast', async (ctx) => {
     } catch (e) {}
 
     if (targetIds.length === 0) {
-        return ctx.reply(`<blockquote>❌ ${mention}, Aucun utilisateur enregistré pour le moment.</blockquote>`, { 
+        return ctx.reply(`<blockquote>❌ ${mention}, ${t.noUsers}</blockquote>`, { 
             parse_mode: 'HTML',
             reply_to_message_id: ctx.message?.message_id 
         });
     }
 
-    await ctx.reply(`<blockquote>⏳ ${mention}, Diffusion en cours vers <b>${targetIds.length}</b> utilisateur(s)...</blockquote>`, { 
+    await ctx.reply(`<blockquote>⏳ ${mention}, ${t.broadcasting} <b>${targetIds.length}</b> ${t.usersCount}</blockquote>`, { 
         parse_mode: 'HTML' 
     });
 
@@ -569,11 +703,30 @@ bot.command('broadcast', async (ctx) => {
     }
 
     await ctx.reply(
-        `<blockquote>✅ ${mention}, <b>Diffusion terminée !</b>\n\n` +
-        `📤 Envoyés avec succès : <b>${successCount}</b>\n` +
-        `❌ Échecs (utilisateurs ayant bloqué le bot) : <b>${failCount}</b></blockquote>`, 
+        `<blockquote>✅ ${mention}, <b>${t.broadcastDone}</b>\n\n` +
+        `📤 ${t.sentSuccess} <b>${successCount}</b>\n` +
+        `❌ ${t.fails} <b>${failCount}</b></blockquote>`, 
         { parse_mode: 'HTML' }
     );
 });
 
-bot.launch().then(() => console.log('▉ KAYA BOT is online with active token & full commands.'));
+// ================= GESTION ROBUSTE DES ERREURS & LANCEMENT =================
+bot.catch((err, ctx) => {
+    console.error(`[TELEGRAF ERROR] dans la mise à jour ${ctx.updateType}:`, err);
+});
+
+const startTelegramBot = () => {
+    bot.launch({
+        dropPendingUpdates: true 
+    }).then(() => {
+        console.log('▉ KAYA BOT is online with active token & full commands.');
+    }).catch((err) => {
+        console.error('⚠️ Connexion Telegram perdue, nouvelle tentative dans 5 secondes...', err);
+        setTimeout(startTelegramBot, 5000); 
+    });
+};
+
+startTelegramBot();
+
+process.once('SIGINT', () => bot.stop('SIGINT'));
+process.once('SIGTERM', () => bot.stop('SIGTERM'));
