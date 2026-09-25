@@ -21,6 +21,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // ================= CONSTANTS & PATHS =================
 const adminFilePath = path.join(__dirname, './database/admintele.json');
 const usersFilePath = path.join(__dirname, './database/users.json');
+const membersFilePath = path.join(__dirname, './database/members.json');
 const pairingFolder = path.join(__dirname, './richstore/pairing');
 const REQUIRED_CHANNELS = ['-1004453499318', '@kayatech2', '@society243'];
 
@@ -63,7 +64,9 @@ const langData = {
         usersCount: "user(s)...",
         broadcastDone: "Broadcast finished!",
         sentSuccess: "Successfully sent:",
-        fails: "Failures (users who blocked the bot):"
+        fails: "Failures (users who blocked the bot):",
+        noGroups: "The bot is not currently in any groups.",
+        groupsListTitle: "BOT REGISTERED GROUPS"
     },
     fr: {
         welcome: "Bienvenue ! Connectez votre WhatsApp ou ajoutez le bot à votre groupe.",
@@ -102,7 +105,9 @@ const langData = {
         usersCount: "utilisateur(s)...",
         broadcastDone: "Diffusion terminée !",
         sentSuccess: "Envoyés avec succès :",
-        fails: "Échecs (utilisateurs ayant bloqué le bot) :"
+        fails: "Échecs (utilisateurs ayant bloqué le bot) :",
+        noGroups: "Le bot n'est actuellement dans aucun groupe.",
+        groupsListTitle: "GROUPES ENREGISTRÉS DU BOT"
     }
 };
 
@@ -230,7 +235,7 @@ ______________________
 ╰▰▰▰▰▰▰▰◈`;
     
     if (isAdmin) {
-        menu += `\n\n> ╢ OWNER PANEL ♰\n╭▰▰▰▰▰▰▰◈\n┆❏ /listpair\n┆❏ /delpair\n┆❏ /broadcast\n╰▰▰▰▰▰▰▰◈`;
+        menu += `\n\n> ╢ OWNER PANEL ♰\n╭▰▰▰▰▰▰▰◈\n┆❏ /listpair\n┆❏ /delpair\n┆❏ /groups\n┆❏ /broadcast\n╰▰▰▰▰▰▰▰◈`;
     }
     menu += `</blockquote>`;
     return menu;
@@ -239,12 +244,10 @@ ______________________
 // 🚀 Initialisation
 const bot = new Telegraf(BOT_TOKEN);
 
-// ================= MIDDLEWARE D'ENREGISTREMENT DES MEMBRES (POUR TAGALL) =================
-const membersFilePath = path.join(__dirname, './database/members.json');
-
+// ================= MIDDLEWARE D'ENREGISTREMENT DES MEMBRES & GROUPES =================
 bot.use(async (ctx, next) => {
     try {
-        if (ctx.chat && ['supergroup', 'group'].includes(ctx.chat.type) && ctx.from && !ctx.from.is_bot) {
+        if (ctx.chat && ['supergroup', 'group'].includes(ctx.chat.type)) {
             let data = {};
             if (fs.existsSync(membersFilePath)) {
                 try {
@@ -256,18 +259,32 @@ bot.use(async (ctx, next) => {
 
             const chatId = String(ctx.chat.id);
             if (!data[chatId]) {
-                data[chatId] = {};
+                data[chatId] = {
+                    name: ctx.chat.title || 'Groupe Telegram',
+                    members: {}
+                };
+            } else if (typeof data[chatId] === 'object' && !data[chatId].name) {
+                const oldMembers = data[chatId];
+                data[chatId] = {
+                    name: ctx.chat.title || 'Groupe Telegram',
+                    members: oldMembers
+                };
+            } else if (ctx.chat.title) {
+                data[chatId].name = ctx.chat.title;
             }
 
-            data[chatId][String(ctx.from.id)] = {
-                id: ctx.from.id,
-                name: ctx.from.first_name || 'Membre'
-            };
+            if (ctx.from && !ctx.from.is_bot) {
+                if (!data[chatId].members) data[chatId].members = {};
+                data[chatId].members[String(ctx.from.id)] = {
+                    id: ctx.from.id,
+                    name: ctx.from.first_name || 'Membre'
+                };
+            }
 
             fs.writeFileSync(membersFilePath, JSON.stringify(data, null, 2), 'utf8');
         }
     } catch (err) {
-        console.error("[MEMBER TRACKER ERROR]:", err);
+        console.error("[GROUP & MEMBER TRACKER ERROR]:", err);
     }
     return next();
 });
@@ -324,7 +341,7 @@ bot.start(async (ctx) => {
 
     if (ctx.chat.type === 'private') {
         await ctx.replyWithPhoto(photo, {
-            caption: `<blockquote>▉ 𝐊𝐀𝐘𝐀 𝐁𝐎𝐓 ▉\n\n${t.welcome}</blockquote>`,
+            caption: `▉ 𝐊𝐀𝐘𝐀 𝐁𝐎𝐓 ▉\n\n${t.welcome}`,
             parse_mode: 'HTML',
             reply_to_message_id: ctx.message?.message_id,
             reply_markup: { 
@@ -376,7 +393,7 @@ bot.action(/^setlang_(fr|en)$/, async (ctx) => {
 
     try {
         if (ctx.chat.type === 'private') {
-            await ctx.editMessageCaption(`<blockquote>▉ 𝐊𝐀𝐘𝐀 𝐁𝐎𝐓 ▉\n\n${t.welcome}</blockquote>`, {
+            await ctx.editMessageCaption(`▉ 𝐊𝐀𝐘𝐀 𝐁𝐎𝐓 ▉\n\n${t.welcome}`, {
                 parse_mode: 'HTML',
                 reply_markup: {
                     inline_keyboard: [
@@ -410,8 +427,8 @@ bot.action('info_group', async (ctx) => {
     const chatId = ctx.chat.id;
     const lng = getLang(chatId);
     const text = lng === 'fr' 
-        ? `<blockquote>🤖 <b>CONFIGURATION DU GROUPE TELEGRAM</b>\n\nPour utiliser les commandes de modération :\n1️⃣ Ajoutez le bot.\n2️⃣ Promouvez-le en tant qu'<b>Admin</b>.\n3️⃣ Utilisez <code>/groupmenu</code> !</blockquote>`
-        : `<blockquote>🤖 <b>TELEGRAM GROUP SETUP</b>\n\nTo use moderation commands:\n1️⃣ Add the bot.\n2️⃣ Promote as <b>Admin</b>.\n3️⃣ Use <code>/groupmenu</code>!</blockquote>`;
+        ? `🤖 <b>CONFIGURATION DU GROUPE TELEGRAM</b>\n\nPour utiliser les commandes de modération :\n1️⃣ Ajoutez le bot.\n2️⃣ Promouvez-le en tant qu'<b>Admin</b>.\n3️⃣ Utilisez <code>/groupmenu</code> !`
+        : `🤖 <b>TELEGRAM GROUP SETUP</b>\n\nTo use moderation commands:\n1️⃣ Add the bot.\n2️⃣ Promote as <b>Admin</b>.\n3️⃣ Use <code>/groupmenu</code>!`;
 
     const botUsername = ctx.botInfo?.username || 'KayaMdBot';
     const t = langData[lng] || langData['en'];
@@ -433,8 +450,8 @@ bot.command('group', async (ctx) => {
     const botUsername = ctx.botInfo?.username || 'KayaMdBot';
     
     const text = lng === 'fr'
-        ? `<blockquote>🤖 <b>CONFIGURATION DU GROUPE TELEGRAM</b>\nUtilisez <code>/groupmenu</code> dans votre groupe après avoir rendu le bot admin.</blockquote>`
-        : `<blockquote>🤖 <b>TELEGRAM GROUP SETUP</b>\nUse <code>/groupmenu</code> inside your group after making the bot admin.</blockquote>`;
+        ? `🤖 <b>CONFIGURATION DU GROUPE TELEGRAM</b>\nUtilisez <code>/groupmenu</code> dans votre groupe après avoir rendu le bot admin.`
+        : `🤖 <b>TELEGRAM GROUP SETUP</b>\nUse <code>/groupmenu</code> inside your group after making the bot admin.`;
 
     await ctx.reply(text, {
         parse_mode: 'HTML',
@@ -452,7 +469,54 @@ bot.command('ping', async (ctx) => {
     const t = langData[lng] || langData['en'];
     const mention = ctx.userMention();
     
-    ctx.reply(`<blockquote>▉ 𝐊𝐀𝐘𝐀 𝐁𝐎𝐓 ▉\n\n👤 User : ${mention}\n✅ <b>Status:</b> ${t.statusOnline}</blockquote>`, { 
+    ctx.reply(`▉ 𝐊𝐀𝐘𝐀 𝐁𝐎𝐓 ▉\n\n👤 User : ${mention}\n✅ <b>Status:</b> ${t.statusOnline}`, { 
+        parse_mode: 'HTML',
+        reply_to_message_id: ctx.message?.message_id
+    });
+});
+
+// ================= COMMANDE OWNER : /groups =================
+bot.command('groups', async (ctx) => {
+    if (!isOwner(ctx)) return;
+    if (!ensurePrivate(ctx)) return;
+
+    const mention = ctx.userMention();
+    const chatId = ctx.chat.id;
+    const lng = getLang(chatId);
+    const t = langData[lng] || langData['en'];
+
+    let data = {};
+    try {
+        if (fs.existsSync(membersFilePath)) {
+            data = JSON.parse(fs.readFileSync(membersFilePath, 'utf8'));
+        }
+    } catch (e) {}
+
+    const groupIds = Object.keys(data);
+
+    if (groupIds.length === 0) {
+        return ctx.reply(`👤 User : ${mention}\n❌ ${t.noGroups}`, {
+            parse_mode: 'HTML',
+            reply_to_message_id: ctx.message?.message_id
+        });
+    }
+
+    let text = `👤 User : ${mention}\n> ╢ ${t.groupsListTitle} : ${groupIds.length} ♰\n`;
+
+    groupIds.forEach((id, index) => {
+        let groupName = "Groupe Inconnu";
+        const groupObj = data[id];
+        
+        if (groupObj) {
+            if (groupObj.name) {
+                groupName = groupObj.name;
+            }
+        }
+
+        text += `┆❏ ${index + 1}. <b>${groupName}</b> (<code>${id}</code>)\n`;
+    });
+
+    ctx.reply(text, {
         parse_mode: 'HTML',
         reply_to_message_id: ctx.message?.message_id
     });
@@ -468,14 +532,14 @@ bot.command('pair', async (ctx) => {
     const activeSessions = getActiveSessions();
     
     if (activeSessions.length >= 60) {
-        return ctx.reply(`<blockquote>❌ ${mention}, <b>${t.serverFull}</b></blockquote>`, { 
+        return ctx.reply(`❌ ${mention}, <b>${t.serverFull}</b>`, { 
             parse_mode: 'HTML',
             reply_to_message_id: ctx.message?.message_id 
         });
     }
 
     if (!(await checkChannels(ctx))) {
-        return ctx.reply(`<blockquote>⚠️ ${mention}, ${t.restrictedAccess}</blockquote>`, {
+        return ctx.reply(`⚠️ ${mention}, ${t.restrictedAccess}`, {
             parse_mode: 'HTML',
             reply_to_message_id: ctx.message?.message_id,
             reply_markup: {
@@ -490,13 +554,13 @@ bot.command('pair', async (ctx) => {
     }
 
     const text = ctx.message.text.split(' ')[1];
-    if (!text) return ctx.reply(`<blockquote>⚠️ ${mention}, ${t.pairUsage}</blockquote>`, { 
+    if (!text) return ctx.reply(`⚠️ ${mention}, ${t.pairUsage}`, { 
         parse_mode: 'HTML',
         reply_to_message_id: ctx.message?.message_id 
     });
     
     const number = text.replace(/\D/g, '');
-    if (number.length < 9) return ctx.reply(`<blockquote>❌ ${mention}, ${t.invalidNumber}</blockquote>`, { 
+    if (number.length < 9) return ctx.reply(`❌ ${mention}, ${t.invalidNumber}`, { 
         parse_mode: 'HTML',
         reply_to_message_id: ctx.message?.message_id 
     });
@@ -508,7 +572,7 @@ bot.command('pair', async (ctx) => {
     const requestPath = path.join(pairingFolder, `request_${teleId}.json`);
     fs.writeFileSync(requestPath, JSON.stringify({ jid, name: userName }));
     
-    ctx.reply(`<blockquote>⏳ ${mention}, ${t.initWait}</blockquote>`, { 
+    ctx.reply(`⏳ ${mention}, ${t.initWait}`, { 
         parse_mode: 'HTML',
         reply_to_message_id: ctx.message?.message_id 
     });
@@ -529,13 +593,13 @@ bot.command('pair', async (ctx) => {
     }
     
     if (cuObj) {
-        const pairingStyle = `<blockquote>▰▰▰▰▰▰▰▰▰▰\n> ╢ PAIRING CODE ♰\n👤 User: ${mention}\n╭▰▰▰▰▰▰▰◈\n┆🔑 Code: <code>${cuObj.code}</code>\n╰▰▰▰▰▰▰▰◈</blockquote>`;
+        const pairingStyle = `▰▰▰▰▰▰▰▰▰▰\n> ╢ PAIRING CODE ♰\n👤 User: ${mention}\n╭▰▰▰▰▰▰▰◈\n┆🔑 Code: <code>${cuObj.code}</code>\n╰▰▰▰▰▰▰▰◈`;
         ctx.reply(pairingStyle, { 
             parse_mode: 'HTML',
             reply_to_message_id: ctx.message?.message_id
         });
     } else {
-        ctx.reply(`<blockquote>❌ ${mention}, ${t.codeError}</blockquote>`, { 
+        ctx.reply(`❌ ${mention}, ${t.codeError}`, { 
             parse_mode: 'HTML',
             reply_to_message_id: ctx.message?.message_id 
         });
@@ -565,12 +629,12 @@ bot.command('listpair', async (ctx) => {
     const lng = getLang(chatId);
     const t = langData[lng] || langData['en'];
 
-    if (activeSessions.length === 0) return ctx.reply(`<blockquote>${mention}, ${t.noDevices}</blockquote>`, { 
+    if (activeSessions.length === 0) return ctx.reply(`${mention}, ${t.noDevices}`, { 
         parse_mode: 'HTML',
         reply_to_message_id: ctx.message?.message_id 
     });
 
-    let text = `<blockquote>👤 User : ${mention}\n> ╢ CONNECTED : ${activeSessions.length}/60 ♰\n`;
+    let text = `👤 User : ${mention}\n> ╢ CONNECTED : ${activeSessions.length}/60 ♰\n`;
     
     activeSessions.forEach((number, i) => {
         let userName = "Unknown";
@@ -588,7 +652,6 @@ bot.command('listpair', async (ctx) => {
         text += `┆❏ ${i + 1}. <b>${userName}</b> (${number}) [TeleID: ${teleId}]\n`;
     });
     
-    text += `</blockquote>`;
     ctx.reply(text, { 
         parse_mode: 'HTML',
         reply_to_message_id: ctx.message?.message_id 
@@ -605,7 +668,7 @@ bot.command('delpair', async (ctx) => {
     const t = langData[lng] || langData['en'];
     
     const arg = ctx.message.text.split(' ')[1];
-    if (!arg) return ctx.reply(`<blockquote>⚠️ ${mention}, ${t.delPairUsage}</blockquote>`, { 
+    if (!arg) return ctx.reply(`⚠️ ${mention}, ${t.delPairUsage}`, { 
         parse_mode: 'HTML',
         reply_to_message_id: ctx.message?.message_id 
     });
@@ -630,7 +693,7 @@ bot.command('delpair', async (ctx) => {
 
     if (foundNumber) {
         forceCleanupSession(foundNumber, teleId);
-        return ctx.reply(`<blockquote>✅ ${mention}, Session <code>${foundNumber}</code> ${t.sessionDisconnected}</blockquote>`, { 
+        return ctx.reply(`✅ ${mention}, Session <code>${foundNumber}</code> ${t.sessionDisconnected}`, { 
             parse_mode: 'HTML',
             reply_to_message_id: ctx.message?.message_id 
         });
@@ -638,13 +701,13 @@ bot.command('delpair', async (ctx) => {
 
     if (fs.existsSync(path.join(pairingFolder, teleId))) {
         forceCleanupSession(teleId, "default");
-        return ctx.reply(`<blockquote>✅ ${mention}, Session <code>${teleId}</code> ${t.sessionDisconnected}</blockquote>`, { 
+        return ctx.reply(`✅ ${mention}, Session <code>${teleId}</code> ${t.sessionDisconnected}`, { 
             parse_mode: 'HTML',
             reply_to_message_id: ctx.message?.message_id 
         });
     }
 
-    ctx.reply(`<blockquote>❌ ${mention}, ${t.sessionNotFound}</blockquote>`, { 
+    ctx.reply(`❌ ${mention}, ${t.sessionNotFound}`, { 
         parse_mode: 'HTML',
         reply_to_message_id: ctx.message?.message_id 
     });
@@ -661,7 +724,7 @@ bot.command('broadcast', async (ctx) => {
     
     const messageText = ctx.message.text.split(' ').slice(1).join(' ');
     if (!messageText) {
-        return ctx.reply(`<blockquote>⚠️ ${mention}, ${t.broadcastUsage}</blockquote>`, { 
+        return ctx.reply(`⚠️ ${mention}, ${t.broadcastUsage}`, { 
             parse_mode: 'HTML',
             reply_to_message_id: ctx.message?.message_id 
         });
@@ -675,13 +738,13 @@ bot.command('broadcast', async (ctx) => {
     } catch (e) {}
 
     if (targetIds.length === 0) {
-        return ctx.reply(`<blockquote>❌ ${mention}, ${t.noUsers}</blockquote>`, { 
+        return ctx.reply(`❌ ${mention}, ${t.noUsers}`, { 
             parse_mode: 'HTML',
             reply_to_message_id: ctx.message?.message_id 
         });
     }
 
-    await ctx.reply(`<blockquote>⏳ ${mention}, ${t.broadcasting} <b>${targetIds.length}</b> ${t.usersCount}</blockquote>`, { 
+    await ctx.reply(`⏳ ${mention}, ${t.broadcasting} <b>${targetIds.length}</b> ${t.usersCount}`, { 
         parse_mode: 'HTML' 
     });
 
@@ -692,7 +755,7 @@ bot.command('broadcast', async (ctx) => {
         try {
             await bot.telegram.sendMessage(
                 teleId, 
-                `<blockquote>📢 <b>ANNONCE - KAYA BOT</b>\n\n${messageText}</blockquote>`, 
+                `📢 <b>ANNONCE - KAYA BOT</b>\n\n${messageText}`, 
                 { parse_mode: 'HTML' }
             );
             successCount++;
@@ -703,9 +766,9 @@ bot.command('broadcast', async (ctx) => {
     }
 
     await ctx.reply(
-        `<blockquote>✅ ${mention}, <b>${t.broadcastDone}</b>\n\n` +
+        `✅ ${mention}, <b>${t.broadcastDone}</b>\n\n` +
         `📤 ${t.sentSuccess} <b>${successCount}</b>\n` +
-        `❌ ${t.fails} <b>${failCount}</b></blockquote>`, 
+        `❌ ${t.fails} <b>${failCount}</b>`, 
         { parse_mode: 'HTML' }
     );
 });
