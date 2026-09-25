@@ -23,7 +23,13 @@ function getGroupMembers(chatId) {
     try {
         if (fs.existsSync(membersFilePath)) {
             const data = JSON.parse(fs.readFileSync(membersFilePath, 'utf8'));
-            return Object.values(data[String(chatId)] || {});
+            const chatData = data[String(chatId)];
+            
+            if (!chatData) return [];
+            
+            // Supporte l'ancienne et la nouvelle structure du JSON
+            const membersObj = chatData.members || chatData;
+            return Object.values(membersObj).filter(m => m && typeof m === 'object' && m.id);
         }
     } catch (e) {
         console.error("[GET MEMBERS ERROR]:", e);
@@ -58,7 +64,6 @@ export default function setupTagAll(bot) {
 
             const lng = getLang(ctx.chat.id);
 
-            // Vérification des droits admin de l'utilisateur
             if (!(await checkAdmin(ctx))) {
                 const errorMsg = lng === 'fr' 
                     ? "⚠️ Seuls les administrateurs peuvent utiliser la commande tagall." 
@@ -74,7 +79,6 @@ export default function setupTagAll(bot) {
                 ? args 
                 : (lng === 'fr' ? "🔔 Appel général !" : "🔔 General roll call!");
 
-            // Récupération des membres enregistrés dans la base
             const members = getGroupMembers(ctx.chat.id);
 
             if (members.length === 0) {
@@ -84,7 +88,6 @@ export default function setupTagAll(bot) {
                 return ctx.reply(`<blockquote>${noMembersMsg}</blockquote>`, { parse_mode: 'HTML' });
             }
 
-            // Génération des mentions HTML pour chaque membre
             const mentions = members.map(m => `<a href="tg://user?id=${m.id}">${m.name}</a>`).join('\n');
 
             const senderMention = typeof ctx.userMention === 'function' 
@@ -103,7 +106,6 @@ export default function setupTagAll(bot) {
                 }
             });
 
-            // Supprime le message de commande
             await ctx.deleteMessage().catch(() => {});
 
         } catch (err) {
