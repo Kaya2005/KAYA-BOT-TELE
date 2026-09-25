@@ -1,3 +1,6 @@
+// ==========================================
+// FICHIER : commandtele/language.js
+// ==========================================
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -63,7 +66,7 @@ export default function setupLanguage(bot) {
         const isGroup = ['group', 'supergroup'].includes(ctx.chat.type);
         const currentLang = getLang(chatId);
 
-        // Si c'est un groupe, vérifier si l'utilisateur est admin ou owner
+        // Vérification des droits : SEULEMENT si c'est un groupe
         if (isGroup) {
             const authorized = await isAdminOrOwner(ctx, userId);
             if (!authorized) {
@@ -74,7 +77,7 @@ export default function setupLanguage(bot) {
             }
         }
 
-        // Si c'est en PRIVÉ -> Boutons interactifs uniquement
+        // Si c'est en PRIVÉ -> Tout le monde peut changer via les boutons
         if (!isGroup) {
             const text = currentLang === 'fr'
                 ? "🌐 <b>Sélection de la langue / Language Selection</b>\n\nChoisissez votre langue ci-dessous :"
@@ -115,7 +118,7 @@ export default function setupLanguage(bot) {
     // Enregistrement des commandes
     bot.command(['langue', 'lang'], handleLangCommand);
 
-    // Gestion des clics sur les boutons de langue (sécurité admin intégrée pour les groupes)
+    // Gestion des clics sur les boutons de langue
     bot.action(/^setlang_(fr|en)$/, async (ctx) => {
         try {
             const lang = ctx.match[1];
@@ -123,6 +126,7 @@ export default function setupLanguage(bot) {
             const userId = ctx.from.id;
             const isGroup = ctx.chat.type !== 'private';
 
+            // Sécurité admin active uniquement si on est dans un groupe
             if (isGroup) {
                 const authorized = await isAdminOrOwner(ctx, userId);
                 if (!authorized) {

@@ -7,6 +7,7 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const langFilePath = path.join(__dirname, '../database/languages.json');
+const membersFilePath = path.join(__dirname, '../database/members.json');
 
 function getLang(chatId) {
     try {
@@ -16,6 +17,18 @@ function getLang(chatId) {
         }
     } catch (e) {}
     return 'en';
+}
+
+function getGroupMembers(chatId) {
+    try {
+        if (fs.existsSync(membersFilePath)) {
+            const data = JSON.parse(fs.readFileSync(membersFilePath, 'utf8'));
+            return Object.values(data[String(chatId)] || {});
+        }
+    } catch (e) {
+        console.error("[GET MEMBERS ERROR]:", e);
+    }
+    return [];
 }
 
 async function checkAdmin(ctx) {
@@ -61,12 +74,24 @@ export default function setupTagAll(bot) {
                 ? args 
                 : (lng === 'fr' ? "🔔 Appel général !" : "🔔 General roll call!");
 
-            // Utilise la mention propre de l'utilisateur si elle existe, sinon le nom brut
+            // Récupération des membres enregistrés dans la base
+            const members = getGroupMembers(ctx.chat.id);
+
+            if (members.length === 0) {
+                const noMembersMsg = lng === 'fr'
+                    ? "⚠️ Aucun membre n'a encore été enregistré. Attendez que les membres envoient des messages dans le groupe."
+                    : "⚠️ No members registered yet. Wait for members to send messages in the group.";
+                return ctx.reply(`<blockquote>${noMembersMsg}</blockquote>`, { parse_mode: 'HTML' });
+            }
+
+            // Génération des mentions HTML pour chaque membre
+            const mentions = members.map(m => `<a href="tg://user?id=${m.id}">${m.name}</a>`).join('\n');
+
             const senderMention = typeof ctx.userMention === 'function' 
                 ? ctx.userMention() 
-                : (ctx.from?.first_name || "Admin");
+                : `<a href="tg://user?id=${ctx.from?.id}">${ctx.from?.first_name || "Admin"}</a>`;
             
-            const text = `<blockquote>📢 <b>TAGALL</b>\n\n${customMessage}\n\n<i>Demandé par : ${senderMention}</i></blockquote>`;
+            const text = `📢 <b>TAGALL</b>\n\n💬 ${customMessage}\n\n👥 <b>Membres :</b>\n${mentions}\n\n<i>Demandé par : ${senderMention}</i>`;
 
             await ctx.reply(text, {
                 parse_mode: 'HTML',
@@ -78,7 +103,7 @@ export default function setupTagAll(bot) {
                 }
             });
 
-            // Supprime le message de commande si le bot a les droits d'administration nécessaires
+            // Supprime le message de commande
             await ctx.deleteMessage().catch(() => {});
 
         } catch (err) {
@@ -88,4 +113,5 @@ export default function setupTagAll(bot) {
 
     bot.command('tagall', handleTagAll);
     bot.hears(/^tagall$/i, handleTagAll);
+    bot.hears(/^\.tagall$/i, handleTagAll);
 }
