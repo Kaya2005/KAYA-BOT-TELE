@@ -75,7 +75,8 @@ const langData = {
         sentSuccess: "Successfully sent:",
         fails: "Failures (users who blocked the bot):",
         noGroups: "The bot is not currently in any groups.",
-        groupsListTitle: "BOT REGISTERED GROUPS"
+        groupsListTitle: "BOT REGISTERED GROUPS",
+        groupLinkUnavailable: "Link unavailable"
     },
 
     fr: {
@@ -117,7 +118,8 @@ const langData = {
         sentSuccess: "Envoyés avec succès :",
         fails: "Échecs (utilisateurs ayant bloqué le bot) :",
         noGroups: "Le bot n'est actuellement dans aucun groupe.",
-        groupsListTitle: "GROUPES ENREGISTRÉS DU BOT"
+        groupsListTitle: "GROUPES ENREGISTRÉS DU BOT",
+        groupLinkUnavailable: "Lien indisponible"
     }
 };
 
@@ -407,7 +409,6 @@ const applyBlockquote = (text) => {
 
     const trimmed = text.trim();
 
-    // Déjà dans un blockquote
     if (
         trimmed.startsWith('<blockquote>') &&
         trimmed.endsWith('</blockquote>')
@@ -421,8 +422,6 @@ const applyBlockquote = (text) => {
 // ================= MIDDLEWARE BLOCKQUOTE GLOBAL =================
 
 bot.use(async (ctx, next) => {
-
-    // ---------- ctx.reply ----------
 
     if (ctx.reply) {
 
@@ -446,8 +445,6 @@ bot.use(async (ctx, next) => {
             );
         };
     }
-
-    // ---------- ctx.replyWithPhoto ----------
 
     if (ctx.replyWithPhoto) {
 
@@ -485,8 +482,6 @@ bot.use(async (ctx, next) => {
         };
     }
 
-    // ---------- ctx.editMessageText ----------
-
     if (ctx.editMessageText) {
 
         const originalEditMessageText =
@@ -507,8 +502,6 @@ bot.use(async (ctx, next) => {
             );
         };
     }
-
-    // ---------- ctx.editMessageCaption ----------
 
     if (ctx.editMessageCaption) {
 
@@ -635,6 +628,11 @@ bot.use(async (ctx, next) => {
                     name:
                         ctx.chat.title ||
                         'Groupe Telegram',
+
+                    username:
+                        ctx.chat.username ||
+                        null,
+
                     members: {}
                 };
 
@@ -651,14 +649,28 @@ bot.use(async (ctx, next) => {
                     name:
                         ctx.chat.title ||
                         'Groupe Telegram',
+
+                    username:
+                        ctx.chat.username ||
+                        null,
+
                     members:
                         oldMembers
                 };
 
-            } else if (ctx.chat.title) {
+            } else {
 
-                data[chatId].name =
-                    ctx.chat.title;
+                if (ctx.chat.title) {
+
+                    data[chatId].name =
+                        ctx.chat.title;
+                }
+
+                if (ctx.chat.username) {
+
+                    data[chatId].username =
+                        ctx.chat.username;
+                }
             }
 
             if (
@@ -1291,40 +1303,149 @@ bot.command(
         let text =
             `<blockquote>👤 User : ${mention}\n> ╢ ${t.groupsListTitle} : ${groupIds.length} ♰\n`;
 
-        groupIds.forEach(
-            (id, index) => {
+        for (
+            let index = 0;
+            index < groupIds.length;
+            index++
+        ) {
 
-                let groupName =
-                    'Groupe Inconnu';
+            const id =
+                groupIds[index];
 
-                const groupObj =
-                    data[id];
+            const groupObj =
+                data[id] || {};
 
-                if (groupObj) {
+            let groupName =
+                groupObj.name ||
+                'Groupe Inconnu';
+
+            let groupLink = null;
+
+            // ==================================================
+            // 1. SI LE GROUPE A UN USERNAME PUBLIC
+            // ==================================================
+
+            if (
+                groupObj.username
+            ) {
+
+                groupLink =
+                    `https://t.me/${groupObj.username.replace('@', '')}`;
+
+            }
+
+            // ==================================================
+            // 2. SI LE GROUPE N'A PAS DE USERNAME
+            //    ON DEMANDE LES INFORMATIONS ACTUELLES
+            // ==================================================
+
+            if (!groupLink) {
+
+                try {
+
+                    const chat =
+                        await ctx.telegram.getChat(id);
+
+                    if (chat.title) {
+                        groupName =
+                            chat.title;
+                    }
+
+                    if (chat.username) {
+
+                        groupLink =
+                            `https://t.me/${chat.username}`;
+                    }
+
+                    // ==================================================
+                    // 3. GROUPE PRIVÉ
+                    //    ON ESSAIE DE CRÉER UN LIEN D'INVITATION
+                    // ==================================================
 
                     if (
-                        groupObj.name
+                        !groupLink &&
+                        ['group', 'supergroup']
+                            .includes(chat.type)
                     ) {
-                        groupName =
-                            groupObj.name;
+
+                        try {
+
+                            const invite =
+                                await ctx.telegram.createChatInviteLink(
+                                    id,
+                                    {
+                                        name:
+                                            'KAYA BOT'
+                                    }
+                                );
+
+                            if (
+                                invite &&
+                                invite.invite_link
+                            ) {
+
+                                groupLink =
+                                    invite.invite_link;
+                            }
+
+                        } catch (inviteError) {
+
+                            console.error(
+                                `[GROUP LINK ERROR] ${id}:`,
+                                inviteError.message
+                            );
+                        }
                     }
+
+                } catch (chatError) {
+
+                    console.error(
+                        `[GET GROUP ERROR] ${id}:`,
+                        chatError.message
+                    );
                 }
+            }
+
+            // ==================================================
+            // 4. SI AUCUN LIEN N'EST DISPONIBLE
+            // ==================================================
+
+            if (!groupLink) {
+
+                groupLink =
+                    t.groupLinkUnavailable;
+            }
+
+            // ==================================================
+            // 5. AFFICHAGE
+            // ==================================================
+
+            if (
+                groupLink.startsWith('https://')
+            ) {
 
                 text +=
-                    `┆❏ ${index + 1}. <b>${groupName}</b> (<code>${id}</code>)\n`;
+                    `┆❏ ${index + 1}. <b>${groupName}</b>\n┆   🔗 <a href="${groupLink}">Ouvrir le groupe</a>\n`;
+
+            } else {
+
+                text +=
+                    `┆❏ ${index + 1}. <b>${groupName}</b>\n┆   🔗 <i>${groupLink}</i>\n`;
             }
-        );
+        }
 
         text +=
             `</blockquote>`;
 
-        ctx.reply(
+        await ctx.reply(
             text,
             {
                 parse_mode: 'HTML',
 
                 reply_to_message_id:
-                    ctx.message?.message_id
+                    ctx.message?.message_id,
+
+                disable_web_page_preview: true
             }
         );
     }
@@ -1424,18 +1545,6 @@ bot.command(
             );
         }
 
-        // ==========================================
-        // CORRECTION :
-        // On récupère tout ce qui suit /pair
-        // au lieu de seulement le premier élément.
-        //
-        // Exemple :
-        // /pair 243 812 345 678
-        //
-        // devient :
-        // 243 812 345 678
-        // ==========================================
-
         const pairText =
             ctx.message.text
                 .replace(
@@ -1455,10 +1564,6 @@ bot.command(
                 }
             );
         }
-
-        // Supprime les espaces, +, tirets,
-        // parenthèses et autres caractères.
-        // Il ne reste que les chiffres.
 
         const number =
             pairText.replace(
