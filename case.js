@@ -1,4 +1,7 @@
-// ==================== case.js ====================
+// ==========================================
+// FICHIER : case.js
+// Traitement séquentiel des commandes
+// ==========================================
 
 import {
     getContentType
@@ -29,14 +32,6 @@ import {
 import {
     storeMessage
 } from "./commands/antidelete.js";
-
-// ==========================================
-// KAYA UTILS
-// ==========================================
-
-import {
-    randomDelay
-} from "./utils/kayaUtils.js";
 
 // ==========================================
 // PATH
@@ -161,7 +156,6 @@ if (
     }
 }
 
-
 // ==========================================
 // HANDLER PRINCIPAL
 // ==========================================
@@ -212,51 +206,6 @@ export default async function caseHandler(
         const groupId =
             from.split("@")[0];
 
-
-        // ==========================================
-        // AUTO REACT NEWSLETTER / CHANNEL
-        // ==========================================
-
-        if (from.endsWith("@newsletter")) {
-            const isReact = mek.key?.fromMe;
-            const botNumber = ownerId;
-            const senderNumber = sender || "";
-            
-            try {
-                const reactions = [
-                    "😊",
-                    "👍",
-                    "😂",
-                    "💯",
-                    "🔥",
-                    "🙏",
-                    "🎉",
-                    "👏",
-                    "😎",
-                    "🤖",
-                ];
-                const randomReaction =
-                    reactions[Math.floor(Math.random() * reactions.length)];
-                
-                console.log(chalk.cyan(`[AUTO-REACT NEWSLETTER] Envoi de ${randomReaction} sur ${from}`));
-
-                await kaya.sendMessage(from, {
-                    react: { 
-                        text: randomReaction, 
-                        key: {
-                            remoteJid: from,
-                            id: mek.key.id,
-                            fromMe: mek.key.fromMe,
-                            participant: mek.key.participant || undefined
-                        }
-                    },
-                });
-            } catch (error) {
-                console.error("[AUTO-REACT NEWSLETTER ERROR]:", error);
-            }
-        }
-
-
         // ==========================================
         // ANTI DELETE
         // ==========================================
@@ -287,7 +236,6 @@ export default async function caseHandler(
                 );
             }
         }
-
 
         // ==========================================
         // STATUS
@@ -323,7 +271,6 @@ export default async function caseHandler(
             return;
         }
 
-
         // ==========================================
         // EXTRACTION TEXTE
         // ==========================================
@@ -336,10 +283,6 @@ export default async function caseHandler(
         let body = "";
 
         switch (type) {
-
-            // ======================================
-            // INTERACTIVE RESPONSE
-            // ======================================
 
             case "interactiveResponseMessage": {
 
@@ -365,17 +308,13 @@ export default async function caseHandler(
                             "";
 
                     } catch {
+
                         body = "";
                     }
                 }
 
                 break;
             }
-
-
-            // ======================================
-            // TEMPLATE BUTTON
-            // ======================================
 
             case "templateButtonReplyMessage":
 
@@ -387,11 +326,6 @@ export default async function caseHandler(
 
                 break;
 
-
-            // ======================================
-            // BUTTON
-            // ======================================
-
             case "buttonsResponseMessage":
 
                 body =
@@ -402,11 +336,6 @@ export default async function caseHandler(
 
                 break;
 
-
-            // ======================================
-            // MESSAGE NORMAL
-            // ======================================
-
             case "conversation":
 
                 body =
@@ -415,11 +344,6 @@ export default async function caseHandler(
                     "";
 
                 break;
-
-
-            // ======================================
-            // MESSAGE CITÉ / TEXTE
-            // ======================================
 
             case "extendedTextMessage":
 
@@ -431,11 +355,6 @@ export default async function caseHandler(
 
                 break;
 
-
-            // ======================================
-            // IMAGE AVEC CAPTION
-            // ======================================
-
             case "imageMessage":
 
                 body =
@@ -445,11 +364,6 @@ export default async function caseHandler(
                     "";
 
                 break;
-
-
-            // ======================================
-            // VIDÉO AVEC CAPTION
-            // ======================================
 
             case "videoMessage":
 
@@ -461,16 +375,10 @@ export default async function caseHandler(
 
                 break;
 
-
-            // ======================================
-            // AUTRES
-            // ======================================
-
             default:
 
                 body = "";
         }
-
 
         // ==========================================
         // DÉTECTION COMMANDE
@@ -523,7 +431,6 @@ export default async function caseHandler(
                         )
                     );
 
-
                 // ==========================================
                 // NO PREFIX
                 // ==========================================
@@ -549,7 +456,6 @@ export default async function caseHandler(
                         isCommand = true;
                     }
                 }
-
 
                 // ==========================================
                 // PREFIX PERSONNALISÉ
@@ -596,7 +502,6 @@ export default async function caseHandler(
                         isCommand = true;
                     }
                 }
-
 
                 // ==========================================
                 // TOUS LES PREFIX
@@ -655,7 +560,6 @@ export default async function caseHandler(
             }
         }
 
-
         // ==========================================
         // UTILITAIRES ACTIFS
         // ==========================================
@@ -682,7 +586,9 @@ export default async function caseHandler(
                     ownerId,
                     utilName,
                     false,
-                    groupId
+                    isGroup
+                        ? groupId
+                        : null
                 )
             ) {
 
@@ -693,9 +599,21 @@ export default async function caseHandler(
             }
         }
 
+        // ==========================================
+        // AUTO REACT ACTIF ?
+        // ==========================================
+
+        const isAutoReactActive =
+            Boolean(
+                getSetting(
+                    ownerId,
+                    "autoreact",
+                    false
+                )
+            );
 
         // ==========================================
-        // CHATBOT
+        // CHATBOT ACTIF ?
         // ==========================================
 
         const chatbotMode =
@@ -707,6 +625,36 @@ export default async function caseHandler(
 
         const isChatbotActive =
             chatbotMode !== "off";
+
+        // ==========================================
+        // MESSAGE SANS TRAITEMENT
+        // ==========================================
+
+        /*
+         * Si ce n'est pas une commande,
+         * qu'aucun utilitaire n'est actif,
+         * que l'autoreact est désactivé
+         * et que le chatbot est désactivé,
+         *
+         * on arrête immédiatement.
+         *
+         * Le message normal n'est donc pas
+         * traité par le reste du bot.
+         */
+
+        if (
+            !isCommand &&
+            !hasActiveUtility &&
+            !isAutoReactActive &&
+            !isChatbotActive
+        ) {
+
+            return;
+        }
+
+        // ==========================================
+        // CHATBOT
+        // ==========================================
 
         if (
             !isCommand &&
@@ -779,21 +727,6 @@ export default async function caseHandler(
             }
         }
 
-
-        // ==========================================
-        // OPTIMISATION
-        // ==========================================
-
-        if (
-            !isCommand &&
-            !hasActiveUtility &&
-            !isChatbotActive
-        ) {
-
-            return;
-        }
-
-
         // ==========================================
         // PRÉSENCE
         // ==========================================
@@ -862,56 +795,63 @@ export default async function caseHandler(
             }
         }
 
-
         // ==========================================
         // AUTO REACT
         // ==========================================
 
-        const autoReact =
-            commands.get(
-                "autoreact"
-            );
-
         if (
-            autoReact &&
-            getSetting(
-                ownerId,
-                "autoreact",
-                false
-            ) &&
-            typeof autoReact.listen ===
-                "function"
+            isAutoReactActive
         ) {
 
-            await autoReact
-                .listen(
-                    kaya,
-                    mek,
-                    from
-                )
-                .catch(
-                    () => {}
+            const autoReact =
+                commands.get(
+                    "autoreact"
                 );
-        }
 
+            if (
+                autoReact &&
+                typeof autoReact.listen ===
+                    "function"
+            ) {
+
+                await autoReact
+                    .listen(
+                        kaya,
+                        mek,
+                        from
+                    )
+                    .catch(
+                        () => {}
+                    );
+            }
+        }
 
         // ==========================================
         // UTILITAIRES
         // ==========================================
 
-        await executeUtilities(
-            kaya,
-            mek,
-            from,
-            body,
-            ownerId,
-            groupId
-        );
+        if (
+            hasActiveUtility
+        ) {
+
+            await executeUtilities(
+                kaya,
+                mek,
+                from,
+                body,
+                ownerId,
+                groupId,
+                isGroup
+            );
+        }
+
+        // ==========================================
+        // PAS UNE COMMANDE
+        // ==========================================
 
         if (!isCommand) {
             return;
         }
-
 
         // ==========================================
         // OWNER / SUDO
@@ -938,7 +878,6 @@ export default async function caseHandler(
             sudoList.includes(
                 sender
             );
-
 
         // ==========================================
         // MODE PRIVÉ
@@ -1001,7 +940,6 @@ export default async function caseHandler(
             }
         }
 
-
         // ==========================================
         // UTILISATEUR BANNI
         // ==========================================
@@ -1016,7 +954,6 @@ export default async function caseHandler(
 
             return;
         }
-
 
         // ==========================================
         // RÉCUPÉRATION COMMANDE
@@ -1041,7 +978,6 @@ export default async function caseHandler(
             return;
         }
 
-
         // ==========================================
         // OWNER ONLY
         // ==========================================
@@ -1064,7 +1000,6 @@ export default async function caseHandler(
             );
         }
 
-
         // ==========================================
         // GROUP ONLY
         // ==========================================
@@ -1086,7 +1021,6 @@ export default async function caseHandler(
             );
         }
 
-
         // ==========================================
         // ADMIN ONLY
         // ==========================================
@@ -1107,7 +1041,6 @@ export default async function caseHandler(
                 }
             );
         }
-
 
         // ==========================================
         // ANTI FLOOD
@@ -1137,7 +1070,6 @@ export default async function caseHandler(
             sender,
             Date.now()
         );
-
 
         // ==========================================
         // BOT ADMIN
@@ -1212,7 +1144,6 @@ export default async function caseHandler(
             }
         }
 
-
         // ==========================================
         // LOG
         // ==========================================
@@ -1233,9 +1164,8 @@ export default async function caseHandler(
             )
         );
 
-
         // ==========================================
-        // EXÉCUTION
+        // EXÉCUTION COMMANDE
         // ==========================================
 
         try {
@@ -1304,7 +1234,6 @@ export default async function caseHandler(
     }
 }
 
-
 // ==========================================
 // EXÉCUTION DES UTILITAIRES
 // ==========================================
@@ -1315,7 +1244,8 @@ async function executeUtilities(
     from,
     body,
     ownerId,
-    groupId
+    groupId,
+    isGroup
 ) {
 
     const utils = [
@@ -1361,7 +1291,9 @@ async function executeUtilities(
                 ownerId,
                 utilConf.setting,
                 false,
-                groupId
+                isGroup
+                    ? groupId
+                    : null
             );
 
         if (!isEnabled) {
@@ -1398,3 +1330,4 @@ async function executeUtilities(
         }
     }
 }
+

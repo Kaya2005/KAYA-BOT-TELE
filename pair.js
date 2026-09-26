@@ -15,9 +15,7 @@ import path from "path";
 import pino from "pino";
 import { fileURLToPath } from "url";
 
-import handler, {
-    commands
-} from "./case.js";
+import handler from "./case.js";
 
 import {
     connectionMessage,
@@ -213,7 +211,7 @@ export function watchPairingRequests() {
 }
 
 // ==========================================
-// RESTAURATION DES SESSIONS (Ancien Système)
+// RESTAURATION DES SESSIONS
 // ==========================================
 
 export async function restoreSessions() {
@@ -326,8 +324,6 @@ export async function restoreSessions() {
             );
         });
 
-        // Évite de lancer toutes les sessions
-        // exactement au même moment.
         await new Promise(
             resolve =>
                 setTimeout(
@@ -1084,7 +1080,11 @@ export default async function startpairing(
                         );
                     }
 
-                    const pairingNumber = number.replace(/[^0-9]/g, "");
+                    const pairingNumber =
+                        number.replace(
+                            /[^0-9]/g,
+                            ""
+                        );
 
                     let code =
                         await kaya.requestPairingCode(
@@ -1182,6 +1182,10 @@ export default async function startpairing(
                 const rawMsg =
                     chatUpdate.messages[0];
 
+                // ==========================================
+                // MESSAGE INVALIDE / INTERNE
+                // ==========================================
+
                 if (
                     !rawMsg?.message ||
                     rawMsg.key?.id?.startsWith(
@@ -1191,34 +1195,43 @@ export default async function startpairing(
                     return;
                 }
 
+                // ==========================================
+                // NORMALISATION
+                // ==========================================
+
                 const mek =
                     smsg(
                         kaya,
                         rawMsg
                     );
 
-                const uniqueCommands =
-                    new Set(
-                        commands.values()
-                    );
-
-                for (
-                    const cmd
-                    of uniqueCommands
+                if (
+                    !mek ||
+                    !mek.key ||
+                    !mek.message
                 ) {
-
-                    if (
-                        typeof cmd.detect ===
-                        "function"
-                    ) {
-
-                        await cmd.detect(
-                            kaya,
-                            mek,
-                            mek.chat
-                        );
-                    }
+                    return;
                 }
+
+                // ==========================================
+                // TRAITEMENT CENTRAL
+                // ==========================================
+                //
+                // IMPORTANT :
+                // On n'exécute plus tous les cmd.detect()
+                // ici.
+                //
+                // case.js décide maintenant lui-même :
+                //
+                // - commande
+                // - utilitaire actif
+                // - autoreact
+                // - chatbot
+                // - ou retour immédiat
+                //
+                // Cela évite que chaque detect() soit appelé
+                // sur chaque message normal.
+                // ==========================================
 
                 await handler(
                     kaya,
@@ -1231,7 +1244,7 @@ export default async function startpairing(
                 console.error(
                     `${logPrefix} [MESSAGES ERROR]:`,
                     err?.message ||
-                        err
+                    err
                 );
             }
         }
@@ -1280,9 +1293,26 @@ export default async function startpairing(
 
             try {
 
+                /*
+                 * On importe ici uniquement les commandes
+                 * qui ont réellement besoin du hook
+                 * participantUpdate.
+                 *
+                 * Le chargement reste compatible avec
+                 * la Map commands de case.js.
+                 */
+
+                const caseModule =
+                    await import(
+                        "./case.js"
+                    );
+
+                const commandMap =
+                    caseModule.commands;
+
                 const uniqueCommands =
                     new Set(
-                        commands.values()
+                        commandMap.values()
                     );
 
                 for (
@@ -1295,10 +1325,20 @@ export default async function startpairing(
                         "function"
                     ) {
 
-                        await cmd.participantUpdate(
-                            kaya,
-                            update
-                        );
+                        try {
+
+                            await cmd.participantUpdate(
+                                kaya,
+                                update
+                            );
+
+                        } catch (error) {
+
+                            console.error(
+                                "[PARTICIPANT COMMAND ERROR]:",
+                                error
+                            );
+                        }
                     }
                 }
 
@@ -1600,8 +1640,6 @@ export default async function startpairing(
                         backoffDelay
                     );
 
-                    // Vérifie que cette session
-                    // est toujours la session active.
                     if (
                         rentbotTracker
                             .get(number)
@@ -1786,3 +1824,4 @@ function smsg(
 
     return m;
 }
+
