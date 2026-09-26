@@ -59,7 +59,7 @@ const langData = {
         joinSuccess: "✅ You can connect now.",
         accessAuthorized: "✅ Access authorized.",
         joinError: "❌ You must join the required channels first.",
-        pairUsage: "Usage: /pair 243xxxxxx",
+        pairUsage: "Usage: /pair 243 812 345 678",
         invalidNumber: "Invalid number. Minimum 9 digits required.",
         initWait: "Initialization... please wait.",
         codeError: "Error: Pairing code could not be generated.",
@@ -88,7 +88,7 @@ const langData = {
         adminOnly: "❌ Seuls les administrateurs du groupe peuvent modifier la langue du bot.",
         needPrivate: "❌ Veuillez m'écrire en privé pour utiliser cette commande.",
         btnOpenPrivate: "💬 Ouvrir le bot en privé",
-        needGroup: "❌ Veuillez ajouter le bot dans un groupe pour utiliser cette commande.",
+        needGroup: "❌ Veuillez ajouter le bot à un groupe pour utiliser cette commande.",
         btnAddGroup: "➕ Ajouter au groupe",
         logoNotFound: "❌ Erreur : L'image logo.png est introuvable.",
         statusOnline: "Online / En ligne",
@@ -101,7 +101,7 @@ const langData = {
         joinSuccess: "✅ Vous pouvez vous connecter maintenant.",
         accessAuthorized: "✅ Accès autorisé.",
         joinError: "❌ Vous devez d'abord rejoindre les canaux requis.",
-        pairUsage: "Utilisation : /pair 243xxxxxx",
+        pairUsage: "Utilisation : /pair 243 812 345 678",
         invalidNumber: "Numéro invalide. Minimum 9 chiffres requis.",
         initWait: "Initialisation... veuillez patienter.",
         codeError: "Erreur : Le code d'appairage n'a pas pu être généré.",
@@ -1424,11 +1424,27 @@ bot.command(
             );
         }
 
-        const text =
-            ctx.message.text
-                .split(' ')[1];
+        // ==========================================
+        // CORRECTION :
+        // On récupère tout ce qui suit /pair
+        // au lieu de seulement le premier élément.
+        //
+        // Exemple :
+        // /pair 243 812 345 678
+        //
+        // devient :
+        // 243 812 345 678
+        // ==========================================
 
-        if (!text) {
+        const pairText =
+            ctx.message.text
+                .replace(
+                    /^\/pair(?:@\w+)?/i,
+                    ''
+                )
+                .trim();
+
+        if (!pairText) {
 
             return ctx.reply(
                 `<blockquote>⚠️ ${mention}, ${t.pairUsage}</blockquote>`,
@@ -1440,8 +1456,12 @@ bot.command(
             );
         }
 
+        // Supprime les espaces, +, tirets,
+        // parenthèses et autres caractères.
+        // Il ne reste que les chiffres.
+
         const number =
-            text.replace(
+            pairText.replace(
                 /\D/g,
                 ''
             );
