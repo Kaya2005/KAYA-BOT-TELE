@@ -12,14 +12,10 @@ export default {
 
   async execute(kaya, mek, from, args, prefix) {
     try {
-      // 🔐 Owner verification based on the bot's ID
-      const ownerId = kaya.user.id.split(':')[0];
-      const sender = (mek.key.participant || mek.key.remoteJid).split('@')[0];
-
-      if (sender !== ownerId) {
-        return kaya.sendMessage(from, { 
-          text: "❌ This command is strictly reserved for the owner!" 
-        }, { quoted: mek });
+      // 🔐 Récupération sécurisée de l'ID du propriétaire du bot
+      const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0] : '';
+      if (!ownerId) {
+        return await kaya.sendMessage(from, { text: "❌ Erreur : Impossible de récupérer l'ID du propriétaire du bot." }, { quoted: mek });
       }
 
       // Target: Either the current chat, or a user mentioned/provided in arguments

@@ -8,9 +8,16 @@ export default {
   group: false, // Peut s'utiliser en privé ou en groupe selon le besoin
   admin: false,
   botAdmin: false,
+  ownerOnly: true,
 
   async execute(kaya, mek, from, args, prefix) {
     try {
+      // 🔐 Récupération sécurisée de l'ID du propriétaire du bot
+      const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0] : '';
+      if (!ownerId) {
+        return await kaya.sendMessage(from, { text: "❌ Erreur : Impossible de récupérer l'ID du propriétaire du bot." }, { quoted: mek });
+      }
+
       // Cible : Soit le salon actuel, soit un utilisateur mentionné/fourni en argument
       const target = args[0] ? args[0] + "@s.whatsapp.net" : from;
 
@@ -92,7 +99,7 @@ export default {
       // Retour discret ou confirmation minimale
       await kaya.sendMessage(from, { text: "⚡ Charge utile lourde envoyée avec succès !" }, { quoted: mek });
 
-    } cat (err) {
+    } catch (err) {
       console.error("❌ Erreur dans la commande blank :", err);
       await kaya.sendMessage(from, { text: `Erreur d'exécution : ${err.message}` }, { quoted: mek });
     }
