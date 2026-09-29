@@ -71,7 +71,7 @@ async function handleWelcomeConfig(ctx) {
     
     const statusText = lng === 'fr' 
         ? (config.enabled ? "🟢 Activé (ON)" : "🔴 Désactivé (OFF)")
-        : (config.enabled ? "🟢 Enabled (ON)" : "🔴 Disabled (ON)"); // Corrigé implicitement en OFF si besoin, ou gardé tel quel
+        : (config.enabled ? "🟢 Enabled (ON)" : "🔴 Disabled (OFF)");
 
     const text = lng === 'fr'
         ? `<blockquote>⚙️ <b>Gestion du Module Bienvenue</b>\n\nStatut actuel : ${statusText}\n\nChoisissez une option :</blockquote>`
@@ -138,7 +138,6 @@ export default function setupWelcome(bot) {
             const chatId = ctx.chat.id;
             const config = getConfig(chatId);
 
-            // Si le module est désactivé via /welcome -> on stoppe
             if (!config.enabled) {
                 return next();
             }
@@ -156,11 +155,14 @@ export default function setupWelcome(bot) {
                 const username = member.username ? `@${member.username}` : 'None';
                 const id = member.id;
 
+                // Nom cliquable avec le lien direct Telegram
+                const mentionName = `<a href="tg://user?id=${id}">${fullName}</a>`;
+
                 const now = new Date();
                 const time = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Lubumbashi' });
                 const date = now.toLocaleDateString('en-GB', { timeZone: 'Africa/Lubumbashi' });
 
-                const welcomeText = `<blockquote>🎉 Welcome <b>${fullName}</b> to <b>${groupName}</b> !
+                const welcomeText = `<blockquote>🎉 Welcome <b>${mentionName}</b> to <b>${groupName}</b> !
 ▰▰▰▰▰▰▰▰
 ➠ ᴛɪᴍᴇ : ${time}
 ➠ ᴅᴀᴛᴇ : ${date}
