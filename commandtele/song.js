@@ -1,10 +1,11 @@
 // ==========================================
-// FICHIER : commandtele/song.js
+// FICHIER : commandtele/song.js (Corrigé)
 // ==========================================
 import axios from 'axios';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import yts from 'yt-search';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const langFilePath = path.join(__dirname, '../database/languages.json');
@@ -18,6 +19,8 @@ function getLang(chatId) {
     } catch (e) {}
     return 'en';
 }
+
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 export default function setupSong(bot) {
     bot.command('song', async (ctx) => {
@@ -39,25 +42,30 @@ export default function setupSong(bot) {
             
             const sentMsg = await ctx.reply(searchingText, { parse_mode: 'HTML', reply_to_message_id: ctx.message?.message_id });
 
-            // Exemple de lien ou recherche (Adaptez selon votre source ou l'URL gérée par votre Worker)
-            const searchUrl = `https://yt-dl.officialhectormanuel.workers.dev/?search=${encodeURIComponent(query)}`;
-            const searchRes = await axios.get(searchUrl, { timeout: 30000 });
-
-            if (!searchRes.data || !searchRes.data.url) {
-                throw new Error("No results found");
+            let video;
+            if (query.includes('youtube.com') || query.includes('youtu.be')) {
+                video = { url: query, title: 'YouTube Video' };
+            } else {
+                const search = await yts(query);
+                if (!search.videos.length) {
+                    try { await ctx.telegram.deleteMessage(chatId, sentMsg.message_id); } catch (e) {}
+                    const noResText = lng === 'fr' ? "<blockquote>❌ Aucun résultat trouvé.</blockquote>" : "<blockquote>❌ No results found.</blockquote>";
+                    return ctx.reply(noResText, { parse_mode: 'HTML', reply_to_message_id: ctx.message?.message_id });
+                }
+                video = search.videos[0];
             }
 
-            const video = searchRes.data;
-
-            // Appel sécurisé avec votre API
+            // Appel sécurisé avec votre API Cloudflare Worker (identique à WhatsApp)
             const apiUrl = `https://yt-dl.officialhectormanuel.workers.dev/?url=${encodeURIComponent(video.url)}`;
             const response = await axios.get(apiUrl, { timeout: 30000 });
+            const data = response.data;
 
             // Supprimer le message d'attente
             try { await ctx.telegram.deleteMessage(chatId, sentMsg.message_id); } catch (e) {}
 
-            if (response.data && response.data.downloadUrl) {
-                await ctx.replyWithAudio(response.data.downloadUrl, {
+            if (data && data.audio) {
+                await delay(1000);
+                await ctx.replyWithAudio(data.audio, {
                     caption: `<blockquote>🎵 <b>${video.title || query}</b></blockquote>`,
                     parse_mode: 'HTML',
                     reply_to_message_id: ctx.message?.message_id
