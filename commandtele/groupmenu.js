@@ -61,6 +61,9 @@ export default function setupGroupMenu(bot) {
                             { text: '🤖 Chatbot', callback_data: 'menu_chatbot' }
                         ],
                         [
+                            { text: '🎵 Song', callback_data: 'menu_song' }
+                        ],
+                        [
                             { text: lng === 'fr' ? '🌐 Langue (FR/EN)' : '🌐 Language (FR/EN)', callback_data: 'menu_lang_panel' }
                         ],
                         [
@@ -128,6 +131,9 @@ export default function setupGroupMenu(bot) {
                         { text: '🤖 Chatbot', callback_data: 'menu_chatbot' }
                     ],
                     [
+                        { text: '🎵 Song', callback_data: 'menu_song' }
+                    ],
+                    [
                         { text: lng === 'fr' ? '🌐 Langue (FR/EN)' : '🌐 Language (FR/EN)', callback_data: 'menu_lang_panel' }
                     ],
                     [
@@ -163,6 +169,9 @@ export default function setupGroupMenu(bot) {
                     [
                         { text: '📢 TagAll', callback_data: 'menu_tagall' },
                         { text: '🤖 Chatbot', callback_data: 'menu_chatbot' }
+                    ],
+                    [
+                        { text: '🎵 Song', callback_data: 'menu_song' }
                     ],
                     [
                         { text: lang === 'fr' ? '🌐 Langue (FR/EN)' : '🌐 Language (FR/EN)', callback_data: 'menu_lang_panel' }
@@ -208,6 +217,27 @@ export default function setupGroupMenu(bot) {
         const text = lng === 'fr'
             ? `<blockquote>📢 <b>TAGALL :</b> <code>/tagall message</code></blockquote>`
             : `<blockquote>📢 <b>TAGALL :</b> <code>/tagall message</code></blockquote>`;
+
+        await ctx.editMessageCaption(text, {
+            parse_mode: 'HTML',
+            reply_markup: {
+                inline_keyboard: [
+                    [
+                        { text: lng === 'fr' ? '⬅️ Retour' : '⬅️ Back', callback_data: 'menu_back_main' }
+                    ]
+                ]
+            }
+        }).catch(() => {});
+    });
+
+    bot.action('menu_song', async (ctx) => {
+        await ctx.answerCbQuery();
+        const chatId = ctx.chat.id;
+        const lng = getLang(chatId);
+
+        const text = lng === 'fr'
+            ? `<blockquote>🎵 <b>SONG :</b> <code>/song titre_de_la_musique</code></blockquote>`
+            : `<blockquote>🎵 <b>SONG :</b> <code>/song song_title</code></blockquote>`;
 
         await ctx.editMessageCaption(text, {
             parse_mode: 'HTML',
