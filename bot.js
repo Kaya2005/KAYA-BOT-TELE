@@ -17,7 +17,6 @@ import setupGroupMenu from './commandtele/groupmenu.js';
 import setupChatbot from './commandtele/chatbot.js';
 import setupLanguage, { getLang, setLang } from './commandtele/language.js';
 import setupTagAll from './commandtele/tagall.js';
-import setupSong from './commandtele/song.js'; // 🎵 Import du module song
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -567,8 +566,7 @@ bot.use((ctx, next) => {
                 'groups',
                 'broadcast',
                 'language',
-                'lang',
-                'song' // 🎵 Ajouté ici pour la reconnaissance des préfixes
+                'lang'
             ];
 
             if (
@@ -799,7 +797,7 @@ setupGroupMenu(bot);
 setupChatbot(bot);
 setupLanguage(bot);
 setupTagAll(bot);
-setupSong(bot); // 🎵 Initialisation du module song
+
 
 // ==========================================================
 // /START
