@@ -155,7 +155,6 @@ export default function setupWelcome(bot) {
                 const username = member.username ? `@${member.username}` : 'None';
                 const id = member.id;
 
-                // Nom cliquable avec le lien direct Telegram
                 const mentionName = `<a href="tg://user?id=${id}">${fullName}</a>`;
 
                 const now = new Date();
