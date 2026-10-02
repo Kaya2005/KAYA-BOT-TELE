@@ -1,4 +1,3 @@
-
 //antilink.js
 import { getSetting, setSetting } from "../setting.js";
 
@@ -69,8 +68,8 @@ export default {
       // 2. Gestion des modes avec délais de sécurité
       if (mode === "kick") {
         await delay(1000); // Pause humaine avant de kicker
+        // Expulsion directe sans envoyer de message de notification
         await kaya.groupParticipantsUpdate(from, [mek.sender], "remove");
-        await kaya.sendMessage(from, { text: `🚫 @${mek.sender.split("@")[0]} removed for sending a link.`, mentions: [mek.sender] });
       } 
       else if (mode === "warn") {
         // Sauvegarde des warns dans le dossier du groupe
@@ -92,4 +91,3 @@ export default {
     }
   }
 };
-
