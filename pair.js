@@ -83,6 +83,19 @@ if (!fs.existsSync(PAIRING_DIR)) {
 }
 
 // ==========================================
+// RANDOM BROWSER ROTATION
+// ==========================================
+
+function getRandomBrowser() {
+    const options = [
+        Browsers.macOS("Safari"),
+        Browsers.windows("Chrome"),
+        Browsers.ubuntu("Firefox")
+    ];
+    return options[Math.floor(Math.random() * options.length)];
+}
+
+// ==========================================
 // PAIRING REQUESTS
 // ==========================================
 
@@ -988,9 +1001,7 @@ export default async function startpairing(
                 state,
 
             browser:
-                Browsers.ubuntu(
-                    "Chrome"
-                ),
+                getRandomBrowser(),
 
             connectTimeoutMs:
                 60000,
@@ -1216,22 +1227,6 @@ export default async function startpairing(
                 // ==========================================
                 // TRAITEMENT CENTRAL
                 // ==========================================
-                //
-                // IMPORTANT :
-                // On n'exécute plus tous les cmd.detect()
-                // ici.
-                //
-                // case.js décide maintenant lui-même :
-                //
-                // - commande
-                // - utilitaire actif
-                // - autoreact
-                // - chatbot
-                // - ou retour immédiat
-                //
-                // Cela évite que chaque detect() soit appelé
-                // sur chaque message normal.
-                // ==========================================
 
                 await handler(
                     kaya,
@@ -1292,15 +1287,6 @@ export default async function startpairing(
             }
 
             try {
-
-                /*
-                 * On importe ici uniquement les commandes
-                 * qui ont réellement besoin du hook
-                 * participantUpdate.
-                 *
-                 * Le chargement reste compatible avec
-                 * la Map commands de case.js.
-                 */
 
                 const caseModule =
                     await import(
