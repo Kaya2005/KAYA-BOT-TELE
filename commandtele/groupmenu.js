@@ -46,7 +46,7 @@ export default function setupGroupMenu(bot) {
 
             const botUsername = ctx.botInfo?.username || 'KayaMdBot';
 
-            await ctx.replyWithPhoto('https://files.catbox.moe/1ddhgm.jpg', {
+            await ctx.replyWithPhoto('https://files.catbox.moe/562u8u.jpg', {
                 caption: text,
                 parse_mode: 'HTML',
                 reply_to_message_id: ctx.message?.message_id,
