@@ -1,4 +1,3 @@
-// ==================== cleanup.js ====================
 import fs from 'fs';
 import path from 'path';
 
@@ -20,7 +19,7 @@ export function startAutoCleanup() {
                         const filePath = path.join(targetDir, file);
                         try {
                             const stats = fs.statSync(filePath);
-                            // Supprime le fichier s'il a plus de 15 minutes (pour éviter de couper un traitement en cours)
+                            // Supprime le fichier s'il a plus de 15 minutes
                             const fileAgeMinutes = (now - stats.mtimeMs) / (1000 * 60);
                             
                             if (fileAgeMinutes > 15) {
@@ -28,13 +27,13 @@ export function startAutoCleanup() {
                                 deletedCount++;
                             }
                         } catch (err) {
-                            // Ignore si le fichier est introuvable ou verrouillé par un processus actif
+                            // Ignore si le fichier est introuvable ou verrouillé
                         }
                     }
                 });
             }
 
-            // 2. Nettoyage des fichiers de requêtes de pairage orphelins (sans toucher aux sessions Signal)
+            // 2. Nettoyage des fichiers de requêtes de pairage orphelins
             if (fs.existsSync(PAIRING_DIR)) {
                 const pairingFiles = fs.readdirSync(PAIRING_DIR);
                 pairingFiles.forEach(file => {
@@ -53,28 +52,10 @@ export function startAutoCleanup() {
                     }
                 });
 
-                // 3. Nettoyage des sessions WhatsApp (Garde uniquement creds.json et metadata.json dans les sous-dossiers)
-                const entries = fs.readdirSync(PAIRING_DIR, { withFileTypes: true });
-                entries.forEach(entry => {
-                    if (entry.isDirectory()) {
-                        const sessionPath = path.join(PAIRING_DIR, entry.name);
-                        try {
-                            const sessionFiles = fs.readdirSync(sessionPath);
-                            sessionFiles.forEach(file => {
-                                // On supprime tout SAUF creds.json et metadata.json
-                                if (file !== 'creds.json' && file !== 'metadata.json') {
-                                    const filePath = path.join(sessionPath, file);
-                                    if (fs.statSync(filePath).isFile()) {
-                                        fs.unlinkSync(filePath);
-                                        deletedCount++;
-                                    }
-                                }
-                            });
-                        } catch (e) {
-                            // Ignore si un fichier/dossier est verrouillé ou inaccessible
-                        }
-                    }
-                });
+                // NOTE DE SÉCURITÉ : On ne touche PLUS aux fichiers internes des sessions 
+                // (comme pre-key-*.json, sender-key-*.json, etc.) pour éviter de corrompre 
+                // le protocole Signal et de déclencher l'erreur "Bad MAC". 
+                // C'est Baileys lui-même qui gère l'intégrité de son dossier de session.
             }
 
             if (deletedCount > 0) {
