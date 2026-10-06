@@ -18,13 +18,13 @@ function toSmallCaps(str) {
 // 🎨 Style avec conservation du préfixe `>` et alignement parfait des encadrés
 function buildHeader({ user, prefix, totalCmds, botName }) {
     return `
->  ◈┈▉ \`${botName}\` ▉┄◈
->  ╭────↯
->  │ ➠ *𝙾𝚆𝙽𝙴𝚁:* ${user}
->  │ ➠ *𝙿𝚁𝙴𝙵𝙸𝚇:* ${prefix || 'Sans préfixe'}
->  │ ➠ *𝚃𝙾𝚃𝙰𝙻 𝙲𝙼𝙳𝚂:* ${totalCmds}
->  ╰────↯
-> 
+   ◈┈▉ \`${botName}\` ▉┄◈
+> ╭────↯
+> │ ➠ *𝙾𝚆𝙽𝙴𝚁:* ${user}
+> │ ➠ *𝙿𝚁𝙴𝙵𝙸𝚇:* ${prefix || 'Sans préfixe'}
+> │ ➠ *𝚃𝙾𝚃𝙰𝙻 𝙲𝙼𝙳𝚂:* ${totalCmds}
+> ╰────↯
+
 `.trim();
 }
 
