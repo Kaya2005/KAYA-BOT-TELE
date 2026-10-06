@@ -41,9 +41,9 @@ function buildMenuCategoryText({ cat, cmds = [], prefix }) {
     if (!cmds.length) return '';
 
     return `
-> ╢ ${cat.toUpperCase()} ♰
+>  ${cat.toUpperCase()} 
 ╭▰▰▰▰▰▰▰◈
-${cmds.map(c => `┆ ➠ ${prefix}${c.toLowerCase()}`).join('\n')}
+${cmds.map(c => `┆ ◈ ${prefix}${c.toLowerCase()}`).join('\n')}
 ╰▰▰▰▰▰▰▰◈
 `.trim();
 }
