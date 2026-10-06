@@ -1,47 +1,42 @@
-// menu.js
+// ==================== commands/menu.js ====================
 import fs from 'fs';
 import path from 'path';
 import { getContextInfo } from '../setting/contextInfo.js';
-import { getBotName, sendWithBotImage } from '../setting/botAssets.js'; // Import de sendWithBotImage
+import { getBotName, sendWithBotImage } from '../setting/botAssets.js';
 
-function pad(n) { return String(n).padStart(2, '0'); }
-
-function getTime() {
-    const d = new Date();
-    return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-function getDate() {
-    const d = new Date();
-    return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${pad(d.getFullYear())}`;
-}
-
-function getDayName() {
-    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    return days[new Date().getDay()];
+// Table de conversion pour transformer le texte standard en sᴍᴀʟʟ ᴄᴀᴘs stylisés
+function toSmallCaps(str) {
+    const map = {
+        'a': 'ᴀ', 'b': 'ʙ', 'c': 'ᴄ', 'd': 'ᴅ', 'e': 'ᴇ', 'f': 'ғ', 'g': 'ɢ',
+        'h': 'ʜ', 'i': 'ɪ', 'j': 'ᴊ', 'k': 'ᴋ', 'l': 'ʟ', 'm': 'ᴍ', 'n': 'ɴ',
+        'o': 'ᴏ', 'p': 'ᴘ', 'q': 'ǫ', 'r': 'ʀ', 's': 's', 't': 'ᴛ', 'u': 'ᴜ',
+        'v': 'ᴠ', 'w': 'ᴡ', 'x': 'x', 'y': 'ʏ', 'z': 'ᴢ'
+    };
+    return str.toLowerCase().split('').map(char => map[char] || char).join('');
 }
 
 // 🎨 Style avec conservation du préfixe `>` et alignement parfait des encadrés
 function buildHeader({ user, prefix, totalCmds, botName }) {
     return `
-> ╭┈▉ \`${botName}\` ▉┄◈
-> ┆ ╭────↯
-> ┆ │ ➠ *𝙾𝚆𝙽𝙴𝚁:* ${user}
-> ┆ │ ➠ *𝙿𝚁𝙴𝙵𝙸𝚇:* ${prefix || 'Sans préfixe'}
-> ┆ │ ➠ *𝚃𝙾𝙳𝙰𝚈:* ${getDayName()}
-> ┆ │ ➠ *𝙳𝙰𝚃𝙴:* ${getDate()}
-> ┆ │ ➠ *𝚃𝙸𝙼𝙴:* ${getTime()}
-> ┆ │ ➠ *𝚃𝙾𝚃𝙰𝙻 𝙲𝙼𝙳𝚂:* ${totalCmds}
-> ┆ ╰────↯
-> ╰┄┄┄┄┄┄┄┄┄┄┄┄┄◈
+>  ◈┈▉ \`${botName}\` ▉┄◈
+>  ╭────↯
+>  │ ➠ *𝙾𝚆𝙽𝙴𝚁:* ${user}
+>  │ ➠ *𝙿𝚁𝙴𝙵𝙸𝚇:* ${prefix || 'Sans préfixe'}
+>  │ ➠ *𝚃𝙾𝚃𝙰𝙻 𝙲𝙼𝙳𝚂:* ${totalCmds}
+>  ╰────↯
+> 
 `.trim();
 }
 
 function buildMenuCategoryText({ cat, cmds = [], prefix }) {
     if (!cmds.length) return '';
 
+    // Transforme la catégorie et "MENU" en police stylisée sᴍᴀʟʟ ᴄᴀᴘs (ex: ɢʀᴏᴜᴘ ᴍᴇɴᴜ)
+    const rawCategoryName = `${cat} MENU`;
+    const formattedCatName = toSmallCaps(rawCategoryName);
+
     return `
->  ${cat.toUpperCase()} 
+  ${formattedCatName} 
 ╭▰▰▰▰▰▰▰◈
 ${cmds.map(c => `┆ ◈ ${prefix}${c.toLowerCase()}`).join('\n')}
 ╰▰▰▰▰▰▰▰◈
@@ -59,7 +54,6 @@ export default {
             const userNumber = userId.split('@')[0];
             const userMention = `@${userNumber}`;
             
-            // 🛠️ CORRECTION : Utilisation de mek.sender au lieu de from pour correspondre à botname.js
             const botName = getBotName(mek.sender);
 
             const commandsDir = path.join(process.cwd(), 'commands');
@@ -104,7 +98,6 @@ ${buildHeader({ user: userMention, prefix, totalCmds, botName })}
 ${menuList.trim()}
 `.trim();
 
-            // Utilisation de sendWithBotImage avec passage de mek.sender dans getContextInfo
             await sendWithBotImage(kaya, from, mek.sender, { 
                 caption: finalMenuText, 
                 contextInfo: { ...getContextInfo(mek.sender), mentionedJid: [userId] } 

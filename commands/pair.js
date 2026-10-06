@@ -1,4 +1,6 @@
+//pair.js
 import { getBotName, sendWithBotImage } from '../setting/botAssets.js';
+import { boxMessage, errorBox, successBox, usageBox } from '../setting/theme.js';
 import fs from 'fs';
 import path from 'path';
 
@@ -20,13 +22,7 @@ export default {
       if (!fs.existsSync(PAIRING_FOLDER)) fs.mkdirSync(PAIRING_FOLDER, { recursive: true });
 
       if (!args[0]) {
-        const caption = 
-          `╭─── 🔗 *ᴘᴀɪʀɪɴɢ ʜᴇʟᴘ* ───╮\n` +
-          `│\n` +
-          `│  *ᴜsᴀɢᴇ :*\n` +
-          `│  • \`${prefix}pair 243xxxxxxxxx\`\n` +
-          `│\n` +
-          `╰──────────────────────╯`;
+        const caption = boxMessage('pairing help', `• \`${prefix}pair 243xxxxxxxxx\``, '🔗');
 
         return await sendWithBotImage(kaya, from, sender, { 
             caption: caption
@@ -38,16 +34,13 @@ export default {
 
       // 🔍 NUMBER FORMAT CHECK (Detects '+', letters, or invalid length)
       if (rawInput.includes('+') || /[^0-9]/.test(rawInput) || targetNumber.length < 8 || targetNumber.length > 15) {
-        const caption = 
-          `╭─── ⚠️ *ɪɴᴠᴀʟɪᴅ ɴᴜᴍʙᴇʀ* ───╮\n` +
-          `│\n` +
-          `│  • ᴅᴏ **ɴᴏᴛ** ɪɴᴄʟᴜᴅᴇ \`+\`.\n` +
-          `│  • ᴇɴᴛᴇʀ ᴏɴʟʏ ᴅɪɢɪᴛs.\n` +
-          `│\n` +
-          `│  *ᴇxᴀᴍᴘʟᴇ :*\n` +
-          `│  • \`${prefix}pair 243999999999\`\n` +
-          `│\n` +
-          `╰──────────────────────╯`;
+        const warningContent = 
+          `• ᴅᴏ **ɴᴏᴛ** ɪɴᴄʟᴜᴅᴇ \`+\`.\n` +
+          `• ᴇɴᴛᴇʀ ᴏɴʟʏ ᴅɪɢɪᴛs.\n\n` +
+          `• *ᴇxᴀᴍᴘʟᴇ :*\n` +
+          `  \`${prefix}pair 243999999999\``;
+
+        const caption = boxMessage('invalid number', warningContent, '⚠️');
 
         return await sendWithBotImage(kaya, from, sender, { 
             caption: caption
@@ -61,13 +54,17 @@ export default {
         const lastTime = JSON.parse(fs.readFileSync(COOLDOWN_FILE, 'utf-8')).timestamp;
         if (Date.now() - lastTime < COOLDOWN_MS) {
             const remaining = Math.ceil((COOLDOWN_MS - (Date.now() - lastTime)) / 1000);
-            return await kaya.sendMessage(from, { text: `╭─── ⚠️ *sᴇʀᴠᴇʀ ʙᴜsʏ* ───╮\n│\n│  ᴘʟᴇᴀsᴇ ᴡᴀɪᴛ *${remaining} sᴇᴄᴏɴᴅs*\n│  ʙᴇғᴏʀᴇ ʀᴇᴛʀʏɪɴɢ.\n│\n╰──────────────────────╯` }, { quoted: mek });
+            return await kaya.sendMessage(from, { 
+                text: boxMessage('server busy', `ᴘʟᴇᴀsᴇ ᴡᴀɪᴛ *${remaining} sᴇᴄᴏɴᴅs* ʙᴇғᴏʀᴇ ʀᴇᴛʀʏɪɴɢ.`, '⚠️') 
+            }, { quoted: mek });
         }
       }
 
       // 2. LOCK CHECK (If another bot is already processing this number)
       if (fs.existsSync(lockFile)) {
-        return await kaya.sendMessage(from, { text: '╭─── ⚠️ *ʙᴜsʏ* ───╮\n│\n│  ᴀɴᴏᴛʜᴇʀ ʙᴏᴛ ɪs ᴀʟʀᴇᴀᴅʏ\n│  ɢᴇɴᴇʀᴀᴛɪɴɢ ᴀ ᴄᴏᴅᴇ.\n│\n╰──────────────────╯' }, { quoted: mek });
+        return await kaya.sendMessage(from, { 
+            text: boxMessage('busy', 'ᴀɴᴏᴛʜᴇʀ ʙᴏᴛ ɪs ᴀʟʀᴇᴀᴅʏ ɢᴇɴᴇʀᴀᴛɪɴɢ ᴀ ᴄᴏᴅᴇ.', '⚠️') 
+        }, { quoted: mek });
       }
 
       // 3. LOCK CREATION
@@ -83,7 +80,7 @@ export default {
       // 4. Request creation
       fs.writeFileSync(requestFile, JSON.stringify({ jid: targetNumber + "@s.whatsapp.net", name: getBotName(sender) }));
 
-      await kaya.sendMessage(from, { text: '⏳ *ɢᴇɴᴇʀᴀᴛɪɴɢ ᴘᴀɪʀɪɴɢ ᴄᴏᴅᴇ...*' }, { quoted: mek });
+      await kaya.sendMessage(from, { text: `⏳ *ɢᴇɴᴇʀᴀᴛɪɴɢ ᴘᴀɪʀɪɴɢ ᴄᴏᴅᴇ...*` }, { quoted: mek });
 
       let code = null;
       for (let i = 0; i < 12; i++) {
@@ -105,16 +102,14 @@ export default {
       if (fs.existsSync(lockFile)) fs.unlinkSync(lockFile);
 
       if (code) {
-        const successText = 
-          `╭─── ✅ *ᴘᴀɪʀɪɴɢ sᴜᴄᴄᴇss* ───╮\n` +
-          `│\n` +
-          `│  🔑 ᴄᴏᴅᴇ : \`${code}\`\n` +
-          `│\n` +
-          `╰──────────────────────╯`;
-
-        await kaya.sendMessage(from, { text: successText }, { quoted: mek });
+        const successText = `🔑 *ᴄᴏᴅᴇ :* \`${code}\``;
+        await kaya.sendMessage(from, { 
+            text: successBox(successText) 
+        }, { quoted: mek });
       } else {
-        await kaya.sendMessage(from, { text: '╭─── ❌ *ᴛɪᴍᴇᴏᴜᴛ* ───╮\n│\n│  ᴘᴀɪʀɪɴɢ ᴄᴏᴅᴇ ɢᴇɴᴇʀᴀᴛɪᴏɴ\n│  ᴛɪᴍᴇᴅ ᴏᴜᴛ.\n│\n╰──────────────────╯' }, { quoted: mek });
+        await kaya.sendMessage(from, { 
+            text: boxMessage('timeout', 'ᴘᴀɪʀɪɴɢ ᴄᴏᴅᴇ ɢᴇɴᴇʀᴀᴛɪᴏɴ ᴛɪᴍᴇᴅ ᴏᴜᴛ.', '❌') 
+        }, { quoted: mek });
       }
 
     } catch (err) {
@@ -126,7 +121,9 @@ export default {
         if (fs.existsSync(lockFile)) fs.unlinkSync(lockFile);
       }
       
-      await kaya.sendMessage(from, { text: '❌ *ᴀɴ ᴇʀʀᴏʀ ᴏᴄᴄᴜʀʀᴇᴅ ᴅᴜʀɪɴɢ ᴘᴀɪʀɪɴɢ.*' }, { quoted: mek });
+      await kaya.sendMessage(from, { 
+          text: errorBox(`ᴀɴ ᴇʀʀᴏʀ ᴏᴄᴄᴜʀʀᴇᴅ ᴅᴜʀɪɴɢ ᴘᴀɪʀɪɴɢ : ${err.message}`) 
+      }, { quoted: mek });
     }
   }
 };

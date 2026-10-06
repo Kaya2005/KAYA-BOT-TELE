@@ -1,4 +1,6 @@
+//autoreact.js
 import { getSetting, setSetting } from '../setting.js';
+import { boxMessage, errorBox, successBox, usageBox } from '../setting/theme.js';
 
 const RANDOM_EMOJIS = ['❤️','😂','🎉','👍','🔥','😮','👏','🎊','🤯','😍','🥰','😎','🤩','💯','✨','🌟','💖','💕','💙','💚','💛','💜','🖤','🤍','🧡','😊','😇','🥳','😋','😜','🤪','🤗','🤭'];
 const getRandomEmoji = () => RANDOM_EMOJIS[Math.floor(Math.random() * RANDOM_EMOJIS.length)];
@@ -18,41 +20,58 @@ export default {
             const action = args[0]?.toLowerCase();
 
             if (!['on', 'off', 'mode', 'status'].includes(action)) {
-                const menuText = `╭─── 🎭 *ᴀᴜᴛᴏ-ʀᴇᴀᴄᴛ ᴍᴇɴᴜ* 🎭 ───╮\n` +
-                                 `│\n` +
-                                 `│  *ᴅɪʀᴇᴄᴛ ᴄᴏᴍᴍᴀɴᴅs :*\n` +
-                                 `│  • \`${prefix}autoreact on/off\`\n` +
-                                 `│  • \`${prefix}autoreact mode <ᴘʀɪᴠᴀᴛᴇ/ɢʀᴏᴜᴘ/ᴀʟʟ>\`\n` +
-                                 `│  • \`${prefix}autoreact status\`\n` +
-                                 `│\n` +
-                                 `╰────────────────────────╯`;
+                const menuContent = 
+                    `• \`${prefix}autoreact on/off\`\n` +
+                    `• \`${prefix}autoreact mode <ᴘʀɪᴠᴀᴛᴇ/ɢʀᴏᴜᴘ/ᴀʟʟ>\`\n` +
+                    `• \`${prefix}autoreact status\``;
 
-                return kaya.sendMessage(from, { text: menuText }, { quoted: mek });
+                return kaya.sendMessage(from, { 
+                    text: boxMessage('auto-react menu', menuContent, '🎭') 
+                }, { quoted: mek });
             }
 
             if (action === 'on') {
                 setSetting(ownerId, 'autoreact', true);
-                return kaya.sendMessage(from, { text: '✅ *ᴀᴜᴛᴏ-ʀᴇᴀᴄᴛ ᴇɴᴀʙʟᴇᴅ.*' }, { quoted: mek });
+                return kaya.sendMessage(from, { 
+                    text: successBox('ᴀᴜᴛᴏ-ʀᴇᴀᴄᴛ ᴇɴᴀʙʟᴇᴅ.') 
+                }, { quoted: mek });
             }
 
             if (action === 'off') {
                 setSetting(ownerId, 'autoreact', false);
-                return kaya.sendMessage(from, { text: '❌ *ᴀᴜᴛᴏ-ʀᴇᴀᴄᴛ ᴅɪsᴀʙʟᴇᴅ.*' }, { quoted: mek });
+                return kaya.sendMessage(from, { 
+                    text: boxMessage('auto-react', 'ᴀᴜᴛᴏ-ʀᴇᴀᴄᴛ ᴅɪsᴀʙʟᴇᴅ.', '❌') 
+                }, { quoted: mek });
             }
 
             if (action === 'mode') {
                 const mode = args[1]?.toLowerCase();
-                if (!['private', 'group', 'all'].includes(mode)) return kaya.sendMessage(from, { text: '❌ *ɪɴᴠᴀʟɪᴅ ᴍᴏᴅᴇ!*' });
+                if (!['private', 'group', 'all'].includes(mode)) {
+                    return kaya.sendMessage(from, { 
+                        text: usageBox(prefix, 'autoreact mode', '<private/group/all>') 
+                    }, { quoted: mek });
+                }
                 setSetting(ownerId, 'autoreactMode', mode);
-                return kaya.sendMessage(from, { text: `✅ *ᴍᴏᴅᴇ sᴇᴛ ᴛᴏ :* *${mode.toUpperCase()}*` }, { quoted: mek });
+                return kaya.sendMessage(from, { 
+                    text: successBox(`ᴍᴏᴅᴇ sᴇᴛ ᴛᴏ :\n*${mode.toUpperCase()}*`) 
+                }, { quoted: mek });
             }
 
             if (action === 'status') {
                 const isEnabled = getSetting(ownerId, 'autoreact', false);
                 const mode = getSetting(ownerId, 'autoreactMode', 'all');
-                return kaya.sendMessage(from, { text: `🎭 *sᴛᴀᴛᴜs :* ${isEnabled ? '✅' : '❌'}\n📍 *ᴍᴏᴅᴇ :* *${mode.toUpperCase()}*` }, { quoted: mek });
+                
+                const statusContent = `• *sᴛᴀᴛᴜs :* ${isEnabled ? 'ᴇɴᴀʙʟᴇᴅ ✅' : 'ᴅɪsᴀʙʟᴇᴅ ❌'}\n• *ᴍᴏᴅᴇ :* ${mode.toUpperCase()}`;
+                return kaya.sendMessage(from, { 
+                    text: boxMessage('auto-react status', statusContent, '📊') 
+                }, { quoted: mek });
             }
-        } catch (err) { console.error('❌ autoreact error:', err); }
+        } catch (err) { 
+            console.error('❌ autoreact error:', err);
+            await kaya.sendMessage(from, { 
+                text: errorBox(`ᴀɴ ᴇʀʀᴏʀ ᴏᴄᴄᴜʀʀᴇᴅ : ${err.message}`) 
+            }, { quoted: mek });
+        }
     },
 
     async listen(kaya, mek, from) {

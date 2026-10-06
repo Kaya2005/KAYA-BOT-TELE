@@ -1,6 +1,7 @@
 //antispam.js
 import { getSetting, setSetting } from "../setting.js";
 import checkAdminOrOwner from "../setting/checkAdminOrOwner.js";
+import { boxMessage, errorBox, successBox, usageBox } from "../setting/theme.js";
 
 // Fonction de délai pour éviter le spam par le bot
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -24,34 +25,42 @@ export default {
     const ownerId = kaya.user.id.split(':')[0];
 
     if (!action || !["on", "off", "status"].includes(action)) {
-      const menuText = `╭─── 🛡️ *ᴀɴᴛɪ-sᴘᴀᴍ ᴍᴇɴᴜ* 🛡️ ───╮\n` +
-                       `│\n` +
-                       `│  *ᴅɪʀᴇᴄᴛ ᴄᴏᴍᴍᴀɴᴅs :*\n` +
-                       `│  • \`${prefix}antispam on [delete|warn|kick]\`\n` +
-                       `│  • \`${prefix}antispam off\`\n` +
-                       `│  • \`${prefix}antispam status\`\n` +
-                       `│\n` +
-                       `╰────────────────────────╯`;
+      const menuContent = 
+        `• \`${prefix}antispam on [delete|warn|kick]\`\n` +
+        `• \`${prefix}antispam off\`\n` +
+        `• \`${prefix}antispam status\``;
 
-      return await kaya.sendMessage(from, { text: menuText }, { quoted: mek });
+      return await kaya.sendMessage(from, { 
+        text: boxMessage('anti-spam menu', menuContent, '⚡') 
+      }, { quoted: mek });
     }
 
     if (action === "status") {
       const config = getSetting(ownerId, "antispam", { enabled: false, mode: "delete" }, groupId);
+      
+      const statusContent = !config.enabled 
+        ? `ᴀɴᴛɪ-sᴘᴀᴍ ɪs ᴄᴜʀʀᴇɴᴛʟʏ ᴅɪsᴀʙʟᴇᴅ.` 
+        : `• *sᴛᴀᴛᴜs :* ᴇɴᴀʙʟᴇᴅ\n• *ᴍᴏᴅᴇ :* ${config.mode.toUpperCase()}`;
+
       return await kaya.sendMessage(from, { 
-        text: !config.enabled ? "❌ *ᴀɴᴛɪ-sᴘᴀᴍ ɪs ᴅɪsᴀʙʟᴇᴅ*" : `✅ *ᴀɴᴛɪ-sᴘᴀᴍ ɪs ᴇɴᴀʙʟᴇᴅ*\nᴍᴏᴅᴇ : *${config.mode.toUpperCase()}*` 
+        text: boxMessage('anti-spam status', statusContent, '📊') 
       }, { quoted: mek });
     }
 
     if (action === "off") {
       setSetting(ownerId, "antispam", { enabled: false, mode: "delete" }, groupId);
-      return await kaya.sendMessage(from, { text: "❌ *ᴀɴᴛɪ-sᴘᴀᴍ ᴅɪsᴀʙʟᴇᴅ.*" }, { quoted: mek });
+      return await kaya.sendMessage(from, { 
+        text: boxMessage('anti-spam', 'ᴀɴᴛɪ-sᴘᴀᴍ ᴅɪsᴀʙʟᴇᴅ.', '❌') 
+      }, { quoted: mek });
     }
 
     const selectedMode = ["delete", "warn", "kick"].includes(mode) ? mode : "delete";
     setSetting(ownerId, "antispam", { enabled: true, mode: selectedMode }, groupId);
     
-    await kaya.sendMessage(from, { text: `✅ *ᴀɴᴛɪ-sᴘᴀᴍ ᴇɴᴀʙʟᴇᴅ!*\nᴍᴏᴅᴇ : *${selectedMode.toUpperCase()}*` }, { quoted: mek });
+    const successContent = `ᴀɴᴛɪ-sᴘᴀᴍ ᴇɴᴀʙʟᴇᴅ !\n• *ᴍᴏᴅᴇ :* ${selectedMode.toUpperCase()}`;
+    await kaya.sendMessage(from, { 
+      text: successBox(successContent) 
+    }, { quoted: mek });
   },
 
   async detect(kaya, mek, from) {

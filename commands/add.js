@@ -1,5 +1,5 @@
 // ================= commands/add.js =================
-import { getContextInfo } from '../setting/contextInfo.js';
+import { successBox, errorBox, usageBox, boxMessage } from '../setting/theme.js';
 
 export default {
   name: 'add',
@@ -7,7 +7,7 @@ export default {
   category: 'Group',
   group: true,
 
-  async execute(Kaya, m, args) {
+  async execute(Kaya, m, args, prefix) {
     try {
       // ❌ Group only
       if (!m.isGroup) return; 
@@ -19,8 +19,7 @@ export default {
       const number = args[0] ? args[0].replace(/[^0-9]/g, '') : '';
       if (!number) {
         return Kaya.sendMessage(m.chat, { 
-          text: '❌ Usage: .add 243XXXXXXXXX',
-          contextInfo: getContextInfo(m.sender) 
+          text: usageBox(prefix || '.', 'add', '243XXXXXXXXX') 
         }, { quoted: m });
       }
 
@@ -31,27 +30,32 @@ export default {
 
       // 📝 Analyze WhatsApp response
       if (response[0].status === '403') {
+        const text = 
+          `ғᴀɪʟᴇᴅ : ᴛʜᴇ ʙᴏᴛ ɪs ɴᴏᴛ\n` +
+          `ᴀɴ ᴀᴅᴍɪɴ ᴏʀ ᴛʜᴇ ᴜsᴇʀ\n` +
+          `ʜᴀs ʀᴇsᴛʀɪᴄᴛᴇᴅ ɪɴᴠɪᴛᴇs.`;
+        
         return Kaya.sendMessage(m.chat, { 
-          text: '❌ Failed: The bot is not an admin or the user has restricted group invites.',
-          contextInfo: getContextInfo(m.sender) 
+          text: errorBox(text) 
         }, { quoted: m });
+        
       } else if (response[0].status === '409') {
+        const text = `ᴛʜᴇ ᴜsᴇʀ ɪs ᴀʟʀᴇᴀᴅʏ\nɪɴ ᴛʜᴇ ɢʀᴏᴜᴘ.`;
+        
         return Kaya.sendMessage(m.chat, { 
-          text: '⚠️ The user is already in the group.',
-          contextInfo: getContextInfo(m.sender) 
+          text: boxMessage('warning', text, '⚠️') 
         }, { quoted: m });
+        
       } else {
         return Kaya.sendMessage(m.chat, { 
-          text: '✅ Successfully added member to the group!',
-          contextInfo: getContextInfo(m.sender) 
+          text: successBox('sᴜᴄᴄᴇssғᴜʟʟʏ ᴀᴅᴅᴇᴅ ᴍᴇᴍʙᴇʀ!') 
         }, { quoted: m });
       }
 
     } catch (err) {
       console.error('❌ ADD ERROR:', err);
       await Kaya.sendMessage(m.chat, { 
-        text: '❌ Error: Unable to add this member.',
-        contextInfo: getContextInfo(m.sender) 
+        text: errorBox('ᴜɴᴀʙʟᴇ ᴛᴏ ᴀᴅᴅ ᴛʜɪs ᴍᴇᴍʙᴇʀ.') 
       }, { quoted: m });
     }
   }

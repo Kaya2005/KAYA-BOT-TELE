@@ -1,5 +1,6 @@
 // ==================== commands/alive.js ====================
 import { getBotName } from '../setting/botAssets.js';
+import { boxMessage, errorBox } from '../setting/theme.js';
 
 export default {
     name: 'alive',
@@ -11,19 +12,20 @@ export default {
             const sender = mek.sender;
             const botName = getBotName(sender);
             
-            const message = `*${botName} IS ONLINE* 🟢
+            const content = 
+                `*ʙᴏᴛ ɴᴀᴍᴇ :* ${botName}\n` +
+                `*sᴛᴀᴛᴜs :* ᴀᴄᴛɪᴠᴇ & ʀᴜɴɴɪɴɢ\n` +
+                `*ᴘʀᴇғɪx :* ${prefix}\n` +
+                `*ᴍᴏᴅᴇ :* ᴘᴜʙʟɪᴄ\n\n` +
+                `_ᴛʏᴘᴇ \`${prefix}ᴍᴇɴᴜ\` ғᴏʀ ᴄᴍᴅs._`;
 
-*Status:* Active and running smoothly.
-*Prefix:* ${prefix}
-*Mode:* Public
-
-_Type ${prefix}menu to see available commands._`;
+            const message = boxMessage('system alive', content, '🟢');
 
             await kaya.sendMessage(from, { text: message }, { quoted: mek });
 
         } catch (err) {
             console.error('❌ Erreur dans alive.js :', err);
-            await kaya.sendMessage(from, { text: '⚠️ Le bot est en ligne mais a rencontré une erreur lors de la réponse.' }, { quoted: mek });
+            await kaya.sendMessage(from, { text: errorBox('ᴜɴᴀʙʟᴇ ᴛᴏ ᴄʜᴇᴄᴋ sᴛᴀᴛᴜs.') }, { quoted: mek });
         }
     }
 };

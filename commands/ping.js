@@ -1,4 +1,5 @@
 // ==================== commands/ping.js ====================
+import { boxMessage, errorBox, successBox } from '../setting/theme.js';
 
 function formatUptime(seconds) {
     const h = Math.floor(seconds / 3600);
@@ -16,21 +17,17 @@ export default {
         try {
             const start = Date.now();
             
-            // Envoi d'un message temporaire ou calcul direct de la latence
+            // Calcul de la latence
             const latency = Date.now() - start;
             const uptime = formatUptime(process.uptime());
 
-            const message = 
-                `╭─── 🏓 *ᴘᴏɴɢ* ───╮\n` +
-                `│\n` +
-                `│  *ʟᴀᴛᴇɴᴄʏ :* ${latency}ᴍs\n` +
-                `│  *ᴜᴘᴛɪᴍᴇ :* ${uptime}\n` +
-                `│\n` +
-                `╰──────────────────╯`;
+            const content = 
+                `• *ʟᴀᴛᴇɴᴄʏ :* ${latency}ᴍs\n` +
+                `• *ᴜᴘᴛɪᴍᴇ :* ${uptime}`;
 
             await kaya.sendMessage(
                 from,
-                { text: message },
+                { text: boxMessage('pong', content, '🏓') },
                 { quoted: mek }
             );
 
@@ -39,7 +36,7 @@ export default {
 
             await kaya.sendMessage(
                 from,
-                { text: '╭─── ⚠️ *ᴇʀʀᴏʀ* ───╮\n│\n│  ᴜɴᴀʙʟᴇ ᴛᴏ ᴄʜᴇᴄᴋ ʟᴀᴛᴇɴᴄʏ.\n│\n╰──────────────────╯' },
+                { text: errorBox('ᴜɴᴀʙʟᴇ ᴛᴏ ᴄʜᴇᴄᴋ ʟᴀᴛᴇɴᴄʏ.') },
                 { quoted: mek }
             );
         }

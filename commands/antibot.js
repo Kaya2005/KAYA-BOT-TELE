@@ -1,5 +1,6 @@
 //antibot.js
 import { getSetting, setSetting } from "../setting.js";
+import { boxMessage, errorBox, successBox } from "../setting/theme.js";
 
 // Fonction de délai pour éviter le comportement robotique
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -19,42 +20,45 @@ export default {
       const ownerId = kaya.user.id.split(':')[0];
       
       if (!["on", "off", "delete", "warn", "kick", "status"].includes(action)) {
-          const menuText = `╭─── 🛡️ *ᴀɴᴛɪ-ʙᴏᴛ ᴍᴇɴᴜ* 🛡️ ───╮\n` +
-                           `│\n` +
-                           `│  *ᴅɪʀᴇᴄᴛ ᴄᴏᴍᴍᴀɴᴅs :*\n` +
-                           `│  • \`${prefix}antibot on\` *(ᴅᴇғᴀᴜʟᴛ: ᴡᴀʀɴ)*\n` +
-                           `│  • \`${prefix}antibot delete\`\n` +
-                           `│  • \`${prefix}antibot warn\`\n` +
-                           `│  • \`${prefix}antibot kick\`\n` +
-                           `│  • \`${prefix}antibot off\`\n` +
-                           `│  • \`${prefix}antibot status\`\n` +
-                           `│\n` +
-                           `╰────────────────────────╯`;
+          const menuContent = 
+              `• \`${prefix}antibot on\` *(ᴅᴇғᴀᴜʟᴛ: ᴡᴀʀɴ)*\n` +
+              `• \`${prefix}antibot delete\`\n` +
+              `• \`${prefix}antibot warn\`\n` +
+              `• \`${prefix}antibot kick\`\n` +
+              `• \`${prefix}antibot off\`\n` +
+              `• \`${prefix}antibot status\``;
 
+          const menuText = boxMessage('anti-bot menu', menuContent, '🛡️');
           return await kaya.sendMessage(from, { text: menuText }, { quoted: mek });
       }
 
       if (action === "status") {
           const isEnabled = getSetting(ownerId, "antibot", false, groupId);
           const mode = getSetting(ownerId, "antibotMode", "warn", groupId);
-          return await kaya.sendMessage(from, { 
-              text: !isEnabled ? "❌ *ᴀɴᴛɪ-ʙᴏᴛ ɪs ᴅɪsᴀʙʟᴇᴅ*" : `✅ *ᴀɴᴛɪ-ʙᴏᴛ ɪs ᴇɴᴀʙʟᴇᴅ*\nᴍᴏᴅᴇ : *${mode.toUpperCase()}*` 
-          }, { quoted: mek });
+          
+          const statusContent = !isEnabled 
+              ? `ᴀɴᴛɪ-ʙᴏᴛ ɪs ᴄᴜʀʀᴇɴᴛʟʏ ᴅɪsᴀʙʟᴇᴅ.` 
+              : `• *sᴛᴀᴛᴜs :* ᴇɴᴀʙʟᴇᴅ\n• *ᴍᴏᴅᴇ :* ${mode.toUpperCase()}`;
+
+          const statusText = boxMessage('anti-bot status', statusContent, '📊');
+          return await kaya.sendMessage(from, { text: statusText }, { quoted: mek });
       }
 
       if (action === "off") {
         setSetting(ownerId, "antibot", false, groupId);
-        return await kaya.sendMessage(from, { text: "❌ *ᴀɴᴛɪ-ʙᴏᴛ ᴅɪsᴀʙʟᴇᴅ.*" }, { quoted: mek });
+        return await kaya.sendMessage(from, { text: boxMessage('anti-bot', 'ᴀɴᴛɪ-ʙᴏᴛ ᴅɪsᴀʙʟᴇᴅ.', '❌') }, { quoted: mek });
       }
 
       const mode = action === "on" ? "warn" : action;
       setSetting(ownerId, "antibot", true, groupId);
       setSetting(ownerId, "antibotMode", mode, groupId);
       
-      await kaya.sendMessage(from, { text: `✅ *ᴀɴᴛɪ-ʙᴏᴛ ᴇɴᴀʙʟᴇᴅ ᴡɪᴛʜ ᴍᴏᴅᴇ :* *${mode.toUpperCase()}*` }, { quoted: mek });
+      const successContent = `ᴀɴᴛɪ-ʙᴏᴛ ᴇɴᴀʙʟᴇᴅ ᴡɪᴛʜ ᴍᴏᴅᴇ :\n*${mode.toUpperCase()}*`;
+      await kaya.sendMessage(from, { text: successBox(successContent) }, { quoted: mek });
+      
     } catch (err) {
       console.error("❌ Erreur dans la commande antibot:", err);
-      await kaya.sendMessage(from, { text: "❌ *ᴀɴ ᴇʀʀᴏʀ ᴏᴄᴄᴜʀʀᴇᴅ ᴡʜɪʟᴇ ᴇxᴇᴄᴜᴛɪɴɢ ᴀɴᴛɪʙᴏᴛ.*" }, { quoted: mek }).catch(() => {});
+      await kaya.sendMessage(from, { text: errorBox('ᴀɴ ᴇʀʀᴏʀ ᴏᴄᴄᴜʀʀᴇᴅ ᴡʜɪʟᴇ ᴇxᴇᴄᴜᴛɪɴɢ ᴀɴᴛɪʙᴏᴛ.') }, { quoted: mek }).catch(() => {});
     }
   },
 
@@ -98,11 +102,11 @@ export default {
           if (newWarns >= 4) {
             await delay(1200);
             await kaya.groupParticipantsUpdate(from, [sender], "remove").catch(() => {});
-            await kaya.sendMessage(from, { text: `🚫 @${sender.split('@')[0]} *ʀᴇᴀᴄʜᴇᴅ 𝟺/𝟺 ʙᴏᴛ ᴡᴀʀɴs ᴀɴᴅ wᴀs ᴋɪᴄᴋᴇᴅ.*`, mentions: [sender] });
+            await kaya.sendMessage(from, { text: `🚫 @${sender.split('@')[0]} *ʀᴇᴀᴄʜᴇᴅ 𝟺/𝟺 ʙᴏᴛ ᴡᴀʀɴs ᴀɴᴅ ᴡᴀs ᴋɪᴄᴋᴇᴅ.*`, mentions: [sender] });
             setSetting(ownerId, `warn_bot_${sender}`, 0, groupId);
           } else {
             await kaya.sendMessage(from, { 
-              text: `⚠️ *ᴀɴᴛɪ-ʙᴏᴛ ᴀʟᴇʀᴛ*\nᴜsᴇʀ : @${sender.split('@')[0]}\nᴡᴀʀɴ : ${newWarns}/4`, 
+              text: `⚠️ *ᴀɴᴛɪ-ʙᴏᴛ ᴀʟᴇʀᴛ*\n• *ᴜsᴇʀ :* @${sender.split('@')[0]}\n• *ᴡᴀʀɴ :* ${newWarns}/4`, 
               mentions: [sender] 
             });
           }

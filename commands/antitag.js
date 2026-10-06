@@ -1,6 +1,7 @@
 //antitag.js
 import { getSetting, setSetting } from "../setting.js";
 import checkAdminOrOwner from "../setting/checkAdminOrOwner.js";
+import { boxMessage, errorBox, successBox, usageBox } from "../setting/theme.js";
 
 // Fonction de délai pour éviter le comportement robotique
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -20,40 +21,52 @@ export default {
       const ownerId = kaya.user.id.split(':')[0];
       
       if (!["on", "off", "delete", "kick", "status"].includes(action)) {
-        const menuText = `╭─── 🚫 *ᴀɴᴛɪ-ᴛᴀɢ ᴍᴇɴᴜ* 🚫 ───╮\n` +
-                         `│\n` +
-                         `│  *ᴅɪʀᴇᴄᴛ ᴄᴏᴍᴍᴀɴᴅs :*\n` +
-                         `│  • \`${prefix}antitag on\` *(ᴅᴇғᴀᴜʟᴛ: ᴅᴇʟᴇᴛᴇ)*\n` +
-                         `│  • \`${prefix}antitag kick\`\n` +
-                         `│  • \`${prefix}antitag off\`\n` +
-                         `│  • \`${prefix}antitag status\`\n` +
-                         `│\n` +
-                         `╰────────────────────────╯`;
+        const menuContent = 
+          `• \`${prefix}antitag on\` *(ᴅᴇғᴀᴜʟᴛ: ᴅᴇʟᴇᴛᴇ)*\n` +
+          `• \`${prefix}antitag kick\`\n` +
+          `• \`${prefix}antitag off\`\n` +
+          `• \`${prefix}antitag status\``;
 
-        return await kaya.sendMessage(from, { text: menuText }, { quoted: mek });
+        return await kaya.sendMessage(from, { 
+          text: boxMessage('anti-tag menu', menuContent, '🛡️') 
+        }, { quoted: mek });
       }
 
       if (action === "status") {
         const isEnabled = getSetting(ownerId, "antitag", false, groupId);
         const mode = getSetting(ownerId, "antitagMode", "delete", groupId);
+        
+        const statusContent = !isEnabled 
+          ? `ᴀɴᴛɪ-ᴛᴀɢ ɪs ᴄᴜʀʀᴇɴᴛʟʏ ᴅɪsᴀʙʟᴇᴅ.` 
+          : `• *sᴛᴀᴛᴜs :* ᴇɴᴀʙʟᴇᴅ\n• *ᴍᴏᴅᴇ :* ${mode.toUpperCase()}`;
+
         return await kaya.sendMessage(from, { 
-          text: !isEnabled ? "❌ *ᴀɴᴛɪ-ᴛᴀɢ ɪs ᴅɪsᴀʙʟᴇᴅ*" : `✅ *ᴀɴᴛɪ-ᴛᴀɢ ɪs ᴇɴᴀʙʟᴇᴅ*\nᴍᴏᴅᴇ : *${mode.toUpperCase()}*` 
+          text: boxMessage('anti-tag status', statusContent, '📊') 
         }, { quoted: mek });
       }
 
       if (action === "off") {
         setSetting(ownerId, "antitag", false, groupId);
         setSetting(ownerId, "antitagMode", "off", groupId);
-        return await kaya.sendMessage(from, { text: "❌ *ᴀɴᴛɪ-ᴛᴀɢ ᴅɪsᴀʙʟᴇᴅ.*" }, { quoted: mek });
+        return await kaya.sendMessage(from, { 
+          text: boxMessage('anti-tag', 'ᴀɴᴛɪ-ᴛᴀɢ ᴅɪsᴀʙʟᴇᴅ.', '❌') 
+        }, { quoted: mek });
       }
 
       const mode = action === "on" ? "delete" : action;
       setSetting(ownerId, "antitag", true, groupId);
       setSetting(ownerId, "antitagMode", mode, groupId);
-      return await kaya.sendMessage(from, { text: `✅ *ᴀɴᴛɪ-ᴛᴀɢ ᴇɴᴀʙʟᴇᴅ ᴡɪᴛʜ ᴍᴏᴅᴇ :* *${mode.toUpperCase()}*` }, { quoted: mek });
+      
+      const successContent = `ᴀɴᴛɪ-ᴛᴀɢ ᴇɴᴀʙʟᴇᴅ !\n• *ᴍᴏᴅᴇ :* ${mode.toUpperCase()}`;
+      return await kaya.sendMessage(from, { 
+        text: successBox(successContent) 
+      }, { quoted: mek });
 
     } catch (err) {
       console.error("❌ ANTITAG ERROR:", err);
+      await kaya.sendMessage(from, { 
+        text: errorBox(`ᴀɴ ᴇʀʀᴏʀ ᴏᴄᴄᴜʀʀᴇᴅ : ${err.message}`) 
+      }, { quoted: mek });
     }
   },
 

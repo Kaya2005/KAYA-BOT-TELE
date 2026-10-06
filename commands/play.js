@@ -3,6 +3,7 @@
 import yts from 'yt-search';
 import axios from 'axios';
 import { BOT_SLOGAN } from '../setting/botAssets.js';
+import { boxMessage, errorBox, usageBox } from '../setting/theme.js';
 
 // Delay helper function
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -15,14 +16,11 @@ export default {
     async execute(kaya, mek, from, args, prefix) {
         try {
             if (!args.length) {
-                const helpText = 
-                    `╭─── 🎵 *ᴘʟᴀʏ ʜᴇʟᴘ* ───╮\n` +
-                    `│\n` +
-                    `│  *ᴜsᴀɢᴇ :*\n` +
-                    `│  • \`${prefix}play <song name>\`\n` +
-                    `│\n` +
-                    `╰──────────────────────╯`;
-                return await kaya.sendMessage(from, { text: helpText }, { quoted: mek });
+                return await kaya.sendMessage(
+                    from,
+                    { text: usageBox(prefix, 'play', '<song name>') },
+                    { quoted: mek }
+                );
             }
 
             const query = args.join(' ').trim();
@@ -34,8 +32,11 @@ export default {
             } else {
                 const search = await yts(query);
                 if (!search.videos.length) {
-                    await kaya.sendMessage(from, { text: '╭─── ❌ *ᴇʀʀᴏʀ* ───╮\n│\n│  ɴᴏ ʀᴇsᴜʟᴛs ғᴏᴜɴᴅ.\n│\n╰──────────────────╯' }, { quoted: mek });
-                    return;
+                    return await kaya.sendMessage(
+                        from,
+                        { text: errorBox('ɴᴏ ʀᴇsᴜʟᴛs ғᴏᴜɴᴅ.') },
+                        { quoted: mek }
+                    );
                 }
                 video = search.videos[0];
             }
@@ -43,17 +44,14 @@ export default {
             // Sending the thumbnail with title, duration, downloading status, channel link, and signature
             await delay(1000);
             
-            const caption = 
-                `╭─── 🎵 *ʏᴏᴜᴛᴜʙᴇ ᴅᴏᴡɴʟᴏᴀᴅ* ───╮\n` +
-                `│\n` +
-                `│  *ᴛɪᴛʟᴇ :* ${video.title}\n` +
-                `│  *ᴅᴜʀᴀᴛɪᴏɴ :* ${video.timestamp || "N/A"}\n` +
-                `│\n` +
-                `│  ⏳ *ᴅᴏᴡɴʟᴏᴀᴅɪɴɢ ɪɴ ᴘʀᴏɢʀᴇss...*\n` +
-                `│  🔗 *ʙᴏᴛ ʟɪɴᴋ :* ᴛ.ᴍᴇ/ᴋᴀʏᴀ243\n` +
-                `│\n` +
-                `╰──────────────────────────────╯\n\n` +
+            const content = 
+                `• *ᴛɪᴛʟᴇ :* ${video.title}\n` +
+                `• *ᴅᴜʀᴀᴛɪᴏɴ :* ${video.timestamp || "N/A"}\n\n` +
+                `⏳ *ᴅᴏᴡɴʟᴏᴀᴅɪɴɢ ɪɴ ᴘʀᴏɢʀᴇss...*\n` +
+                `🔗 *ʙᴏᴛ ʟɪɴᴋ :* ᴛ.ᴍᴇ/ᴋᴀʏᴀ243\n\n` +
                 `${BOT_SLOGAN}`;
+
+            const caption = boxMessage('youtube download', content, '🎵');
 
             await kaya.sendMessage(from, {
                 image: { url: video.thumbnail },
@@ -68,7 +66,11 @@ export default {
             const data = response.data;
 
             if (!data?.status || !data.audio) {
-                return await kaya.sendMessage(from, { text: '╭─── ❌ *ᴇʀʀᴏʀ* ───╮\n│\n│  ғᴀɪʟᴇᴅ ᴛᴏ ʀᴇᴛʀɪᴇᴠᴇ ᴀᴜᴅɪᴏ.\n│\n╰──────────────────╯' }, { quoted: mek });
+                return await kaya.sendMessage(
+                    from,
+                    { text: errorBox('ғᴀɪʟᴇᴅ ᴛᴏ ʀᴇᴛʀɪᴇᴠᴇ ᴀᴜᴅɪᴏ.') },
+                    { quoted: mek }
+                );
             }
 
             // Sending audio with a short delay for stability
@@ -83,7 +85,11 @@ export default {
 
         } catch (error) {
             console.error("❌ PLAY ERROR:", error);
-            await kaya.sendMessage(from, { text: '╭─── ❌ *ᴇʀʀᴏʀ* ───╮\n│\n│  ᴇʀʀᴏʀ ᴘʀᴏᴄᴇssɪɴɢ ʀᴇǫᴜᴇsᴛ.\n│  ᴛʜᴇ ᴀᴘɪ ᴍɪɢʜᴛ ʙᴇ ᴏᴠᴇʀʟᴏᴀᴅᴇᴅ.\n│\n╰──────────────────╯' }, { quoted: mek });
+            await kaya.sendMessage(
+                from,
+                { text: errorBox('ᴇʀʀᴏʀ ᴘʀᴏᴄᴇssɪɴɢ ʀᴇǫᴜᴇsᴛ.\nᴛʜᴇ ᴀᴘɪ ᴍɪɢʜᴛ ʙᴇ ᴏᴠᴇʀʟᴏᴀᴅᴇᴅ.') },
+                { quoted: mek }
+            );
             await kaya.sendMessage(from, { react: { text: "❌", key: mek.key } });
         }
     }

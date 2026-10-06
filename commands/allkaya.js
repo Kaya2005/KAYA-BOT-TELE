@@ -1,3 +1,6 @@
+// ==================== commands/allkaya.js ====================
+import { boxMessage, errorBox, successBox, usageBox } from '../setting/theme.js';
+
 export default {
   name: "allkaya",
   description: "📢 Send a message to all groups (Owner only)",
@@ -10,7 +13,7 @@ export default {
       const input = args.join(" ").trim();
       if (!input) {
         return await kaya.sendMessage(from, { 
-          text: `❌ Usage: \`${prefix}allkaya Message | ImageUrl (optional)\`` 
+          text: usageBox(prefix, 'allkaya', 'Message | ImageUrl (optional)') 
         }, { quoted: mek });
       }
 
@@ -24,10 +27,14 @@ export default {
       const groups = Object.values(groupsData).filter(g => g.id.endsWith('@g.us'));
 
       if (!groups.length) {
-        return await kaya.sendMessage(from, { text: "❌ No groups found." }, { quoted: mek });
+        return await kaya.sendMessage(from, { 
+          text: errorBox('ɴᴏ ɢʀᴏᴜᴘs ғᴏᴜɴᴅ.') 
+        }, { quoted: mek });
       }
 
-      await kaya.sendMessage(from, { text: `🚀 Broadcast started to ${groups.length} groups...` }, { quoted: mek });
+      await kaya.sendMessage(from, { 
+        text: boxMessage('ʙʀᴏᴀᴅᴄᴀsᴛ', `sᴛᴀʀᴛᴇᴅ ᴛᴏ ${groups.length} ɢʀᴏᴜᴘs...`, '🚀') 
+      }, { quoted: mek });
 
       let success = 0;
       let failed = 0;
@@ -49,13 +56,20 @@ export default {
         }
       }
 
+      const reportContent = 
+        `ʙʀᴏᴀᴅᴄᴀsᴛ ᴄᴏᴍᴘʟᴇᴛᴇᴅ !\n\n` +
+        `• *sᴜᴄᴄᴇss :* ${success}\n` +
+        `• *ғᴀɪʟᴇᴅ :* ${failed}`;
+
       return await kaya.sendMessage(from, {
-        text: `📢 Broadcast completed!\n\n✅ Success: ${success}\n❌ Failed: ${failed}`
+        text: successBox(reportContent)
       }, { quoted: mek });
 
     } catch (err) {
       console.error("❌ allkaya error:", err);
-      return await kaya.sendMessage(from, { text: "❌ An error occurred." }, { quoted: mek });
+      return await kaya.sendMessage(from, { 
+        text: errorBox('ᴀɴ ᴇʀʀᴏʀ ᴏᴄᴄᴜʀʀᴇᴅ ᴅᴜʀɪɴɢ ʙʀᴏᴀᴅᴄᴀsᴛ.') 
+      }, { quoted: mek });
     }
   }
 };

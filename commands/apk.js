@@ -1,6 +1,8 @@
+//apk.js
 import axios from 'axios';
 import { getBotName, sendWithBotImage } from '../setting/botAssets.js';
 import { getContextInfo } from '../setting/contextInfo.js';
+import { boxMessage, errorBox, successBox, usageBox } from '../setting/theme.js';
 
 const USER_AGENTS = [
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -46,17 +48,14 @@ export default {
       const isOwner = mek.sender.includes(kaya.user.id.split(':')[0]);
 
       if (!appName) {
-        const menuText = `╭─── 📱 *ᴀᴘᴋ-ᴅᴏᴡɴʟᴏᴀᴅ ᴍᴇɴᴜ* 📱 ───╮\n` +
-                         `│\n` +
-                         `│  *ᴅɪʀᴇᴄᴛ ᴄᴏᴍᴍᴀɴᴅs :*\n` +
-                         `│  • \`${prefix}apk <ᴀᴘᴘ ɴᴀᴍᴇ>\`\n` +
-                         `│\n` +
-                         `│  *ᴇxᴀᴍᴘʟᴇ :*\n` +
-                         `│  • \`${prefix}apk WhatsApp\`\n` +
-                         `│\n` +
-                         `╰────────────────────────╯`;
+        const menuContent = 
+          `• \`${prefix}apk <ᴀᴘᴘ ɴᴀᴍᴇ>\`\n\n` +
+          `• *ᴇxᴀᴍᴘʟᴇ :*\n` +
+          `  \`${prefix}apk WhatsApp\``;
 
-        return await kaya.sendMessage(from, { text: menuText }, { quoted: mek });
+        return await kaya.sendMessage(from, { 
+          text: boxMessage('apk download menu', menuContent, '📱') 
+        }, { quoted: mek });
       }
 
       await kaya.sendMessage(from, { react: { text: '📥', key: mek.key } });
@@ -70,14 +69,14 @@ export default {
       try {
         infoResponse = await fetchWithRetry(infoUrl, 3, 15000);
       } catch (err) {
-        await kaya.sendMessage(from, { text: `❌ *ғᴀɪʟᴇᴅ ᴛᴏ ғᴇᴛᴄʜ ᴀᴘᴋ ɪɴғᴏ. ᴀᴘɪ ᴍᴀʏ ʙᴇ ᴅᴏᴡɴ.*`, edit: msgKey });
+        await kaya.sendMessage(from, { text: errorBox(`ғᴀɪʟᴇᴅ ᴛᴏ ғᴇᴛᴄʜ ᴀᴘᴋ ɪɴғᴏ. ᴀᴘɪ ᴍᴀʏ ʙᴇ ᴅᴏᴡɴ.`), edit: msgKey });
         await kaya.sendMessage(from, { react: { text: '❌', key: mek.key } });
         return;
       }
 
       const infoData = infoResponse.data;
       if (!infoData || !infoData.success || !infoData.result) {
-        await kaya.sendMessage(from, { text: `❌ *ɴᴏ ᴀᴘᴋ ғᴏᴜɴᴅ ғᴏʀ* *${appName}*_.`, edit: msgKey });
+        await kaya.sendMessage(from, { text: errorBox(`ɴᴏ ᴀᴘᴋ fᴏᴜɴᴅ ғᴏʀ *${appName}*.`), edit: msgKey });
         await kaya.sendMessage(from, { react: { text: '❌', key: mek.key } });
         return;
       }
@@ -86,7 +85,7 @@ export default {
 
       // 1. FLUX UTILISATEUR NORMAL (Lien uniquement via sendWithBotImage)
       if (!isOwner) {
-        const caption = `📱 *ᴀᴘᴋ ғᴏᴜɴᴅ*\n\n📦 *ᴀᴘᴘ:* ${appname}\n👤 *ᴅᴇᴠᴇʟᴏᴘᴇʀ:* ${developer || 'Unknown'}\n\n⚠️️ *ɴᴏᴛᴇ:* Pour des raisons de sécurité, le téléchargement direct du fichier APK est réservé au propriétaire. Voici le lien officiel :\n\n🔗 *ᴅᴏᴡɴʟᴏᴀᴅ:* ${download_url}\n\n_Powered by ${botName}_`;
+        const caption = `📱 *ᴀᴘᴋ ғᴏᴜɴᴅ*\n\n• *ᴀᴘᴘ :* ${appname}\n• *ᴅᴇᴠᴇʟᴏᴘᴇʀ :* ${developer || 'Unknown'}\n\n⚠ *ɴᴏᴛᴇ :* Pour des raisons de sécurité, le téléchargement direct du fichier APK est réservé au propriétaire. Voici le lien officiel :\n\n🔗 *ᴅᴏᴡɴʟᴏᴀᴅ :* ${download_url}\n\n_Powered by ${botName}_`;
         
         await sendWithBotImage(kaya, from, mek.sender, {
             caption: caption,
@@ -100,7 +99,7 @@ export default {
 
       // 2. FLUX PROPRIÉTAIRE (Téléchargement autorisé)
       if (!download_url) {
-        await kaya.sendMessage(from, { text: `❌ *ᴀᴘᴋ ᴅᴏᴡɴʟᴏᴀᴅ ᴜʀʟ ɴᴏᴛ ᴀᴠᴀɪʟᴀʙʟᴇ.*`, edit: msgKey });
+        await kaya.sendMessage(from, { text: errorBox(`ᴀᴘᴋ ᴅᴏᴡɴʟᴏᴀᴅ ᴜʀʟ ɴᴏᴛ ᴀᴠᴀɪʟᴀʙʟᴇ.`), edit: msgKey });
         await kaya.sendMessage(from, { react: { text: '❌', key: mek.key } });
         return;
       }
@@ -112,7 +111,7 @@ export default {
         const apkResponse = await fetchWithRetry(download_url, 2, 60000, 'arraybuffer');
         apkBuffer = Buffer.from(apkResponse.data);
       } catch (err) {
-        await kaya.sendMessage(from, { text: `❌ *ғᴀɪʟᴇᴅ ᴛᴏ ᴅᴏᴡɴʟᴏᴀᴅ ᴀᴘᴋ ғɪʟᴇ.*`, edit: msgKey });
+        await kaya.sendMessage(from, { text: errorBox(`ғᴀɪʟᴇᴅ ᴛᴏ ᴅᴏᴡɴʟᴏᴀᴅ ᴀᴘᴋ fɪʟᴇ.`), edit: msgKey });
         await kaya.sendMessage(from, { react: { text: '❌', key: mek.key } });
         return;
       }
@@ -131,7 +130,7 @@ export default {
         document: apkBuffer,
         fileName: fileName,
         mimetype: 'application/vnd.android.package-archive',
-        caption: `📱 *ᴀᴘᴋ ғɪʟᴇ (ᴏᴡɴᴇʀ ᴍᴏᴅᴇ)*\n\n📦 *ᴀᴘᴘ:* ${appname}\n👤 *ᴅᴇᴠᴇʟᴏᴘᴇʀ:* ${developer || 'Unknown'}\n🔗 *sᴏᴜʀᴄᴇ:* ${download_url}\n\n_Powered by ${botName}_`,
+        caption: `📱 *ᴀᴘᴋ fɪʟᴇ (ᴏᴡɴᴇʀ ᴍᴏᴅᴇ)*\n\n• *ᴀᴘᴘ :* ${appname}\n• *ᴅᴇᴠᴇʟᴏᴘᴇʀ :* ${developer || 'Unknown'}\n• *sᴏᴜʀᴄᴇ :* ${download_url}\n\n_Powered by ${botName}_`,
         contextInfo: getContextInfo(mek.sender)
       };
 
@@ -143,7 +142,7 @@ export default {
 
     } catch (error) {
       console.error('APK download error:', error);
-      await kaya.sendMessage(from, { text: `❌ *ᴜɴᴇxᴘᴇᴄᴛᴇᴅ ᴇʀʀᴏʀ :* ${error.message}` }, { quoted: mek });
+      await kaya.sendMessage(from, { text: errorBox(`ᴜɴᴇxᴘᴇᴄᴛᴇᴅ ᴇʀʀᴏʀ : ${error.message}`) }, { quoted: mek });
       await kaya.sendMessage(from, { react: { text: '❌', key: mek.key } });
     }
   }

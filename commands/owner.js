@@ -19,9 +19,9 @@ export default {
 │  *ᴄᴏᴜɴᴛʀʏ:* ʀᴅ ᴄᴏɴɢᴏ 🇨🇩
 │  *ʟᴏᴄᴀᴛɪᴏɴ:* ʟᴜʙᴜᴍʙᴀsʜɪ
 │  *sᴋɪʟʟ:* ғᴜʟʟ-sᴛᴀᴄᴋ
-│  *ᴄᴏɴᴛᴀᴄᴛ:* ᴛ.ᴍᴇ/ᴋᴀʏᴀ243
+│  *ᴄᴏɴᴛᴀᴄᴛ:* t.me/Kaya243
 │
-╰──────────────────────╯`.trim();
+╰──────────────────╯`.trim();
 
       // Envoi avec le sender pour afficher l'image personnalisée de l'utilisateur
       return await sendWithBotImage(kaya, from, sender, { 

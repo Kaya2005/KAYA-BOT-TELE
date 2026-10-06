@@ -1,6 +1,7 @@
 // ==================== commands/ai.js ====================
 import fetch from 'node-fetch';
 import { getSetting, setSetting } from '../setting.js';
+import { boxMessage, errorBox, successBox, usageBox } from '../setting/theme.js';
 
 export default {
     name: 'ai',
@@ -23,20 +24,20 @@ export default {
             if (args[0] === 'setkey') {
                 if (!isOwner) {
                     return await kaya.sendMessage(from, { 
-                        text: `*❌ Only the owner of this bot can configure the API key.*` 
+                        text: errorBox('ᴏɴʟʏ ᴛʜᴇ ᴏᴡɴᴇʀ ᴄᴀɴ ᴄᴏɴғɪɢᴜʀᴇ ᴛʜᴇ ᴀᴘɪ ᴋᴇʏ.') 
                     }, { quoted: mek });
                 }
 
                 const customKey = args[1];
                 if (!customKey) {
                     return await kaya.sendMessage(from, { 
-                        text: `*❌ Please provide your OpenRouter API key.*\n\nExample: \`${prefix}ai setkey sk-or-v1-...\`` 
+                        text: usageBox(prefix, 'ai', 'setkey sk-or-v1-...') 
                     }, { quoted: mek });
                 }
                 
                 await setSetting(botId, 'ai_api_key', customKey);
                 return await kaya.sendMessage(from, { 
-                    text: `*✅ OpenRouter API key successfully registered for your bot!*` 
+                    text: successBox('ᴏᴘᴇɴʀᴏᴜᴛᴇʀ ᴀᴘɪ ᴋᴇʏ sᴜᴄᴄᴇssғᴜʟʟʏ ʀᴇɢɪsᴛᴇʀᴇᴅ !') 
                 }, { quoted: mek });
             }
 
@@ -44,13 +45,13 @@ export default {
             if (args[0] === 'delkey') {
                 if (!isOwner) {
                     return await kaya.sendMessage(from, { 
-                        text: `*❌ Only the owner of this bot can delete this configuration.*` 
+                        text: errorBox('ᴏɴʟʏ ᴛʜᴇ ᴏᴡɴᴇʀ ᴄᴀɴ ᴅᴇʟᴇᴛᴇ ᴛʜɪs ᴄᴏɴғɪɢᴜʀᴀᴛɪᴏɴ.') 
                     }, { quoted: mek });
                 }
 
                 await setSetting(botId, 'ai_api_key', null);
                 return await kaya.sendMessage(from, { 
-                    text: `*🗑️ Custom API key deleted.*` 
+                    text: boxMessage('success', 'ᴄᴜsᴛᴏᴍ ᴀᴘɪ ᴋᴇʏ ᴅᴇʟᴇᴛᴇᴅ.', '🗑️') 
                 }, { quoted: mek });
             }
 
@@ -59,20 +60,20 @@ export default {
 
             if (!ownerApiKey) {
                 if (isOwner) {
-                    const guideText = `*⚠️ OpenRouter API Key Not Configured*\n\n` +
-                        `As the owner, you must configure a free OpenRouter API key to activate the assistant.\n\n` +
-                        `🌐 *How to generate your free API key:*\n` +
-                        `1. Go to [OpenRouter](https://openrouter.ai/)\n` +
-                        `2. Log in (Google or GitHub account).\n` +
-                        `3. Go to **Keys** and create a new API key (\`sk-or-v1-...\`).\n` +
-                        `4. Copy the key.\n\n` +
-                        `⚙️ *Save it in the bot using the command:*\n` +
-                        `\`${prefix}ai setkey <your_key>\``;
+                    const guideContent = 
+                        `ᴀs ᴛʜᴇ ᴏᴡɴᴇʀ, ʏᴏᴜ ᴍᴜsᴛ ᴄᴏɴғɪɢᴜʀᴇ\n` +
+                        `ᴀ ғʀᴇᴇ ᴏᴘᴇɴʀᴏᴜᴛᴇʀ ᴀᴘɪ ᴋᴇʏ.\n\n` +
+                        `• 1. ɢᴏ ᴛᴏ openrouter.ai\n` +
+                        `• 2. ᴄʀᴇᴀᴛᴇ ᴀ ɴᴇᴡ ᴀᴘɪ ᴋᴇʏ\n` +
+                        `• 3. sᴀᴠᴇ ɪᴛ ᴜsɪɴɢ :\n` +
+                        `  \`${prefix}ai setkey <your_key>\``;
 
-                    return await kaya.sendMessage(from, { text: guideText }, { quoted: mek });
+                    return await kaya.sendMessage(from, { 
+                        text: boxMessage('ᴀᴘɪ ᴋᴇʏ ᴍɪssɪɴɢ', guideContent, '⚠️') 
+                    }, { quoted: mek });
                 } else {
                     return await kaya.sendMessage(from, { 
-                        text: `*❌ The owner has not configured their AI API yet.*` 
+                        text: errorBox('ᴛʜᴇ ᴏᴡɴᴇʀ ʜᴀs ɴᴏᴛ ᴄᴏɴғɪɢᴜʀᴇᴅ ᴛʜᴇɪʀ ᴀɪ ᴀᴘɪ ʏᴇᴛ.') 
                     }, { quoted: mek });
                 }
             }
@@ -81,7 +82,7 @@ export default {
 
             if (!text) {
                 return await kaya.sendMessage(from, { 
-                    text: `*❌ Incorrect usage.*\n\nExample: \`${prefix}ai What is Node.js?\`` 
+                    text: usageBox(prefix, 'ai', 'What is Node.js?') 
                 }, { quoted: mek });
             }
 
@@ -115,7 +116,9 @@ export default {
 
         } catch (err) {
             console.error('❌ Error in ai.js :', err);
-            await kaya.sendMessage(from, { text: '⚠️ An error occurred while communicating with the artificial intelligence.' }, { quoted: mek });
+            await kaya.sendMessage(from, { 
+                text: errorBox('ᴜɴᴀʙʟᴇ ᴛᴏ ᴄᴏᴍᴍᴜɴɪᴄᴀᴛᴇ ᴡɪᴛʜ ᴛʜᴇ ᴀɪ.') 
+            }, { quoted: mek });
         }
     }
 };

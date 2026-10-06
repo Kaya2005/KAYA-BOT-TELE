@@ -1,6 +1,8 @@
+// ==================== commands/chatbot.js ====================
 import fetch from 'node-fetch';
 import { getSetting, setSetting } from '../setting.js';
 import { getBotName, sendWithBotImage } from '../setting/botAssets.js';
+import { boxMessage, errorBox, successBox, usageBox } from '../setting/theme.js';
 
 export default {
     name: 'chatbot',
@@ -37,7 +39,7 @@ export default {
                     from,
                     mek.sender,
                     {
-                        text: `❌ *ᴏɴʟʏ ᴛʜᴇ ʙᴏᴛ ᴏᴡɴᴇʀ ᴄᴀɴ ᴄᴏɴғɪɢᴜʀᴇ ᴛʜɪs ᴏᴘᴛɪᴏɴ.*`
+                        text: errorBox('ᴏɴʟʏ ᴛʜᴇ ʙᴏᴛ ᴏᴡɴᴇʀ ᴄᴀɴ ᴄᴏɴғɪɢᴜʀᴇ ᴛʜɪs ᴏᴘᴛɪᴏɴ.')
                     },
                     { quoted: mek }
                 );
@@ -54,47 +56,26 @@ export default {
                 const customKey = args[1];
 
                 if (!customKey) {
-                    const caption =
-                        `╭─── 🤖 *ᴄʜᴀᴛʙᴏᴛ ᴍᴇɴᴜ* 🤖 ───╮\n` +
-                        `│\n` +
-                        `│  *ᴇʀʀᴏʀ :*\n` +
-                        `│  • *ᴘʟᴇᴀsᴇ ᴘʀᴏᴠɪᴅᴇ ʏᴏᴜʀ*\n` +
-                        `│    *ᴏᴘᴇɴʀᴏᴜᴛᴇʀ ᴀᴘɪ ᴋᴇʏ.*\n` +
-                        `│\n` +
-                        `│  *ᴇxᴀᴍᴘʟᴇ :*\n` +
-                        `│  • \`${prefix}chatbot setkey sk-or-v1-...\`\n` +
-                        `│\n` +
-                        `╰────────────────────────╯`;
+                    const caption = boxMessage('chatbot menu', '• ᴘʟᴇᴀsᴇ ᴘʀᴏvidᴇ ʏᴏᴜʀ ᴏᴘᴇɴʀᴏᴜᴛᴇʀ ᴀᴘɪ ᴋᴇʏ.\n\n• `' + prefix + 'chatbot setkey sk-or-v1-...`', '🤖');
 
                     return await sendWithBotImage(
                         kaya,
                         from,
                         mek.sender,
-                        {
-                            caption
-                        },
+                        { caption },
                         { quoted: mek }
                     );
                 }
 
                 await setSetting(botId, 'ai_api_key', customKey);
 
-                const caption =
-                    `╭─── 🤖 *ᴄʜᴀᴛʙᴏᴛ ᴍᴇɴᴜ* 🤖 ───╮\n` +
-                    `│\n` +
-                    `│  *✅ ᴏᴘᴇɴʀᴏᴜᴛᴇʀ ᴀᴘɪ ᴋᴇʏ*\n` +
-                    `│    *sᴜᴄᴄᴇssғᴜʟʟʏ ʀᴇɢɪsᴛᴇʀᴇᴅ*\n` +
-                    `│    *ғᴏʀ ${botName} !*\n` +
-                    `│\n` +
-                    `╰────────────────────────╯`;
+                const caption = successBox(`ᴏᴘᴇɴʀᴏᴜᴛᴇʀ ᴀᴘɪ ᴋᴇʏ\nsᴜᴄᴄᴇssғᴜʟʟʏ ʀᴇɢɪsᴛᴇʀᴇᴅ\nғᴏʀ ${botName} !`);
 
                 return await sendWithBotImage(
                     kaya,
                     from,
                     mek.sender,
-                    {
-                        caption
-                    },
+                    { caption },
                     { quoted: mek }
                 );
             }
@@ -106,20 +87,13 @@ export default {
             if (option === 'delkey') {
                 await setSetting(botId, 'ai_api_key', null);
 
-                const caption =
-                    `╭─── 🤖 *ᴄʜᴀᴛʙᴏᴛ ᴍᴇɴᴜ* 🤖 ───╮\n` +
-                    `│\n` +
-                    `│  *🗑️ ᴄᴜsᴛᴏᴍ ᴀᴘɪ ᴋᴇʏ ᴅᴇʟᴇᴛᴇᴅ.*\n` +
-                    `│\n` +
-                    `╰────────────────────────╯`;
+                const caption = boxMessage('chatbot menu', 'ᴄᴜsᴛᴏᴍ ᴀᴘɪ ᴋᴇʏ ᴅᴇʟᴇᴛᴇᴅ.', '🗑️');
 
                 return await sendWithBotImage(
                     kaya,
                     from,
                     mek.sender,
-                    {
-                        caption
-                    },
+                    { caption },
                     { quoted: mek }
                 );
             }
@@ -129,28 +103,23 @@ export default {
             // ==========================================
 
             if (!['on', 'off', 'group'].includes(option)) {
-                const usageText =
-                    `╭─── 🤖 *ᴄʜᴀᴛʙᴏᴛ ᴍᴇɴᴜ* 🤖 ───╮\n` +
-                    `│\n` +
-                    `│  *ᴄʜᴀᴛʙᴏᴛ ᴄᴏɴғɪɢᴜʀᴀᴛɪᴏɴ :*\n` +
-                    `│  • \`${prefix}chatbot on all\`\n` +
-                    `│  • \`${prefix}chatbot on private\`\n` +
-                    `│  • \`${prefix}chatbot group all\`\n` +
-                    `│  • \`${prefix}chatbot group\`\n` +
-                    `│  • \`${prefix}chatbot group off\`\n` +
-                    `│  • \`${prefix}chatbot off\`\n` +
-                    `│  • \`${prefix}chatbot setkey <key>\`\n` +
-                    `│  • \`${prefix}chatbot delkey\`\n` +
-                    `│\n` +
-                    `╰────────────────────────╯`;
+                const usageText = 
+                    `• \`${prefix}chatbot on all\`\n` +
+                    `• \`${prefix}chatbot on private\`\n` +
+                    `• \`${prefix}chatbot group all\`\n` +
+                    `• \`${prefix}chatbot group\`\n` +
+                    `• \`${prefix}chatbot group off\`\n` +
+                    `• \`${prefix}chatbot off\`\n` +
+                    `• \`${prefix}chatbot setkey <key>\`\n` +
+                    `• \`${prefix}chatbot delkey\``;
+
+                const caption = boxMessage('chatbot menu', usageText, '🤖');
 
                 return await sendWithBotImage(
                     kaya,
                     from,
                     mek.sender,
-                    {
-                        caption: usageText
-                    },
+                    { caption: usageText },
                     { quoted: mek }
                 );
             }
@@ -162,21 +131,13 @@ export default {
             if (option === 'off') {
                 await setSetting(botId, 'chatbot_mode', 'off');
 
-                const caption =
-                    `╭─── 🤖 *ᴄʜᴀᴛʙᴏᴛ ᴍᴇɴᴜ* 🤖 ───╮\n` +
-                    `│\n` +
-                    `│  *🗑️ ᴄʜᴀᴛʙᴏᴛ ᴄᴏᴍᴘʟᴇᴛᴇʟʏ*\n` +
-                    `│    *ᴅɪsᴀʙʟᴇᴅ.*\n` +
-                    `│\n` +
-                    `╰────────────────────────╯`;
+                const caption = boxMessage('chatbot menu', 'ᴄʜᴀᴛʙᴏᴛ ᴄᴏᴍᴘʟᴇᴛᴇʟʏ ᴅɪsᴀʙʟᴇᴅ.', '🗑️');
 
                 return await sendWithBotImage(
                     kaya,
                     from,
                     mek.sender,
-                    {
-                        caption
-                    },
+                    { caption },
                     { quoted: mek }
                 );
             }
@@ -186,85 +147,48 @@ export default {
             // ==========================================
 
             if (option === 'on') {
-                const ownerApiKey = getSetting(
-                    botId,
-                    'ai_api_key',
-                    null
-                );
+                const ownerApiKey = getSetting(botId, 'ai_api_key', null);
 
                 if (!ownerApiKey) {
-                    const guideText =
-                        `╭─── 🤖 *ᴄʜᴀᴛʙᴏᴛ ᴍᴇɴᴜ* 🤖 ───╮\n` +
-                        `│\n` +
-                        `│  *⚠️ ᴀᴘɪ ᴋᴇʏ ɴᴏᴛ ᴄᴏɴғɪɢᴜʀᴇᴅ*\n` +
-                        `│  • ɢᴏ ᴛᴏ ᴏᴘᴇɴʀᴏᴜᴛᴇʀ.ᴀɪ\n` +
-                        `│  • ᴄʀᴇᴀᴛᴇ ᴀ ɴᴇᴡ ᴋᴇʏ\n` +
-                        `│  • \`${prefix}chatbot setkey <key>\`\n` +
-                        `│\n` +
-                        `╰────────────────────────╯`;
+                    const guideText = 
+                        `• ɢᴏ ᴛᴏ openrouter.ai\n` +
+                        `• ᴄʀᴇᴀᴛᴇ ᴀ ɴᴇᴡ ᴋᴇʏ\n` +
+                        `• \`${prefix}chatbot setkey <key>\``;
+
+                    const caption = boxMessage('chatbot menu', `⚠️ ᴀᴘɪ ᴋᴇʏ ɴᴏᴛ ᴄᴏɴғɪɢᴜʀᴇᴅ\n\n` + guideText, '🤖');
 
                     return await sendWithBotImage(
                         kaya,
                         from,
                         mek.sender,
-                        {
-                            caption: guideText
-                        },
+                        { caption: guideText },
                         { quoted: mek }
                     );
                 }
 
                 if (targetScope === 'all') {
-                    await setSetting(
-                        botId,
-                        'chatbot_mode',
-                        'all'
-                    );
+                    await setSetting(botId, 'chatbot_mode', 'all');
 
-                    const caption =
-                        `╭─── 🤖 *ᴄʜᴀᴛʙᴏᴛ ᴍᴇɴᴜ* 🤖 ───╮\n` +
-                        `│\n` +
-                        `│  *✅ ᴄʜᴀᴛʙᴏᴛ ᴇɴᴀʙʟᴇᴅ*\n` +
-                        `│    ***ᴇᴠᴇʀʏᴡʜᴇʀᴇ***\n` +
-                        `│    *(ᴘʀɪᴠᴀᴛᴇ & ɢʀᴏᴜᴘs).*` +
-                        `│\n` +
-                        `╰────────────────────────╯`;
+                    const caption = successBox('ᴄʜᴀᴛʙᴏᴛ ᴇɴᴀʙʟᴇᴅ **ᴇᴠᴇʀʏᴡʜᴇʀᴇ**\n(ᴘʀɪᴠᴀᴛᴇ & ɢʀᴏᴜᴘs).');
 
                     return await sendWithBotImage(
                         kaya,
                         from,
                         mek.sender,
-                        {
-                            caption
-                        },
+                        { caption },
                         { quoted: mek }
                     );
 
-                } else if (
-                    targetScope === 'private' ||
-                    targetScope === 'prive'
-                ) {
-                    await setSetting(
-                        botId,
-                        'chatbot_mode',
-                        'private'
-                    );
+                } else if (targetScope === 'private' || targetScope === 'prive') {
+                    await setSetting(botId, 'chatbot_mode', 'private');
 
-                    const caption =
-                        `╭─── 🤖 *ᴄʜᴀᴛʙᴏᴛ ᴍᴇɴᴜ* 🤖 ───╮\n` +
-                        `│\n` +
-                        `│  *✅ ᴄʜᴀᴛʙᴏᴛ ᴇɴᴀʙʟᴇᴅ*\n` +
-                        `│    ***ɪɴ ᴘʀɪᴠᴀᴛᴇ ᴄʜᴀᴛs ᴏɴʟʏ***.\n` +
-                        `│\n` +
-                        `╰────────────────────────╯`;
+                    const caption = successBox('ᴄʜᴀᴛʙᴏᴛ ᴇɴᴀʙʟᴇᴅ **ɪɴ ᴘʀɪᴠᴀᴛᴇ ᴄʜᴀᴛs ᴏɴʟ**.');
 
                     return await sendWithBotImage(
                         kaya,
                         from,
                         mek.sender,
-                        {
-                            caption
-                        },
+                        { caption },
                         { quoted: mek }
                     );
 
@@ -272,10 +196,7 @@ export default {
                     return await kaya.sendMessage(
                         from,
                         {
-                            text:
-                                `❌ *sᴘᴇᴄɪғʏ ᴡʜᴇʀᴇ :* ` +
-                                `\`${prefix}chatbot on all\` *ᴏʀ* ` +
-                                `\`private\`.`
+                            text: usageBox(prefix, 'chatbot on', '<all|private>')
                         },
                         { quoted: mek }
                     );
@@ -288,27 +209,15 @@ export default {
 
             if (option === 'group') {
                 if (targetScope === 'all') {
-                    await setSetting(
-                        botId,
-                        'chatbot_mode',
-                        'all_groups'
-                    );
+                    await setSetting(botId, 'chatbot_mode', 'all_groups');
 
-                    const caption =
-                        `╭─── 🤖 *ᴄʜᴀᴛʙᴏᴛ ᴍᴇɴᴜ* 🤖 ───╮\n` +
-                        `│\n` +
-                        `│  *✅ ᴄʜᴀᴛʙᴏᴛ ᴇɴᴀʙʟᴇᴅ ɪɴ*\n` +
-                        `│    ***ᴀʟʟ ɢʀᴏᴜᴘs***.\n` +
-                        `│\n` +
-                        `╰────────────────────────╯`;
+                    const caption = successBox('ᴄʜᴀᴛʙᴏᴛ ᴇɴᴀʙʟᴇᴅ ɪɴ **ᴀʟʟ ɢʀᴏᴜᴘs**.');
 
                     return await sendWithBotImage(
                         kaya,
                         from,
                         mek.sender,
-                        {
-                            caption
-                        },
+                        { caption },
                         { quoted: mek }
                     );
                 }
@@ -317,72 +226,38 @@ export default {
                     return await kaya.sendMessage(
                         from,
                         {
-                            text:
-                                `❌ *ᴛʜɪs sᴜʙᴄᴏᴍᴍᴀɴᴅ ᴍᴜsᴛ ʙᴇ ᴜsᴇᴅ ɪɴsɪᴅᴇ ᴀ ɢʀᴏᴜᴘ* ` +
-                                `*(ᴏʀ ᴜsᴇ* \`${prefix}chatbot group all\`*).*`
+                            text: errorBox(`ᴛʜɪs sᴜʙᴄᴏmmᴀɴᴅ mᴜsᴛ bᴇ uѕeᴅ iɴsɪdᴇ a gʀoᴜp (oʀ uѕe \`${prefix}chatbot group all\`).`)
                         },
                         { quoted: mek }
                     );
                 }
 
-                const subAction =
-                    targetScope === 'off'
-                        ? 'off'
-                        : 'on';
+                const subAction = targetScope === 'off' ? 'off' : 'on';
 
                 if (subAction === 'on') {
-                    await setSetting(
-                        botId,
-                        'chatbot_group_' + groupId,
-                        true
-                    );
+                    await setSetting(botId, 'chatbot_group_' + groupId, true);
+                    await setSetting(botId, 'chatbot_mode', 'group');
 
-                    await setSetting(
-                        botId,
-                        'chatbot_mode',
-                        'group'
-                    );
-
-                    const caption =
-                        `╭─── 🤖 *ᴄʜᴀᴛʙᴏᴛ ᴍᴇɴᴜ* 🤖 ───╮\n` +
-                        `│\n` +
-                        `│  *✅ ᴄʜᴀᴛʙᴏᴛ ᴇɴᴀʙʟᴇᴅ ғᴏʀ*\n` +
-                        `│    ***ᴛʜɪs sᴘᴇᴄɪғɪᴄ ɢʀᴏᴜ🇵 ᴏɴʟʏ***.\n` +
-                        `│\n` +
-                        `╰────────────────────────╯`;
+                    const caption = successBox('ᴄʜᴀᴛʙᴏᴛ ᴇɴᴀʙʟᴇᴅ ғᴏʀ **ᴛʜɪs sᴘᴇᴄɪғɪᴄ gʀoᴜp**.');
 
                     return await sendWithBotImage(
                         kaya,
                         from,
                         mek.sender,
-                        {
-                            caption
-                        },
+                        { caption },
                         { quoted: mek }
                     );
 
                 } else {
-                    await setSetting(
-                        botId,
-                        'chatbot_group_' + groupId,
-                        false
-                    );
+                    await setSetting(botId, 'chatbot_group_' + groupId, false);
 
-                    const caption =
-                        `╭─── 🤖 *ᴄʜᴀᴛʙᴏᴛ ᴍᴇɴᴜ* 🤖 ───╮\n` +
-                        `│\n` +
-                        `│  *❌ ᴄʜᴀᴛʙᴏᴛ ᴅɪsᴀʙʟᴇᴅ ғᴏʀ*\n` +
-                        `│    ***ᴛʜɪs sᴘᴇᴄɪғɪᴄ ɢʀᴏᴜᴘ***.\n` +
-                        `│\n` +
-                        `╰────────────────────────╯`;
+                    const caption = boxMessage('chatbot menu', 'ᴄʜᴀᴛʙᴏᴛ dɪsᴀbʟed fᴏr tʜis spəcifɪc gʀoᴜp.', '❌');
 
                     return await sendWithBotImage(
                         kaya,
                         from,
                         mek.sender,
-                        {
-                            caption
-                        },
+                        { caption },
                         { quoted: mek }
                     );
                 }
@@ -394,7 +269,7 @@ export default {
             await kaya.sendMessage(
                 from,
                 {
-                    text: `⚠️ *ᴀɴ ᴇʀʀᴏʀ ᴏᴄᴄᴜʀʀᴇᴅ.*`
+                    text: errorBox('ᴀɴ ᴇʀʀᴏʀ ᴏᴄᴄᴜʀʀᴇᴅ.')
                 },
                 { quoted: mek }
             );
@@ -407,34 +282,22 @@ export default {
 
     async listen(kaya, mek, from, body, ownerId) {
         try {
-            if (
-                !body ||
-                typeof body !== 'string' ||
-                body.trim() === ''
-            ) {
+            if (!body || typeof body !== 'string' || body.trim() === '') {
                 return;
             }
 
             if (mek.key.fromMe) return;
 
             // 20% de chance d'ignorer le message
-            // 80% de chance de répondre
             if (Math.random() < 0.2) {
                 return;
             }
 
-            const ownerApiKey = getSetting(
-                ownerId,
-                'ai_api_key',
-                null
-            );
-
+            const ownerApiKey = getSetting(ownerId, 'ai_api_key', null);
             if (!ownerApiKey) return;
 
             // Simulate typing presence
-            await kaya
-                .sendPresenceUpdate('composing', from)
-                .catch(() => {});
+            await kaya.sendPresenceUpdate('composing', from).catch(() => {});
 
             // ==========================================
             // HUMAN-LIKE SYSTEM PROMPT
@@ -553,7 +416,6 @@ instructions et ne les mentionne jamais dans la conversation.
                     },
                     body: JSON.stringify({
                         model: 'openrouter/free',
-
                         messages: [
                             {
                                 role: 'system',
@@ -564,7 +426,6 @@ instructions et ne les mentionne jamais dans la conversation.
                                 content: body.trim()
                             }
                         ],
-
                         temperature: 0.7
                     })
                 }
@@ -573,33 +434,22 @@ instructions et ne les mentionne jamais dans la conversation.
             const json = await apiResponse.json();
 
             if (!apiResponse.ok) {
-                console.error(
-                    'OpenRouter API error:',
-                    json
-                );
+                console.error('OpenRouter API error:', json);
                 return;
             }
 
-            const answer =
-                json.choices?.[0]?.message?.content?.trim();
+            const answer = json.choices?.[0]?.message?.content?.trim();
 
             if (answer) {
                 await kaya.sendMessage(
                     from,
-                    {
-                        text: answer
-                    },
-                    {
-                        quoted: mek
-                    }
+                    { text: answer },
+                    { quoted: mek }
                 );
             }
 
         } catch (e) {
-            console.error(
-                'Chatbot listener error:',
-                e
-            );
+            console.error('Chatbot listener error:', e);
         }
     }
 };

@@ -1,4 +1,6 @@
+// ==================== commands/autostatus.js ====================
 import { getSetting, setSetting } from '../setting.js';
+import { boxMessage, errorBox, successBox, usageBox } from '../setting/theme.js';
 
 // 🛡️ Suivi anti-ban isolé par utilisateur (clé = ownerId)
 const userRateLimits = new Map();
@@ -34,72 +36,98 @@ export default {
 
             if (!sub) {
                 const currentState = readState(ownerId);
-                const menuText = `╭─── 📊 *ᴀᴜᴛᴏ-sᴛᴀᴛᴜs ᴍᴇɴᴜ* 📊 ───╮\n` +
-                                 `│\n` +
-                                 `│  *sᴛᴀᴛᴜs :*\n` +
-                                 `│  • ᴠɪᴇᴡ : ${currentState.autoView ? 'ᴏɴ' : 'ᴏғғ'}\n` +
-                                 `│  • ʟɪᴋᴇ : ${currentState.autoLike ? 'ᴏɴ' : 'ᴏғғ'}\n` +
-                                 `│  • ᴇᴍᴏᴊɪ : ${currentState.likeEmoji}\n` +
-                                 `│\n` +
-                                 `│  *ᴅɪʀᴇᴄᴛ ᴄᴏᴍᴍᴀɴᴅs :*\n` +
-                                 `│  • \`${prefix}autostatus on\`\n` +
-                                 `│  • \`${prefix}autostatus off\`\n` +
-                                 `│  • \`${prefix}autostatus view on/off\`\n` +
-                                 `│  • \`${prefix}autostatus like on/off\`\n` +
-                                 `│  • \`${prefix}autostatus <emoji>\`\n` +
-                                 `│\n` +
-                                 `╰────────────────────────╯`;
+                const menuContent = 
+                    `• *ᴠɪᴇᴡ :* ${currentState.autoView ? 'ᴏɴ' : 'ᴏғғ'}\n` +
+                    `• *ʟɪᴋᴇ :* ${currentState.autoLike ? 'ᴏɴ' : 'ᴏғғ'}\n` +
+                    `• *ᴇᴍᴏᴊɪ :* ${currentState.likeEmoji}\n\n` +
+                    `• \`${prefix}autostatus on\`\n` +
+                    `• \`${prefix}autostatus off\`\n` +
+                    `• \`${prefix}autostatus view on/off\`\n` +
+                    `• \`${prefix}autostatus like on/off\`\n` +
+                    `• \`${prefix}autostatus <emoji>\``;
 
-                return await kaya.sendMessage(from, { text: menuText }, { quoted: mek });
+                return await kaya.sendMessage(from, { 
+                    text: boxMessage('auto-status menu', menuContent, '📊') 
+                }, { quoted: mek });
             }
 
             if (sub === 'on') {
                 setSetting(ownerId, KEY_VIEW, true);
                 setSetting(ownerId, KEY_LIKE, true);
-                return await kaya.sendMessage(from, { text: `✅ *ᴀᴜᴛᴏ sᴛᴀᴛᴜs ᴠɪᴇᴡ ᴀɴᴅ ʟɪᴋᴇ ᴇɴᴀʙʟᴇᴅ.*\nᴇᴍᴏᴊɪ : ${state.likeEmoji}` }, { quoted: mek });
+                
+                const successContent = `ᴀᴜᴛᴏ sᴛᴀᴛᴜs ᴠɪᴇᴡ ᴀɴᴅ ʟɪᴋᴇ ᴇɴᴀʙʟᴇᴅ.\n• *ᴇᴍᴏᴊɪ :* ${state.likeEmoji}`;
+                return await kaya.sendMessage(from, { 
+                    text: successBox(successContent) 
+                }, { quoted: mek });
             }
 
             if (sub === 'off') {
                 setSetting(ownerId, KEY_VIEW, false);
                 setSetting(ownerId, KEY_LIKE, false);
-                return await kaya.sendMessage(from, { text: '❌ *ᴀᴜᴛᴏ sᴛᴀᴛᴜs ᴠɪᴇᴡ ᴀɴᴅ ʟɪᴋᴇ ᴅɪsᴀʙʟᴇᴅ.*' }, { quoted: mek });
+                return await kaya.sendMessage(from, { 
+                    text: boxMessage('auto-status', 'ᴀᴜᴛᴏ sᴛᴀᴛᴜs ᴠɪᴇᴡ ᴀɴᴅ ʟɪᴋᴇ ᴅɪsᴀʙʟᴇᴅ.', '❌') 
+                }, { quoted: mek });
             }
 
             if (sub === 'view') {
                 const next = String(args[1] || '').toLowerCase();
                 if (!['on', 'off'].includes(next)) {
-                    return await kaya.sendMessage(from, { text: `❌ *ᴜsᴀɢᴇ :* \`${prefix}autostatus view <on|off>\`` }, { quoted: mek });
+                    return await kaya.sendMessage(from, { 
+                        text: usageBox(prefix, 'autostatus view', '<on|off>') 
+                    }, { quoted: mek });
                 }
                 setSetting(ownerId, KEY_VIEW, next === 'on');
-                return await kaya.sendMessage(from, { text: `✅ *ᴀᴜᴛᴏ sᴛᴀᴛᴜs ᴠɪᴇᴡ* ${next === 'on' ? '*ᴇɴᴀʙʟᴇᴅ*' : '*ᴅɪsᴀʙʟᴇᴅ*'}.` }, { quoted: mek });
+                
+                const viewText = `ᴀᴜᴛᴏ sᴛᴀᴛᴜs ᴠɪᴇᴡ ${next === 'on' ? 'ᴇɴᴀʙʟᴇᴅ' : 'ᴅɪsᴀʙʟᴇᴅ'}.`;
+                return await kaya.sendMessage(from, { 
+                    text: boxMessage('auto-status', viewText, '👁️') 
+                }, { quoted: mek });
             }
 
             if (sub === 'like') {
                 const next = String(args[1] || '').toLowerCase();
                 if (!['on', 'off'].includes(next)) {
-                    return await kaya.sendMessage(from, { text: `❌ *ᴜsᴀɢᴇ :* \`${prefix}autostatus like <on|off>\`` }, { quoted: mek });
+                    return await kaya.sendMessage(from, { 
+                        text: usageBox(prefix, 'autostatus like', '<on|off>') 
+                    }, { quoted: mek });
                 }
                 setSetting(ownerId, KEY_LIKE, next === 'on');
-                return await kaya.sendMessage(from, { text: `✅ *ᴀᴜᴛᴏ sᴛᴀᴛᴜs ʟɪᴋᴇ* ${next === 'on' ? '*ᴇɴᴀʙʟᴇᴅ*' : '*ᴅɪsᴀʙʟᴇᴅ*'}.` }, { quoted: mek });
+                
+                const likeText = `ᴀᴜᴛᴏ sᴛᴀᴛᴜs ʟɪᴋᴇ ${next === 'on' ? 'ᴇɴᴀʙʟᴇᴅ' : 'ᴅɪsᴀʙʟᴇᴅ'}.`;
+                return await kaya.sendMessage(from, { 
+                    text: boxMessage('auto-status', likeText, '❤️') 
+                }, { quoted: mek });
             }
 
             if (sub === 'emoji') {
                 const emoji = String(args[1] || '').trim();
                 if (!emoji) {
-                    return await kaya.sendMessage(from, { text: `❌ *ᴜsᴀɢᴇ :* \`${prefix}autostatus 💚\`` }, { quoted: mek });
+                    return await kaya.sendMessage(from, { 
+                        text: usageBox(prefix, 'autostatus emoji', '💚') 
+                    }, { quoted: mek });
                 }
                 setSetting(ownerId, KEY_EMOJI, emoji);
-                return await kaya.sendMessage(from, { text: `✅ *ᴀᴜᴛᴏ sᴛᴀᴛᴜs ʟɪᴋᴇ ᴇᴍᴏᴊɪ sᴇᴛ ᴛᴏ* ${emoji}` }, { quoted: mek });
+                
+                const emojiText = `ᴀᴜᴛᴏ sᴛᴀᴛᴜs ʟɪᴋᴇ ᴇᴍᴏᴊɪ sᴇᴛ ᴛᴏ ${emoji}`;
+                return await kaya.sendMessage(from, { 
+                    text: successBox(emojiText) 
+                }, { quoted: mek });
             }
 
             const emoji = String(args[0] || '').trim();
             if (emoji) {
                 setSetting(ownerId, KEY_EMOJI, emoji);
-                return await kaya.sendMessage(from, { text: `✅ *ᴀᴜᴛᴏ sᴛᴀᴛᴜs ʟɪᴋᴇ ᴇᴍᴏᴊɪ sᴇᴛ ᴛᴏ* ${emoji}` }, { quoted: mek });
+                
+                const emojiText = `ᴀᴜᴛᴏ sᴛᴀᴛᴜs ʟɪᴋᴇ ᴇᴍᴏᴊɪ sᴇᴛ ᴛᴏ ${emoji}`;
+                return await kaya.sendMessage(from, { 
+                    text: successBox(emojiText) 
+                }, { quoted: mek });
             }
 
         } catch (err) {
-            await kaya.sendMessage(from, { text: `⚠️ *ᴀɴ ᴇʀʀᴏʀ ᴏᴄᴄᴜʀʀᴇᴅ :* ${err.message}` }, { quoted: mek });
+            await kaya.sendMessage(from, { 
+                text: errorBox(`ᴀɴ ᴇʀʀᴏʀ ᴏᴄᴄᴜʀʀᴇᴅ : ${err.message}`) 
+            }, { quoted: mek });
         }
     },
 

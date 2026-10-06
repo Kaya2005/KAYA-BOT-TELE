@@ -1,7 +1,7 @@
 // ================= commands/allprefix.js =================
 import { getSetting, setSetting } from '../setting.js'; 
-import { getContextInfo } from '../setting/contextInfo.js';
 import { getBotName, sendWithBotImage } from '../setting/botAssets.js';
+import { boxMessage, errorBox, successBox, usageBox } from '../setting/theme.js';
 
 export default {
   name: 'allprefix',
@@ -20,9 +20,16 @@ export default {
 
       // ================= SHOW STATUS =================
       if (!args[0]) {
-        const caption = `▉ \`${botName}\` ▉\n▰▰▰▰▰▰▰▰▰▰▰▰▰\n*⚙️ ALL PREFIX STATUS*\n*➡️ Current mode:* ${currentState ? '✅ Enabled' : '❌ Disabled'}\n______________________\n\n💡 *Usage:* \`${prefix}allprefix <on/off>\``;
+        const content = 
+          `*ʙᴏᴛ :* ${botName}\n\n` +
+          `• *ᴄᴜʀʀᴇɴᴛ ᴍᴏᴅᴇ :* ${currentState ? '✅ ᴇɴᴀʙʟᴇᴅ' : '❌ ᴅɪsᴀʙʟᴇᴅ'}\n\n` +
+          `💡 *ᴜsᴀɢᴇ :*\n` +
+          `  • \`${prefix}allprefix on\`\n` +
+          `  • \`${prefix}allprefix off\``;
+
+        const caption = boxMessage('all prefix status', content, '⚙️');
         
-        return await sendWithBotImage(kaya, from, mek.sender, { caption, contextInfo: getContextInfo(mek.sender) });
+        return await sendWithBotImage(kaya, from, mek.sender, { caption });
       }
 
       // ================= TOGGLE MODE =================
@@ -34,19 +41,27 @@ export default {
       } else if (option === 'off') {
         newState = false;
       } else {
-        return await kaya.sendMessage(from, { text: '❌ Use `on` to enable or `off` to disable.' }, { quoted: mek });
+        return await kaya.sendMessage(from, { 
+          text: usageBox(prefix, 'allprefix', '<on/off>') 
+        }, { quoted: mek });
       }
 
       // Enregistrement sur l'ID numérique du bot (à la racine de son dossier)
       setSetting(botId, 'allPrefix', newState); 
 
-      const caption = `▉ \`${botName}\` ▉\n▰▰▰▰▰▰▰▰▰▰▰▰▰\n*✅ MODE UPDATED*\n*➡️ New mode:* ${newState ? '✅ Enabled (Multi-prefix)' : '❌ Disabled (Strict prefix only)'}`;
+      const updateContent = 
+        `*ʙᴏᴛ :* ${botName}\n\n` +
+        `• *ɴᴇᴡ ᴍᴏᴅᴇ :* ${newState ? '✅ ᴇɴᴀʙʟᴇᴅ (ᴍᴜʟᴛɪ-ᴘʀᴇғɪx)' : '❌ ᴅɪsᴀʙʟᴇᴅ (sᴛʀɪᴄᴛ)'}`;
 
-      return await sendWithBotImage(kaya, from, mek.sender, { caption, contextInfo: getContextInfo(mek.sender) });
+      const caption = boxMessage('mode updated', updateContent, '✅');
+
+      return await sendWithBotImage(kaya, from, mek.sender, { caption });
 
     } catch (err) {
       console.error('❌ allprefix.js error:', err);
-      return await kaya.sendMessage(from, { text: '❌ An error occurred.' }, { quoted: mek });
+      return await kaya.sendMessage(from, { 
+        text: errorBox('ᴀɴ ᴇʀʀᴏʀ ᴏᴄᴄᴜʀʀᴇᴅ.') 
+      }, { quoted: mek });
     }
   }
 };

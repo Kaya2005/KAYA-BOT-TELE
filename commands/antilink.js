@@ -1,5 +1,6 @@
 //antilink.js
 import { getSetting, setSetting } from "../setting.js";
+import { boxMessage, errorBox, successBox } from "../setting/theme.js";
 
 // Fonction pour simuler un délai humain (Anti-Ban)
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -18,22 +19,37 @@ export default {
     const ownerId = kaya.user.id.split(':')[0]; // ID du propriétaire de l'instance
 
     if (!["on", "off", "delete", "warn", "kick", "status"].includes(action)) {
+      const menuContent = 
+        `• \`${prefix}antilink on\` *(ᴅᴇғᴀᴜʟᴛ: ᴡᴀʀɴ)*\n` +
+        `• \`${prefix}antilink delete\`\n` +
+        `• \`${prefix}antilink warn\`\n` +
+        `• \`${prefix}antilink kick\`\n` +
+        `• \`${prefix}antilink off\`\n` +
+        `• \`${prefix}antilink status\``;
+
       return await kaya.sendMessage(from, { 
-        text: `╭─── 🔗 *ᴀɴᴛɪ-ʟɪɴᴋ ᴍᴇɴᴜ* 🔗 ───╮\n│\n│  *ᴅɪʀᴇᴄᴛ ᴄᴏᴍᴍᴀɴᴅs :*\n│  • \`${prefix}antilink on\` *(ᴅᴇғᴀᴜʟᴛ: ᴡᴀʀɴ)*\n│  • \`${prefix}antilink delete\`\n│  • \`${prefix}antilink warn\`\n│  • \`${prefix}antilink kick\`\n│  • \`${prefix}antilink off\`\n│  • \`${prefix}antilink status\`\n│\n╰────────────────────────╯` 
+        text: boxMessage('anti-link menu', menuContent, '🔗') 
       }, { quoted: mek });
     }
 
     if (action === "status") {
       const isEnabled = getSetting(ownerId, "antilink", false, groupId);
       const mode = getSetting(ownerId, "antiLinkMode", "warn", groupId);
+      
+      const statusContent = !isEnabled 
+        ? `ᴀɴᴛɪ-ʟɪɴᴋ ɪs ᴄᴜʀʀᴇɴᴛʟʏ ᴅɪsᴀʙʟᴇᴅ.` 
+        : `• *sᴛᴀᴛᴜs :* ᴇɴᴀʙʟᴇᴅ\n• *ᴍᴏᴅᴇ :* ${mode.toUpperCase()}`;
+
       return await kaya.sendMessage(from, { 
-        text: !isEnabled ? "❌ *ᴀɴᴛɪ-ʟɪɴᴋ ɪs ᴅɪsᴀʙʟᴇᴅ*" : `✅ *ᴀɴᴛɪ-ʟɪɴᴋ ɪs ᴇɴᴀʙʟᴇᴅ*\nᴍᴏᴅᴇ : *${mode.toUpperCase()}*` 
+        text: boxMessage('anti-link status', statusContent, '📊') 
       }, { quoted: mek });
     }
 
     if (action === "off") {
       setSetting(ownerId, "antilink", false, groupId);
-      return await kaya.sendMessage(from, { text: "❌ *ᴀɴᴛɪ-ʟɪɴᴋ ᴅɪsᴀʙʟᴇᴅ.*" }, { quoted: mek });
+      return await kaya.sendMessage(from, { 
+        text: boxMessage('anti-link', 'ᴀɴᴛɪ-ʟɪɴᴋ ᴅɪsᴀʙʟᴇᴅ.', '❌') 
+      }, { quoted: mek });
     }
 
     // Si on active ou change de mode
@@ -41,7 +57,10 @@ export default {
     setSetting(ownerId, "antilink", true, groupId);
     setSetting(ownerId, "antiLinkMode", mode, groupId);
     
-    await kaya.sendMessage(from, { text: `✅ *ᴀɴᴛɪ-ʟɪɴᴋ ᴇɴᴀʙʟᴇᴅ ᴡɪᴛʜ ᴍᴏᴅᴇ :* *${mode.toUpperCase()}*` }, { quoted: mek });
+    const successContent = `ᴀɴᴛɪ-ʟɪɴᴋ ᴇɴᴀʙʟᴇᴅ ᴡɪᴛʜ ᴍᴏᴅᴇ :\n*${mode.toUpperCase()}*`;
+    await kaya.sendMessage(from, { 
+      text: successBox(successContent) 
+    }, { quoted: mek });
   },
 
   async detect(kaya, mek, from, body) {
@@ -83,7 +102,10 @@ export default {
           await kaya.sendMessage(from, { text: `🚫 @${mek.sender.split("@")[0]} *ʀᴇᴀᴄʜᴇᴅ 𝟺/𝟺 ᴡᴀʀɴs ᴀɴᴅ wᴀs ᴋɪᴄᴋᴇᴅ.*`, mentions: [mek.sender] });
           setSetting(ownerId, `warn_${mek.sender}`, 0, groupId); // Reset après kick
         } else {
-          await kaya.sendMessage(from, { text: `⚠️ *ᴀɴᴛɪ-ʟɪɴᴋ ᴀʟᴇʀᴛ*\nᴜsᴇʀ : @${mek.sender.split("@")[0]}\nᴡᴀʀɴ : ${newWarns}/4`, mentions: [mek.sender] });
+          await kaya.sendMessage(from, { 
+            text: `⚠️ *ᴀɴᴛɪ-ʟɪɴᴋ ᴀʟᴇʀᴛ*\n• *ᴜsᴇʀ :* @${mek.sender.split("@")[0]}\n• *ᴡᴀʀɴ :* ${newWarns}/4`, 
+            mentions: [mek.sender] 
+          });
         }
       }
     } catch (err) {
