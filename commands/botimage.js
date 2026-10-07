@@ -1,7 +1,7 @@
 import fs from 'fs';
 import { downloadMediaMessage } from '@whiskeysockets/baileys';
 import { getBotName, sendWithBotImage, getLocalBotImagePath } from '../setting/botAssets.js';
-import { usageBox, successBox, errorBox } from '.../setting/theme.js';
+import { usageBox, successBox, errorBox } from '../setting/theme.js';
 
 export default {
     name: 'botimage',

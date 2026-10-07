@@ -1,5 +1,5 @@
 import { getSetting, setSetting } from '../setting.js';
-import { usageBox, successBox, errorBox } from '.../setting/theme.js';
+import { usageBox, successBox, errorBox } from '../setting/theme.js';
 
 export default {
     name: 'blockinbox',

@@ -1,6 +1,6 @@
 // ==================== botname.js ====================
 import { setSetting, getSetting } from '../setting.js';
-import { getBotName, sendWithBotImage } from '.../setting/botAssets.js';
+import { getBotName, sendWithBotImage } from '../setting/botAssets.js';
 import { getContextInfo } from '../setting/contextInfo.js';
 
 export default {
