@@ -24,7 +24,7 @@ export function toSmallCaps(str) {
 export function boxMessage(title, content, icon = '📌') {
     const formattedTitle = toSmallCaps(title);
     
-    const header = `${icon} *[${formattedTitle} ]*`;
+    const header = `${icon} *${formattedTitle} *`;
     const divider = `───────────────`;
     const formattedContent = content.trim();
 
