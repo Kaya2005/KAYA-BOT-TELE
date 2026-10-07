@@ -17,8 +17,8 @@ function toSmallCaps(str) {
 
 // 🎨 Style avec conservation du préfixe `>` et alignement parfait des encadrés
 function buildHeader({ user, prefix, totalCmds, botName }) {
-    return `
-        ◈┈▉ \`${botName}\` ▉┄◈
+        return `
+          ◈┈▉ \`${botName}\` ▉┄◈
 > ╭────↯
 > │ ➠ *𝙾𝚆𝙽𝙴𝚁:* ${user}
 > │ ➠ *𝙿𝚁𝙴𝙵𝙸𝚇:* ${prefix || 'Sans préfixe'}
@@ -35,11 +35,11 @@ function buildMenuCategoryText({ cat, cmds = [], prefix }) {
     const rawCategoryName = `${cat} MENU`;
     const formattedCatName = toSmallCaps(rawCategoryName);
 
-    return `
-      ${formattedCatName} 
-╭▰▰▰▰▰▰▰◈
+      return `
+         ${formattedCatName} 
+╭──────────◈
 ${cmds.map(c => `┆ ◈ ${prefix}${c.toLowerCase()}`).join('\n')}
-╰▰▰▰▰▰▰▰◈
+╰──────────◈
 `.trim();
 }
 
