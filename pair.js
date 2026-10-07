@@ -1559,7 +1559,7 @@ export default async function startpairing(
                 );
 
                 // ==========================================
-                // SESSION DÉCONNECTÉE
+                // SESSION DÉCONNECTÉE (DÉCO MANUELLE)
                 // ==========================================
 
                 if (
@@ -1569,7 +1569,7 @@ export default async function startpairing(
                 ) {
 
                     console.log(
-                        `${logPrefix} ❌ Session fermée définitivement.`
+                        `${logPrefix} ❌ Session fermée définitivement par l'utilisateur.`
                     );
 
                     try {
