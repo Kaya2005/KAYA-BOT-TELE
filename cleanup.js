@@ -2,11 +2,13 @@ import fs from 'fs';
 import path from 'path';
 
 export function startAutoCleanup() {
+    console.log("🧹 [CLEANUP] Initialisation du script de nettoyage au démarrage...");
     const targetDir = process.cwd(); 
     const PAIRING_DIR = path.join(targetDir, "richstore", "pairing");
 
     const clean = () => {
         try {
+            console.log("🧹 [CLEANUP] Analyse de l'espace de stockage en cours...");
             const now = Date.now();
             let deletedCount = 0;
 
@@ -88,8 +90,11 @@ export function startAutoCleanup() {
                 });
             }
 
+            // Affichage clair du résultat dans la console
             if (deletedCount > 0) {
                 console.log(`🧹 [CLEANUP] ${deletedCount} fichiers ou éléments obsolètes purgés au démarrage.`);
+            } else {
+                console.log(`🧹 [CLEANUP] Analyse terminée. Aucun fichier obsolète à supprimer.`);
             }
 
         } catch (err) {
