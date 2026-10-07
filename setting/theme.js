@@ -1,5 +1,3 @@
-// ==================== setting/theme.js ====================
-
 /**
  * Convertit un texte standard en petites capitales (Small Caps) pour un style esthétique.
  */
@@ -18,39 +16,40 @@ export function toSmallCaps(str) {
 }
 
 /**
- * Génère une boîte stylisée compacte et responsive (idéal écrans ~350px).
- * @param {string} title - Le titre de la boîte
+ * Génère un bloc de texte stylisé sans cadre ni nom de bot.
+ * @param {string} title - Le titre de la notification
  * @param {string} content - Le contenu du message
  * @param {string} icon - L'emoji principal
  */
 export function boxMessage(title, content, icon = '📌') {
     const formattedTitle = toSmallCaps(title);
-    return `╭─ ${icon} *${formattedTitle}* ─╮\n` +
-           `│\n` +
-           content.split('\n').map(line => `│  ${line}`).join('\n') + `\n` +
-           `│\n` +
-           `╰─────────────╯`;
+    
+    const header = `${icon} *[${formattedTitle} ]*`;
+    const divider = `───────────────`;
+    const formattedContent = content.trim();
+
+    return `${header}\n${divider}\n${formattedContent}\n${divider}`;
 }
 
 /**
- * Message d'erreur standardisé
+ * Message d'erreur stylisé
  */
 export function errorBox(text = 'an error occurred.') {
     return boxMessage('error', text, '❌');
 }
 
 /**
- * Message de succès standardisé
+ * Message de succès stylisé
  */
 export function successBox(text) {
     return boxMessage('success', text, '✅');
 }
 
 /**
- * Message d'aide / Usage standardisé
+ * Message d'aide / Usage stylisé
  */
 export function usageBox(prefix, cmdName, syntax = '') {
     const usageLine = syntax ? `\`${prefix}${cmdName} ${syntax}\`` : `\`${prefix}${cmdName}\``;
-    const content = `*ᴜsᴀɢᴇ :*\n│  • ${usageLine}`;
+    const content = `*ᴜsᴀɢᴇ :*\n• ${usageLine}`;
     return boxMessage('help', content, '💡');
 }
