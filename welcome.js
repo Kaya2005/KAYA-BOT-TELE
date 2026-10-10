@@ -5,148 +5,562 @@ import checkAdminOrOwner from '../setting/checkAdminOrOwner.js';
 import { getSetting, setSetting } from '../setting.js';
 
 const welcomeCache = new Set();
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-// --- SYSTÈME ANTI-BAN / RATE LIMIT ---
-let welcomeCount = 0;
-let pauseUntil = 0;
-const MAX_WELCOMES = 10;             // Limite de messages avant pause
-const PAUSE_DURATION = 10 * 60 * 1000; // Pause de 10 minutes (en millisecondes)
+const delayMs = (ms) =>
+    new Promise(resolve => setTimeout(resolve, ms));
+
+/**
+ * Initialise le système Welcome UNE SEULE FOIS.
+ *
+ * Important :
+ * On utilise settings.json comme mémoire permanente.
+ *
+ * Première fois :
+ * welcomeInitialized = true
+ * welcomeAll = "on" (inchangé)
+ */
+async function ensureWelcomeInitialized(ownerId) {
+    try {
+        const initialized = getSetting(
+            ownerId,
+            'welcomeInitialized',
+            false
+        );
+
+        if (initialized) {
+            return;
+        }
+
+        await setSetting(
+            ownerId,
+            'welcomeInitialized',
+            true
+        );
+
+        await setSetting(
+            ownerId,
+            'welcomeAll',
+            'on'
+        );
+
+        console.log(
+            `[WELCOME] Première initialisation pour ${ownerId} : welcomeAll = ON`
+        );
+
+    } catch (e) {
+        console.error(
+            '[WELCOME] Initialization error:',
+            e
+        );
+    }
+}
 
 export default {
+
     name: 'welcome',
-    alias: ['bienvenue', 'wel'],
+
+    alias: [
+        'bienvenue',
+        'wel'
+    ],
+
     description: 'Manage welcome messages',
+
     category: 'Group',
+
     ownerOnly: true,
 
-    async execute(kaya, mek, from, args, prefix) {
+    /**
+     * WELCOME COMMAND
+     */
+    async execute(
+        kaya,
+        mek,
+        from,
+        args,
+        prefix
+    ) {
+
         try {
-            const status = await checkAdminOrOwner(kaya, from, mek.sender);
-            if (!status.isBotOwner) return kaya.sendMessage(from, { text: '❌ Owner Only', contextInfo: getContextInfo(mek.sender) }, { quoted: mek });
-            
-            const action = args[0]?.toLowerCase();
-            const ownerId = kaya.user.id.split(':')[0];
-            const groupId = from.split('@')[0];
 
-            if (!action) return kaya.sendMessage(from, { text: `⚙️ *WELCOME SETTINGS*\n\n${prefix}welcome on (Current group)\n${prefix}welcome off (Disable current & global)\n${prefix}welcome all (Global ON)\n${prefix}welcome alloff (Disable global)\n${prefix}welcome status`, contextInfo: getContextInfo(mek.sender) }, { quoted: mek });
+            const status =
+                await checkAdminOrOwner(
+                    kaya,
+                    from,
+                    mek.sender
+                );
 
-            if (action === "on") { 
-                await setSetting(ownerId, 'welcomeEnabled', true, groupId); 
-                return kaya.sendMessage(from, { text: "✅ Welcome enabled for this group.", contextInfo: getContextInfo(mek.sender) }, { quoted: mek }); 
-            }
-            if (action === "off") { 
-                await setSetting(ownerId, 'welcomeEnabled', false, groupId); 
-                await setSetting(ownerId, 'welcomeAll', 'off'); 
-                return kaya.sendMessage(from, { text: "❌ Welcome disabled globally and for this group.", contextInfo: getContextInfo(mek.sender) }, { quoted: mek }); 
-            }
-            if (action === "all") {
-                await setSetting(ownerId, 'welcomeAll', 'on');
-                return kaya.sendMessage(from, { text: `✅ Welcome enabled globally for all your groups.`, contextInfo: getContextInfo(mek.sender) }, { quoted: mek });
-            }
-            if (action === "alloff") {
-                await setSetting(ownerId, 'welcomeAll', 'off');
-                return kaya.sendMessage(from, { text: `❌ Welcome disabled globally for all your groups.`, contextInfo: getContextInfo(mek.sender) }, { quoted: mek });
-            }
-            if (action === "status") {
-                const isLocalEnabled = getSetting(ownerId, 'welcomeEnabled', false, groupId);
-                let isAll = getSetting(ownerId, 'welcomeAll', null);
-                if (!isAll) isAll = 'off'; // Par défaut 'off' si non défini
+            if (!status.isBotOwner) {
 
-                return kaya.sendMessage(from, { text: `📊 *WELCOME STATUS*\n\nLocal: ${isLocalEnabled ? "ON" : "OFF"}\nGlobal (All): ${isAll.toUpperCase()}`, contextInfo: getContextInfo(mek.sender) }, { quoted: mek });
+                return kaya.sendMessage(
+                    from,
+                    {
+                        text: '❌ Owner Only',
+                        contextInfo:
+                            getContextInfo(
+                                mek.sender
+                            )
+                    },
+                    {
+                        quoted: mek
+                    }
+                );
             }
-        } catch (e) { console.error('❌ welcome.js error:', e); }
+
+            const ownerId =
+                kaya.user.id
+                    .split(':')[0];
+
+            const groupId =
+                from.split('@')[0];
+
+            await ensureWelcomeInitialized(
+                ownerId
+            );
+
+            const action =
+                args
+                    .map(a =>
+                        a.toLowerCase()
+                    )
+                    .join(' ');
+
+            /*
+             * MENU
+             */
+            if (!action) {
+
+                return kaya.sendMessage(
+                    from,
+                    {
+                        text:
+`⚙️ *WELCOME SETTINGS*
+
+${prefix}welcome on
+${prefix}welcome off
+${prefix}welcome all
+${prefix}welcome all off
+${prefix}welcome status`,
+                        contextInfo:
+                            getContextInfo(
+                                mek.sender
+                            )
+                    },
+                    {
+                        quoted: mek
+                    }
+                );
+            }
+
+            /*
+             * ENABLE POUR LE GROUPE ACTUEL
+             */
+            if (action === 'on') {
+
+                await setSetting(
+                    ownerId,
+                    'welcomeEnabled',
+                    true,
+                    groupId
+                );
+
+                return kaya.sendMessage(
+                    from,
+                    {
+                        text:
+                            '✅ Welcome enabled for this group.',
+                        contextInfo:
+                            getContextInfo(
+                                mek.sender
+                            )
+                    },
+                    {
+                        quoted: mek
+                    }
+                );
+            }
+
+            /*
+             * DISABLE POUR LE GROUPE ACTUEL ET GLOBAL (WELCOME OFF)
+             */
+            if (action === 'off') {
+
+                // Désactive pour le groupe actuel
+                await setSetting(
+                    ownerId,
+                    'welcomeEnabled',
+                    false,
+                    groupId
+                );
+
+                // Désactive également globalement pour tout couper
+                await setSetting(
+                    ownerId,
+                    'welcomeAll',
+                    'off'
+                );
+
+                return kaya.sendMessage(
+                    from,
+                    {
+                        text:
+                            '❌ Welcome disabled completely (Local & Global off).',
+                        contextInfo:
+                            getContextInfo(
+                                mek.sender
+                            )
+                    },
+                    {
+                        quoted: mek
+                    }
+                );
+            }
+
+            /*
+             * ENABLE GLOBAL
+             *
+             * welcome all
+             */
+            if (action === 'all') {
+
+                await setSetting(
+                    ownerId,
+                    'welcomeAll',
+                    'on'
+                );
+
+                return kaya.sendMessage(
+                    from,
+                    {
+                        text:
+                            '✅ Welcome enabled globally for all your groups.',
+                        contextInfo:
+                            getContextInfo(
+                                mek.sender
+                            )
+                    },
+                    {
+                        quoted: mek
+                    }
+                );
+            }
+
+            /*
+             * DISABLE GLOBAL
+             *
+             * welcome all off
+             */
+            if (action === 'all off') {
+
+                await setSetting(
+                    ownerId,
+                    'welcomeAll',
+                    'off'
+                );
+
+                return kaya.sendMessage(
+                    from,
+                    {
+                        text:
+                            '❌ Welcome disabled globally for all your groups.',
+                        contextInfo:
+                            getContextInfo(
+                                mek.sender
+                            )
+                    },
+                    {
+                        quoted: mek
+                    }
+                );
+            }
+
+            /*
+             * STATUS
+             */
+            if (action === 'status') {
+
+                const isLocalEnabled =
+                    getSetting(
+                        ownerId,
+                        'welcomeEnabled',
+                        false,
+                        groupId
+                    );
+
+                const isAll =
+                    getSetting(
+                        ownerId,
+                        'welcomeAll',
+                        'off'
+                    );
+
+                const initialized =
+                    getSetting(
+                        ownerId,
+                        'welcomeInitialized',
+                        false
+                    );
+
+                return kaya.sendMessage(
+                    from,
+                    {
+                        text:
+`📊 *WELCOME STATUS*
+
+Local: ${isLocalEnabled ? 'ON' : 'OFF'}
+Global (All): ${String(isAll).toUpperCase()}
+Initialized: ${initialized ? 'YES' : 'NO'}`,
+                        contextInfo:
+                            getContextInfo(
+                                mek.sender
+                            )
+                    },
+                    {
+                        quoted: mek
+                    }
+                );
+            }
+
+        } catch (e) {
+
+            console.error(
+                'Welcome command error:',
+                e
+            );
+        }
     },
 
-    async participantUpdate(kaya, update) {
-        try {
-            if (update.action !== "add" && update.action !== "invite") return;
-            
-            // Vérification de la pause anti-ban
-            if (Date.now() < pauseUntil) return;
+    /**
+     * WELCOME NEW MEMBERS
+     */
+    async participantUpdate(
+        kaya,
+        update
+    ) {
 
-            const from = update.id;
-            const groupId = from.split('@')[0];
-            const ownerId = kaya.user.id.split(':')[0];
-            
-            // Récupère le réglage global sans forcer l'activation automatique
-            let isAll = getSetting(ownerId, 'welcomeAll', null);
-            if (!isAll) {
-                isAll = 'off';
-                await setSetting(ownerId, 'welcomeAll', 'off');
+        try {
+
+            if (
+                update.action !== 'add' &&
+                update.action !== 'invite'
+            ) {
+                return;
             }
+
+            const from =
+                update.id;
+
+            const groupId =
+                from.split('@')[0];
+
+            const ownerId =
+                kaya.user.id
+                    .split(':')[0];
+
+            await ensureWelcomeInitialized(
+                ownerId
+            );
+
+            const isAll =
+                getSetting(
+                    ownerId,
+                    'welcomeAll',
+                    'off'
+                );
 
             let isEnabled = false;
 
             if (isAll === 'on') {
+
                 isEnabled = true;
+
             } else {
-                isEnabled = getSetting(ownerId, 'welcomeEnabled', false, groupId);
+
+                isEnabled =
+                    getSetting(
+                        ownerId,
+                        'welcomeEnabled',
+                        false,
+                        groupId
+                    );
             }
 
-            if (!isEnabled) return;
+            if (!isEnabled) {
+                return;
+            }
 
-            const metadata = await kaya.groupMetadata(from).catch(() => ({}));
-            const groupName = metadata.subject || "this group";
-            const memberCount = metadata.participants ? metadata.participants.length : 0;
-            const creationDate = metadata.creation ? new Date(metadata.creation * 1000).toLocaleDateString() : "Unknown";
-            const now = new Date().toLocaleDateString();
+            const metadata =
+                await kaya
+                    .groupMetadata(from)
+                    .catch(() => ({}));
 
-            const logoPath = path.join(process.cwd(), 'setting', 'logo.png');
-            const logoBuffer = fs.existsSync(logoPath) ? fs.readFileSync(logoPath) : null;
+            const groupName =
+                metadata.subject ||
+                'this group';
 
-            for (let user of update.participants) {
-                // Re-vérifie si la pause s'est déclenchée en cours de boucle
-                if (Date.now() < pauseUntil) break;
+            const memberCount =
+                metadata.participants
+                    ? metadata
+                        .participants
+                        .length
+                    : 0;
 
-                const userId = typeof user === 'string' ? user : user.id;
-                if (welcomeCache.has(userId)) continue;
-                welcomeCache.add(userId);
-                setTimeout(() => welcomeCache.delete(userId), 30000);
+            const creationDate =
+                metadata.creation
+                    ? new Date(
+                        metadata.creation *
+                        1000
+                    ).toLocaleDateString(
+                        'en-GB',
+                        {
+                            timeZone:
+                                'Africa/Lubumbashi'
+                        }
+                    )
+                    : 'Unknown';
 
-                const randomDelay = Math.floor(Math.random() * 1000) + 4000;
-                await delay(randomDelay);
+            const nowObj =
+                new Date();
 
-                const username = `@${userId.split("@")[0]}`;
-                const groupSize = memberCount;
+            const time =
+                nowObj.toLocaleTimeString(
+                    'en-GB',
+                    {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        timeZone:
+                            'Africa/Lubumbashi'
+                    }
+                );
 
-                const msg = `▰▰▰▰▰▰▰▰▰▰
-├ 👤 Welcome ${username}
-├ 🎓 Group: *${groupName}*
-├ 👥 Members: ${groupSize}
-├ 🏗️ Created on: ${creationDate}
-├ 📆 Date: ${now}
-├ 📜 \`Rules\` :
-│  ┗ No forbidden links ❌
-│  ┗ No adult content 🔞
-│  ┗ No spamming 🚫
-╰────────────────⬣
-   https://t.me/kayatech2
-  ▰▰▰▰▰▰▰▰▰▰`.trim();
+            const date =
+                nowObj.toLocaleDateString(
+                    'en-GB',
+                    {
+                        timeZone:
+                            'Africa/Lubumbashi'
+                    }
+                );
+
+            const logoPath =
+                path.join(
+                    process.cwd(),
+                    'setting',
+                    'logo.png'
+                );
+
+            const logoBuffer =
+                fs.existsSync(logoPath)
+                    ? fs.readFileSync(
+                        logoPath
+                    )
+                    : null;
+
+            for (
+                const user
+                of update.participants
+            ) {
+
+                const userId =
+                    typeof user === 'string'
+                        ? user
+                        : user.id;
+
+                if (!userId) {
+                    continue;
+                }
+
+                if (
+                    welcomeCache.has(
+                        userId
+                    )
+                ) {
+                    continue;
+                }
+
+                welcomeCache.add(
+                    userId
+                );
+
+                setTimeout(
+                    () => {
+                        welcomeCache.delete(
+                            userId
+                        );
+                    },
+                    30000
+                );
+
+                const randomDelay =
+                    Math.floor(
+                        Math.random() *
+                        1000
+                    ) + 4000;
+
+                await delayMs(
+                    randomDelay
+                );
+
+                const userNumber =
+                    userId.split('@')[0];
+
+                const userTag =
+                    `@${userNumber}`;
+
+                const welcomeMessage =
+`🎉 Welcome to ${groupName} !
+
+▰▰▰▰▰▰▰▰▰▰
+➠ ᴛɪᴍᴇ : ${time}
+➠ ᴅᴀᴛᴇ : ${date}
+➠ ᴄʀᴇᴀᴛɪᴏɴ : ${creationDate}
+➠ ᴍᴇᴍʙᴇʀs : ${memberCount}
+╭▰▰▰▰▰▰▰◈
+┆❏ 🙋 ᴜsᴇʀɴᴀᴍᴇ : ${userTag}
+╰▰▰▰▰▰▰▰◈
+
+вoт: https://kaya-bot-drab.vercel.app/
+
+`.trim();
 
                 const sendPayload = {
-                    caption: msg,
-                    mentions: [userId],
-                    contextInfo: getContextInfo(ownerId + '@s.whatsapp.net')
+                    mentions: [
+                        userId
+                    ],
+
+                    contextInfo:
+                        getContextInfo(
+                            ownerId +
+                            '@s.whatsapp.net'
+                        )
                 };
 
                 if (logoBuffer) {
-                    sendPayload.image = logoBuffer;
+
+                    sendPayload.image =
+                        logoBuffer;
+
+                    sendPayload.caption =
+                        welcomeMessage;
+
                 } else {
-                    sendPayload.text = msg;
+
+                    sendPayload.text =
+                        welcomeMessage;
                 }
 
-                await kaya.sendMessage(from, sendPayload);
-
-                // Compteur et déclenchement de la pause après 10 envois
-                welcomeCount++;
-                if (welcomeCount >= MAX_WELCOMES) {
-                    welcomeCount = 0;
-                    pauseUntil = Date.now() + PAUSE_DURATION; // Pause de 10 min
-                    console.log(`⚠️ Limite de ${MAX_WELCOMES} welcomes atteinte. Pause anti-ban de 10 minutes.`);
-                    break;
-                }
+                await kaya.sendMessage(
+                    from,
+                    sendPayload
+                );
             }
-        } catch (e) { /* silent */ }
+
+        } catch (e) {
+
+            console.error(
+                'Welcome participantUpdate error:',
+                e
+            );
+        }
     }
 };
