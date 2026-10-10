@@ -627,26 +627,28 @@ export default async function caseHandler(
             chatbotMode !== "off";
 
         // ==========================================
-        // MESSAGE SANS TRAITEMENT
+        // VÉRIFICATION DES MODES TYPING ET RECORDING
         // ==========================================
 
-        /*
-         * Si ce n'est pas une commande,
-         * qu'aucun utilitaire n'est actif,
-         * que l'autoreact est désactivé
-         * et que le chatbot est désactivé,
-         *
-         * on arrête immédiatement.
-         *
-         * Le message normal n'est donc pas
-         * traité par le reste du bot.
-         */
+        const isTypingActive = Boolean(
+            getSetting(ownerId, "typing", false)
+        );
+
+        const isRecordingActive = Boolean(
+            getSetting(ownerId, "recording", false)
+        );
+
+        // ==========================================
+        // MESSAGE SANS TRAITEMENT
+        // ==========================================
 
         if (
             !isCommand &&
             !hasActiveUtility &&
             !isAutoReactActive &&
-            !isChatbotActive
+            !isChatbotActive &&
+            !isTypingActive &&
+            !isRecordingActive
         ) {
 
             return;
@@ -728,7 +730,7 @@ export default async function caseHandler(
         }
 
         // ==========================================
-        // PRÉSENCE
+        // PRÉSENCE (Typing / Recording)
         // ==========================================
 
         const lastPresence =
@@ -746,13 +748,7 @@ export default async function caseHandler(
             let presenceSent =
                 false;
 
-            if (
-                getSetting(
-                    ownerId,
-                    "typing",
-                    false
-                )
-            ) {
+            if (isTypingActive) {
 
                 await kaya
                     .sendPresenceUpdate(
@@ -766,13 +762,7 @@ export default async function caseHandler(
                 presenceSent = true;
             }
 
-            if (
-                getSetting(
-                    ownerId,
-                    "recording",
-                    false
-                )
-            ) {
+            if (isRecordingActive) {
 
                 await kaya
                     .sendPresenceUpdate(
@@ -1330,4 +1320,3 @@ async function executeUtilities(
         }
     }
 }
-
