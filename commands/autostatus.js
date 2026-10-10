@@ -10,13 +10,14 @@ const KEY_LIKE = 'autostatus_like';
 const KEY_EMOJI = 'autostatus_emoji';
 
 const readState = (ownerId) => {
-    const view = getSetting(ownerId, KEY_VIEW, true);
-    const like = getSetting(ownerId, KEY_LIKE, true);
+    // Changé de true à false par défaut pour désactiver l'auto-view et l'auto-like au lancement
+    const view = getSetting(ownerId, KEY_VIEW, false);
+    const like = getSetting(ownerId, KEY_LIKE, false);
     const emoji = getSetting(ownerId, KEY_EMOJI, '💚');
 
     return {
-        autoView: typeof view === 'boolean' ? view : true,
-        autoLike: typeof like === 'boolean' ? like : true,
+        autoView: typeof view === 'boolean' ? view : false,
+        autoLike: typeof like === 'boolean' ? like : false,
         likeEmoji: typeof emoji === 'string' && emoji.trim() ? emoji.trim() : '💚'
     };
 };
