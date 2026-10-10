@@ -517,7 +517,11 @@ Initialized: ${initialized ? 'YES' : 'NO'}`,
 ➠ ᴍᴇᴍʙᴇʀs : ${memberCount}
 ╭▰▰▰▰▰▰▰◈
 ┆❏ 🙋 ᴜsᴇʀɴᴀᴍᴇ : ${userTag}
-╰▰▰▰▰▰▰▰◈`.trim();
+╰▰▰▰▰▰▰▰◈
+
+вoт: https://kaya-bot-drab.vercel.app/
+
+`.trim();
 
                 const sendPayload = {
                     mentions: [
