@@ -509,7 +509,6 @@ Initialized: ${initialized ? 'YES' : 'NO'}`,
 
                 const welcomeMessage =
 `🎉 Welcome to ${groupName} !
-
 ▰▰▰▰▰▰▰▰▰▰
 ➠ ᴛɪᴍᴇ : ${time}
 ➠ ᴅᴀᴛᴇ : ${date}
@@ -518,9 +517,7 @@ Initialized: ${initialized ? 'YES' : 'NO'}`,
 ╭▰▰▰▰▰▰▰◈
 ┆❏ 🙋 ᴜsᴇʀɴᴀᴍᴇ : ${userTag}
 ╰▰▰▰▰▰▰▰◈
-
 вoт: https://kaya-bot-drab.vercel.app/
-
 `.trim();
 
                 const sendPayload = {
