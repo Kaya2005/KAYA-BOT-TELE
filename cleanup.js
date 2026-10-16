@@ -2,106 +2,103 @@ import fs from 'fs';
 import path from 'path';
 
 export function startAutoCleanup() {
-    console.log("🧹 [CLEANUP] Initialisation du script de nettoyage au démarrage...");
-    const targetDir = process.cwd(); 
-    const PAIRING_DIR = path.join(targetDir, "richstore", "pairing");
+    const targetDir = process.cwd();
+    const PAIRING_DIR = path.join(targetDir, 'richstore', 'pairing');
 
-    const clean = () => {
+    console.log('🧹 [CLEANUP] Service de nettoyage automatique activé en arrière-plan.');
+
+    const runCleanup = () => {
+        let deletedCount = 0;
+
+        const removeFile = (filePath) => {
+            try {
+                if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+                    fs.unlinkSync(filePath);
+                    deletedCount++;
+                }
+            } catch (err) {
+                console.error(`[CLEANUP] Impossible de supprimer ${filePath}:`, err.message);
+            }
+        };
+
         try {
-            console.log("🧹 [CLEANUP] Analyse de l'espace de stockage en cours...");
             const now = Date.now();
-            let deletedCount = 0;
 
-            // 1. Nettoyage des fichiers temporaires à la racine
+            // 1. Supprimer les fichiers temporaires et stickers orphelins de plus de 10 minutes
             if (fs.existsSync(targetDir)) {
-                const files = fs.readdirSync(targetDir);
-                files.forEach(file => {
-                    if (file.startsWith('tmp_') || (file.startsWith('out_') && file.endsWith('.webp'))) {
+                for (const file of fs.readdirSync(targetDir)) {
+                    if (
+                        file.startsWith('tmp_') ||
+                        (file.startsWith('out_') && file.endsWith('.webp'))
+                    ) {
                         const filePath = path.join(targetDir, file);
                         try {
                             const stats = fs.statSync(filePath);
-                            if ((now - stats.mtimeMs) / (1000 * 60) > 15) {
-                                fs.unlinkSync(filePath);
-                                deletedCount++;
-                            }
-                        } catch (err) {}
-                    }
-                });
-            }
-
-            // 2. Nettoyage des fichiers de requêtes de pairage bloqués
-            if (fs.existsSync(PAIRING_DIR)) {
-                const pairingFiles = fs.readdirSync(PAIRING_DIR);
-                pairingFiles.forEach(file => {
-                    if (file.startsWith('request_') || file.startsWith('pairing_')) {
-                        const filePath = path.join(PAIRING_DIR, file);
-                        try {
-                            const stats = fs.statSync(filePath);
-                            if ((now - stats.mtimeMs) / (1000 * 60 * 60) > 2) {
-                                fs.unlinkSync(filePath);
-                                deletedCount++;
+                            // Sécurité : ne supprime que si le fichier a plus de 10 min (évite de couper un envoi en cours)
+                            if ((now - stats.mtimeMs) > 10 * 60 * 1000) {
+                                removeFile(filePath);
                             }
                         } catch (e) {}
                     }
-                });
+                }
             }
 
-            // 3. Nettoyage sécurisé des dossiers de sessions (en préservant creds.json)
+            // 2. Nettoyer les demandes de pairage de plus de 10 minutes
             if (fs.existsSync(PAIRING_DIR)) {
-                const sessionFolders = fs.readdirSync(PAIRING_DIR);
-                
-                sessionFolders.forEach(folder => {
-                    if (folder.startsWith('request_') || folder.startsWith('pairing_') || folder.endsWith('.json')) {
-                        return;
-                    }
-
-                    const sessionPath = path.join(PAIRING_DIR, folder);
-                    
-                    try {
-                        if (fs.statSync(sessionPath).isDirectory()) {
-                            const credsPath = path.join(sessionPath, "creds.json");
-                            
-                            // Suppression du dossier s'il est orphelin (sans creds.json depuis plus de 24h)
-                            if (!fs.existsSync(credsPath)) {
-                                const folderStats = fs.statSync(sessionPath);
-                                if ((now - folderStats.mtimeMs) / (1000 * 60 * 60) > 24) {
-                                    fs.rmSync(sessionPath, { recursive: true, force: true });
-                                    deletedCount++;
-                                    return;
-                                }
+                for (const file of fs.readdirSync(PAIRING_DIR)) {
+                    if (
+                        file.startsWith('request_') ||
+                        file.startsWith('pairing_')
+                    ) {
+                        const filePath = path.join(PAIRING_DIR, file);
+                        try {
+                            const stats = fs.statSync(filePath);
+                            if ((now - stats.mtimeMs) > 10 * 60 * 1000) {
+                                removeFile(filePath);
                             }
+                        } catch (e) {}
+                    }
+                }
 
-                            // Nettoyage des vieux fichiers de cache internes de plus de 7 jours
-                            const innerFiles = fs.readdirSync(sessionPath);
-                            innerFiles.forEach(file => {
-                                if (file === "creds.json" || file === "metadata.json") return;
+                // 3. Nettoyer uniquement les dossiers de sessions corrompus ou vides (sans creds.json)
+                for (const folder of fs.readdirSync(PAIRING_DIR)) {
+                    const sessionPath = path.join(PAIRING_DIR, folder);
 
-                                const innerFilePath = path.join(sessionPath, file);
-                                try {
-                                    const innerStats = fs.statSync(innerFilePath);
-                                    if ((now - innerStats.mtimeMs) / (1000 * 60 * 60 * 24) > 7) {
-                                        fs.unlinkSync(innerFilePath);
-                                        deletedCount++;
-                                    }
-                                } catch (e) {}
+                    try {
+                        if (!fs.statSync(sessionPath).isDirectory()) continue;
+
+                        const credsPath = path.join(sessionPath, 'creds.json');
+
+                        if (!fs.existsSync(credsPath)) {
+                            fs.rmSync(sessionPath, {
+                                recursive: true,
+                                force: true
                             });
+                            deletedCount++;
                         }
-                    } catch (err) {}
-                });
+                        // (L'étape 4 a été supprimée ici pour préserver vos sessions et éviter les bugs de messages)
+                    } catch (err) {
+                        console.error(
+                            `[CLEANUP] Erreur sur ${folder}:`,
+                            err.message
+                        );
+                    }
+                }
             }
 
-            // Affichage clair du résultat dans la console
             if (deletedCount > 0) {
-                console.log(`🧹 [CLEANUP] ${deletedCount} fichiers ou éléments obsolètes purgés au démarrage.`);
-            } else {
-                console.log(`🧹 [CLEANUP] Analyse terminée. Aucun fichier obsolète à supprimer.`);
+                console.log(
+                    `🧹 [CLEANUP] Nettoyage automatique : ${deletedCount} éléments supprimés.`
+                );
             }
-
         } catch (err) {
-            console.error('❌ Erreur lors du nettoyage au démarrage :', err);
+            console.error('[CLEANUP] Erreur générale :', err);
         }
     };
 
-    // Exécution immédiate au démarrage du serveur
-    clean();
+    // Lancer un premier nettoyage immédiat au démarrage
+    runCleanup();
+
+    // Répéter automatiquement le nettoyage toutes les 30 minutes
+    setInterval(runCleanup, 30 * 60 * 1000);
 }
