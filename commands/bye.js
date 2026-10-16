@@ -1,4 +1,3 @@
-//bye.js
 import fs from 'fs';
 import path from 'path';
 import { getContextInfo } from '../setting/contextInfo.js';
@@ -7,7 +6,6 @@ import { getSetting, setSetting } from '../setting.js';
 import { usageBox, successBox, errorBox } from '../setting/theme.js';
 
 const goodbyeCache = new Set();
-// Fonction de délai pour éviter le spam
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 export default {
@@ -85,7 +83,6 @@ export default {
                 goodbyeCache.add(userId);
                 setTimeout(() => goodbyeCache.delete(userId), 30000);
 
-                // AJOUT DU DÉLAI DE SÉCURITÉ ICI
                 await delay(2000);
 
                 const msg = `▉ \`GOODBYE\` ▉
@@ -96,6 +93,7 @@ export default {
 ➠ Date Created: ${creationDate}
 ______________________`.trim();
 
+                // Envoi normal sans reply
                 await kaya.sendMessage(from, { 
                     image: { url: ppUrl },
                     caption: msg, 

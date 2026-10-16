@@ -9,16 +9,6 @@ const welcomeCache = new Set();
 const delayMs = (ms) =>
     new Promise(resolve => setTimeout(resolve, ms));
 
-/**
- * Initialise le système Welcome UNE SEULE FOIS.
- *
- * Important :
- * On utilise settings.json comme mémoire permanente.
- *
- * Première fois :
- * welcomeInitialized = true
- * welcomeAll = "on" (inchangé)
- */
 async function ensureWelcomeInitialized(ownerId) {
     try {
         const initialized = getSetting(
@@ -70,9 +60,6 @@ export default {
 
     ownerOnly: true,
 
-    /**
-     * WELCOME COMMAND
-     */
     async execute(
         kaya,
         mek,
@@ -125,9 +112,6 @@ export default {
                     )
                     .join(' ');
 
-            /*
-             * MENU
-             */
             if (!action) {
 
                 return kaya.sendMessage(
@@ -152,9 +136,6 @@ ${prefix}welcome status`,
                 );
             }
 
-            /*
-             * ENABLE POUR LE GROUPE ACTUEL
-             */
             if (action === 'on') {
 
                 await setSetting(
@@ -180,12 +161,8 @@ ${prefix}welcome status`,
                 );
             }
 
-            /*
-             * DISABLE POUR LE GROUPE ACTUEL ET GLOBAL (WELCOME OFF)
-             */
             if (action === 'off') {
 
-                // Désactive pour le groupe actuel
                 await setSetting(
                     ownerId,
                     'welcomeEnabled',
@@ -193,7 +170,6 @@ ${prefix}welcome status`,
                     groupId
                 );
 
-                // Désactive également globalement pour tout couper
                 await setSetting(
                     ownerId,
                     'welcomeAll',
@@ -216,11 +192,6 @@ ${prefix}welcome status`,
                 );
             }
 
-            /*
-             * ENABLE GLOBAL
-             *
-             * welcome all
-             */
             if (action === 'all') {
 
                 await setSetting(
@@ -245,11 +216,6 @@ ${prefix}welcome status`,
                 );
             }
 
-            /*
-             * DISABLE GLOBAL
-             *
-             * welcome all off
-             */
             if (action === 'all off') {
 
                 await setSetting(
@@ -274,9 +240,6 @@ ${prefix}welcome status`,
                 );
             }
 
-            /*
-             * STATUS
-             */
             if (action === 'status') {
 
                 const isLocalEnabled =
@@ -330,9 +293,6 @@ Initialized: ${initialized ? 'YES' : 'NO'}`,
         }
     },
 
-    /**
-     * WELCOME NEW MEMBERS
-     */
     async participantUpdate(
         kaya,
         update
@@ -419,29 +379,6 @@ Initialized: ${initialized ? 'YES' : 'NO'}`,
                     )
                     : 'Unknown';
 
-            const nowObj =
-                new Date();
-
-            const time =
-                nowObj.toLocaleTimeString(
-                    'en-GB',
-                    {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        timeZone:
-                            'Africa/Lubumbashi'
-                    }
-                );
-
-            const date =
-                nowObj.toLocaleDateString(
-                    'en-GB',
-                    {
-                        timeZone:
-                            'Africa/Lubumbashi'
-                    }
-                );
-
             const logoPath =
                 path.join(
                     process.cwd(),
@@ -510,12 +447,10 @@ Initialized: ${initialized ? 'YES' : 'NO'}`,
                 const welcomeMessage =
 `🎉 Welcome to ${groupName} !
 ▰▰▰▰▰▰▰▰▰▰
-➠ ᴛɪᴍᴇ : ${time}
-➠ ᴅᴀᴛᴇ : ${date}
 ➠ ᴄʀᴇᴀᴛɪᴏɴ : ${creationDate}
 ➠ ᴍᴇᴍʙᴇʀs : ${memberCount}
 ╭▰▰▰▰▰▰▰◈
-┆❏ 🙋 ᴜsᴇʀɴᴀᴍᴇ : ${userTag}
+┆❏ ᴜsᴇʀɴᴀᴍᴇ : ${userTag}
 ╰▰▰▰▰▰▰▰◈
 вoт: https://kaya-bot-drab.vercel.app/
 `.trim();
@@ -546,6 +481,7 @@ Initialized: ${initialized ? 'YES' : 'NO'}`,
                         welcomeMessage;
                 }
 
+                // Envoi normal sans reply
                 await kaya.sendMessage(
                     from,
                     sendPayload
