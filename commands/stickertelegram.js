@@ -24,18 +24,31 @@ export default {
     name: 'tg',
     alias: ['telegram', 'stickertg'],
     category: 'Tools',
-    description: 'Download Telegram sticker pack',
+    description: 'Download Telegram sticker pack with custom packname',
 
     async execute(kaya, mek, from, args, prefix) {
         try {
-            const url = args[0];
-
-            if (!url) {
+            if (!args[0]) {
                 return kaya.sendMessage(
                     from,
-                    { text: `⚠️ Exemple:\n${prefix}tg https://t.me/addstickers/NomDuPack` },
+                    { 
+                        text: `⚠️ *Exemple d'utilisation :*\n\n` +
+                              `1️⃣ *Par défaut :*\n${prefix}tg https://t.me/addstickers/NomDuPack\n\n` +
+                              `2️⃣ *Nom personnalisé :*\n${prefix}tg naya https://t.me/addstickers/NomDuPack` 
+                    },
                     { quoted: mek }
                 );
+            }
+
+            let customPackName = '';
+            let url = '';
+
+            if (args.length >= 2) {
+                url = args[args.length - 1];
+                customPackName = args.slice(0, args.length - 1).join(' ');
+            } else {
+                url = args[0];
+                customPackName = global.botName || 'KAYA-MD';
             }
 
             if (!url.includes('t.me/addstickers/')) {
@@ -43,7 +56,6 @@ export default {
             }
 
             const packName = url.split('/').pop();
-
             const botToken = '8573048627:AAFDdZftcCTJCru2HxbsowjdpfjrJzE2aMw';
 
             const res = await fetch(
@@ -64,15 +76,17 @@ export default {
                 stickers = stickers.slice(0, MAX_STICKERS);
             }
 
-            const botName = global.botName || 'KAYA-MD';
-
             await kaya.sendMessage(from, {
-                text: `📦 Pack: ${stickers.length} stickers\n⏳ Téléchargement en cours...`
+                text: `📦 *Pack:* ${stickers.length} stickers\n🏷️ *Nom attribué:* ${customPackName}\n⏳ Envoi en cours...`
             }, { quoted: mek });
 
             let success = 0;
 
             for (let i = 0; i < stickers.length; i++) {
+                let input = null;
+                let output = null;
+                let exifFile = null;
+
                 try {
                     const sticker = stickers[i];
 
@@ -84,13 +98,12 @@ export default {
                     if (!fileJson.ok) continue;
 
                     const fileUrl = `https://api.telegram.org/file/bot${botToken}/${fileJson.result.file_path}`;
-
                     const buffer = Buffer.from(
                         await (await fetch(fileUrl)).arrayBuffer()
                     );
 
-                    const input = `./tmp_${Date.now()}_${i}`;
-                    const output = `./out_${Date.now()}_${i}.webp`;
+                    input = `./tmp_${Date.now()}_${i}`;
+                    output = `./out_${Date.now()}_${i}.webp`;
 
                     fs.writeFileSync(input, buffer);
 
@@ -101,14 +114,14 @@ export default {
 
                     await convertMedia(input, output, isAnimated);
 
-                    const exifFile = await writeExif(
+                    exifFile = await writeExif(
                         {
                             data: fs.readFileSync(output),
                             mimetype: 'image/webp'
                         },
                         {
-                            packname: botName,
-                            author: botName,
+                            packname: customPackName,
+                            author: customPackName,
                             categories: [sticker.emoji || '🤖']
                         }
                     );
@@ -118,16 +131,15 @@ export default {
                     });
 
                     success++;
-
-                    try {
-                        if (fs.existsSync(input)) fs.unlinkSync(input);
-                        if (fs.existsSync(output)) fs.unlinkSync(output);
-                        if (fs.existsSync(exifFile)) fs.unlinkSync(exifFile);
-                    } catch {}
-
                     await delay(700);
+
                 } catch (e) {
                     console.error("Erreur sticker:", e);
+                } finally {
+                    // GARANTIE DE NETTOYAGE : S'exécute quoi qu'il arrive (succès ou erreur)
+                    try { if (input && fs.existsSync(input)) fs.unlinkSync(input); } catch {}
+                    try { if (output && fs.existsSync(output)) fs.unlinkSync(output); } catch {}
+                    try { if (exifFile && fs.existsSync(exifFile)) fs.unlinkSync(exifFile); } catch {}
                 }
             }
 
