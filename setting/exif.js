@@ -23,25 +23,32 @@ export async function imageToWebp(media) {
 
   fs.writeFileSync(tmpFileIn, media);
 
-  await new Promise((resolve, reject) => {
-    ff(tmpFileIn)
-      .on('error', reject)
-      .on('end', () => resolve(true))
-      .addOutputOptions([
-        '-vcodec',
-        'libwebp',
-        "-vf",
-        "scale='min(320,iw)':min'(320,ih)':force_original_aspect_ratio=decrease,fps=15,pad=320:320:-1:-1:color=white@0.0, split [a][b]; [a] palettegen=reserve_transparent=on:transparency_color=ffffff [p]; [b][p] paletteuse"
-      ])
-      .toFormat('webp')
-      .save(tmpFileOut);
-  });
+  try {
+    await new Promise((resolve, reject) => {
+      ff(tmpFileIn)
+        .on('error', reject)
+        .on('end', () => resolve(true))
+        .addOutputOptions([
+          '-vcodec',
+          'libwebp',
+          "-vf",
+          "scale='min(320,iw)':min'(320,ih)':force_original_aspect_ratio=decrease,fps=15,pad=320:320:-1:-1:color=white@0.0, split [a][b]; [a] palettegen=reserve_transparent=on:transparency_color=ffffff [p]; [b][p] paletteuse"
+        ])
+        .toFormat('webp')
+        .save(tmpFileOut);
+    });
 
-  const buff = fs.readFileSync(tmpFileOut);
-  fs.unlinkSync(tmpFileOut);
-  fs.unlinkSync(tmpFileIn);
-
-  return buff;
+    const buff = fs.readFileSync(tmpFileOut);
+    return buff;
+  } finally {
+    // Nettoyage garanti même en cas d'erreur FFmpeg
+    if (fs.existsSync(tmpFileOut)) {
+      try { fs.unlinkSync(tmpFileOut); } catch (e) {}
+    }
+    if (fs.existsSync(tmpFileIn)) {
+      try { fs.unlinkSync(tmpFileIn); } catch (e) {}
+    }
+  }
 }
 
 /**
@@ -60,36 +67,43 @@ export async function videoToWebp(media) {
 
   fs.writeFileSync(tmpFileIn, media);
 
-  await new Promise((resolve, reject) => {
-    ff(tmpFileIn)
-      .on('error', reject)
-      .on('end', () => resolve(true))
-      .addOutputOptions([
-        '-vcodec',
-        'libwebp',
-        "-vf",
-        "scale='min(320,iw)':min'(320,ih)':force_original_aspect_ratio=decrease,fps=15,pad=320:320:-1:-1:color=white@0.0, split [a][b]; [a] palettegen=reserve_transparent=on:transparency_color=ffffff [p]; [b][p] paletteuse",
-        '-loop',
-        '0',
-        '-ss',
-        '00:00:00',
-        '-t',
-        '00:00:05',
-        '-preset',
-        'default',
-        '-an',
-        '-vsync',
-        '0'
-      ])
-      .toFormat('webp')
-      .save(tmpFileOut);
-  });
+  try {
+    await new Promise((resolve, reject) => {
+      ff(tmpFileIn)
+        .on('error', reject)
+        .on('end', () => resolve(true))
+        .addOutputOptions([
+          '-vcodec',
+          'libwebp',
+          "-vf",
+          "scale='min(320,iw)':min'(320,ih)':force_original_aspect_ratio=decrease,fps=15,pad=320:320:-1:-1:color=white@0.0, split [a][b]; [a] palettegen=reserve_transparent=on:transparency_color=ffffff [p]; [b][p] paletteuse",
+          '-loop',
+          '0',
+          '-ss',
+          '00:00:00',
+          '-t',
+          '00:00:05',
+          '-preset',
+          'default',
+          '-an',
+          '-vsync',
+          '0'
+        ])
+        .toFormat('webp')
+        .save(tmpFileOut);
+    });
 
-  const buff = fs.readFileSync(tmpFileOut);
-  fs.unlinkSync(tmpFileOut);
-  fs.unlinkSync(tmpFileIn);
-
-  return buff;
+    const buff = fs.readFileSync(tmpFileOut);
+    return buff;
+  } finally {
+    // Nettoyage garanti même en cas d'erreur FFmpeg
+    if (fs.existsSync(tmpFileOut)) {
+      try { fs.unlinkSync(tmpFileOut); } catch (e) {}
+    }
+    if (fs.existsSync(tmpFileIn)) {
+      try { fs.unlinkSync(tmpFileIn); } catch (e) {}
+    }
+  }
 }
 
 /**
@@ -119,35 +133,54 @@ export async function writeExif(media, metadata) {
 
   fs.writeFileSync(tmpFileIn, wMedia);
 
-  if (metadata.packname || metadata.author) {
-    const img = new Image();
+  try {
+    if (metadata.packname || metadata.author) {
+      const img = new Image();
 
-    const json = {
-      'sticker-pack-id': Crypto.randomBytes(16).toString('hex'),
-      'sticker-pack-name': metadata.packname || 'KAYA-MD',
-      'sticker-pack-publisher': metadata.author || 'Kaya',
-      emojis: metadata.categories || ['🤖']
-    };
+      const json = {
+        'sticker-pack-id': Crypto.randomBytes(16).toString('hex'),
+        'sticker-pack-name': metadata.packname || 'KAYA-MD',
+        'sticker-pack-publisher': metadata.author || 'Kaya',
+        emojis: metadata.categories || ['🤖']
+      };
 
-    const exifAttr = Buffer.from([
-      0x49, 0x49, 0x2a, 0x00, 0x08, 0x00, 0x00, 0x00,
-      0x01, 0x00, 0x41, 0x57, 0x07, 0x00, 0x00, 0x00,
-      0x00, 0x00, 0x16, 0x00, 0x00, 0x00
-    ]);
+      const exifAttr = Buffer.from([
+        0x49, 0x49, 0x2a, 0x00, 0x08, 0x00, 0x00, 0x00,
+        0x01, 0x00, 0x41, 0x57, 0x07, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x16, 0x00, 0x00, 0x00
+      ]);
 
-    const jsonBuff = Buffer.from(JSON.stringify(json), 'utf-8');
-    const exif = Buffer.concat([exifAttr, jsonBuff]);
-    exif.writeUIntLE(jsonBuff.length, 14, 4);
+      const jsonBuff = Buffer.from(JSON.stringify(json), 'utf-8');
+      const exif = Buffer.concat([exifAttr, jsonBuff]);
+      exif.writeUIntLE(jsonBuff.length, 14, 4);
 
-    await img.load(tmpFileIn);
-    fs.unlinkSync(tmpFileIn);
+      await img.load(tmpFileIn);
+      
+      // Suppression de tmpFileIn puisqu'il est chargé en mémoire dans l'objet img
+      if (fs.existsSync(tmpFileIn)) {
+        fs.unlinkSync(tmpFileIn);
+      }
 
-    img.exif = exif;
-    await img.save(tmpFileOut);
+      img.exif = exif;
+      await img.save(tmpFileOut);
 
+      return tmpFileOut;
+    }
+
+    // Si pas de métadonnées, on renvoie directement tmpFileIn renommé ou copié vers tmpFileOut
+    if (fs.existsSync(tmpFileIn)) {
+      fs.renameSync(tmpFileIn, tmpFileOut);
+    }
     return tmpFileOut;
-  }
 
-  fs.unlinkSync(tmpFileIn);
-  return tmpFileOut;
+  } catch (err) {
+    // En cas d'erreur dans le bloc, on nettoie les fichiers résiduels pour éviter le ENOSPC
+    if (fs.existsSync(tmpFileIn)) {
+      try { fs.unlinkSync(tmpFileIn); } catch (e) {}
+    }
+    if (fs.existsSync(tmpFileOut)) {
+      try { fs.unlinkSync(tmpFileOut); } catch (e) {}
+    }
+    throw err;
+  }
 }
