@@ -1,5 +1,5 @@
 // ==========================================
-// FICHIER : case.js
+// FICHIER : case.js telegram 
 // Traitement séquentiel des commandes
 // ==========================================
 
@@ -24,6 +24,10 @@ import checkAdminOrOwner from
 import {
     getSetting
 } from "./setting.js";
+
+import {
+    getString
+} from "./setting/language.js";
 
 // ==========================================
 // ANTI DELETE
@@ -982,7 +986,7 @@ export default async function caseHandler(
                 from,
                 {
                     text:
-                        "Owner or Sudo only."
+                        getString(ownerId, 'ownerOnly')
                 },
                 {
                     quoted: mek
@@ -1003,7 +1007,7 @@ export default async function caseHandler(
                 from,
                 {
                     text:
-                        "Group only."
+                        getString(ownerId, 'groupOnly')
                 },
                 {
                     quoted: mek
@@ -1024,7 +1028,7 @@ export default async function caseHandler(
                 from,
                 {
                     text:
-                        "Admin only."
+                        getString(ownerId, 'adminOnly')
                 },
                 {
                     quoted: mek
@@ -1084,7 +1088,7 @@ export default async function caseHandler(
                     from,
                     {
                         text:
-                            "Error reading group metadata."
+                            getString(ownerId, 'errorOccurred')
                     },
                     {
                         quoted: mek
@@ -1125,7 +1129,7 @@ export default async function caseHandler(
                     from,
                     {
                         text:
-                            "Bot must be admin."
+                            getString(ownerId, 'botAdmin')
                     },
                     {
                         quoted: mek
@@ -1159,6 +1163,14 @@ export default async function caseHandler(
         // ==========================================
 
         try {
+            // Wrapper automatique pour forcer le reply (quoted: mek) si non spécifié
+            const originalSendMessage = kaya.sendMessage.bind(kaya);
+            kaya.sendMessage = async (jid, content, options = {}) => {
+                if (!options.quoted) {
+                    options.quoted = mek;
+                }
+                return originalSendMessage(jid, content, options);
+            };
 
             if (
                 typeof cmd.execute ===
@@ -1201,7 +1213,7 @@ export default async function caseHandler(
                     from,
                     {
                         text:
-                            `❌ Une erreur critique est survenue lors de l'exécution de la commande *${command}*.`
+                            getString(ownerId, 'errorOccurred')
                     },
                     {
                         quoted: mek
