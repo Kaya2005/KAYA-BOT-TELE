@@ -1,5 +1,6 @@
 // ================= commands/add.js =================
 import { successBox, errorBox, usageBox, boxMessage } from '../setting/theme.js';
+import { getString } from '../setting/language.js'; // 🌐 1. Import du module de langue
 
 export default {
   name: 'add',
@@ -14,6 +15,9 @@ export default {
       
       // 🔐 Owner only
       if (!m.fromMe) return;
+
+      // 🆔 Récupération de l'ID du propriétaire du bot
+      const ownerId = Kaya.user?.id ? Kaya.user.id.split(':')[0] : '';
 
       // 📞 Clean number
       const number = args[0] ? args[0].replace(/[^0-9]/g, '') : '';
@@ -30,17 +34,14 @@ export default {
 
       // 📝 Analyze WhatsApp response
       if (response[0].status === '403') {
-        const text = 
-          `ғᴀɪʟᴇᴅ : ᴛʜᴇ ʙᴏᴛ ɪs ɴᴏᴛ\n` +
-          `ᴀɴ ᴀᴅᴍɪɴ ᴏʀ ᴛʜᴇ ᴜsᴇʀ\n` +
-          `ʜᴀs ʀᴇsᴛʀɪᴄᴛᴇᴅ ɪɴᴠɪᴛᴇs.`;
+        const text = getString(ownerId, 'addRestricted');
         
         return Kaya.sendMessage(m.chat, { 
           text: errorBox(text) 
         }, { quoted: m });
         
       } else if (response[0].status === '409') {
-        const text = `ᴛʜᴇ ᴜsᴇʀ ɪs ᴀʟʀᴇᴀᴅʏ\nɪɴ ᴛʜᴇ ɢʀᴏᴜᴘ.`;
+        const text = getString(ownerId, 'addAlreadyInGroup');
         
         return Kaya.sendMessage(m.chat, { 
           text: boxMessage('warning', text, '⚠️') 
@@ -48,14 +49,15 @@ export default {
         
       } else {
         return Kaya.sendMessage(m.chat, { 
-          text: successBox('sᴜᴄᴄᴇssғᴜʟʟʏ ᴀᴅᴅᴇᴅ ᴍᴇᴍʙᴇʀ!') 
+          text: successBox(getString(ownerId, 'addSuccess')) 
         }, { quoted: m });
       }
 
     } catch (err) {
       console.error('❌ ADD ERROR:', err);
+      const ownerId = Kaya.user?.id ? Kaya.user.id.split(':')[0] : '';
       await Kaya.sendMessage(m.chat, { 
-        text: errorBox('ᴜɴᴀʙʟᴇ ᴛᴏ ᴀᴅᴅ ᴛʜɪs ᴍᴇᴍʙᴇʀ.') 
+        text: errorBox(getString(ownerId, 'addError')) 
       }, { quoted: m });
     }
   }

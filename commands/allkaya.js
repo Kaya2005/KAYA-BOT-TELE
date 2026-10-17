@@ -1,5 +1,6 @@
 // ==================== commands/allkaya.js ====================
 import { boxMessage, errorBox, successBox, usageBox } from '../setting/theme.js';
+import { getString } from '../setting/language.js'; // 🌐 Import de la gestion des langues
 
 export default {
   name: "allkaya",
@@ -10,6 +11,8 @@ export default {
 
   async execute(kaya, mek, from, args, prefix) {
     try {
+      const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0].replace(/[^0-9]/g, '') : '';
+
       const input = args.join(" ").trim();
       if (!input) {
         return await kaya.sendMessage(from, { 
@@ -28,12 +31,13 @@ export default {
 
       if (!groups.length) {
         return await kaya.sendMessage(from, { 
-          text: errorBox('ɴᴏ ɢʀᴏᴜᴘs ғᴏᴜɴᴅ.') 
+          text: errorBox(getString(ownerId, 'allKayaNoGroups')) 
         }, { quoted: mek });
       }
 
+      const startedMsg = getString(ownerId, 'allKayaStarted').replace('{count}', groups.length);
       await kaya.sendMessage(from, { 
-        text: boxMessage('ʙʀᴏᴀᴅᴄᴀsᴛ', `sᴛᴀʀᴛᴇᴅ ᴛᴏ ${groups.length} ɢʀᴏᴜᴘs...`, '🚀') 
+        text: boxMessage(getString(ownerId, 'allKayaBroadcastTitle'), startedMsg, '🚀') 
       }, { quoted: mek });
 
       let success = 0;
@@ -57,9 +61,9 @@ export default {
       }
 
       const reportContent = 
-        `ʙʀᴏᴀᴅᴄᴀsᴛ ᴄᴏᴍᴘʟᴇᴛᴇᴅ !\n\n` +
-        `• *sᴜᴄᴄᴇss :* ${success}\n` +
-        `• *ғᴀɪʟᴇᴅ :* ${failed}`;
+        `${getString(ownerId, 'allKayaCompleted')}\n\n` +
+        `• *${getString(ownerId, 'allKayaSuccess')} :* ${success}\n` +
+        `• *${getString(ownerId, 'allKayaFailed')} :* ${failed}`;
 
       return await kaya.sendMessage(from, {
         text: successBox(reportContent)
@@ -67,8 +71,9 @@ export default {
 
     } catch (err) {
       console.error("❌ allkaya error:", err);
+      const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0].replace(/[^0-9]/g, '') : '';
       return await kaya.sendMessage(from, { 
-        text: errorBox('ᴀɴ ᴇʀʀᴏʀ ᴏᴄᴄᴜʀʀᴇᴅ ᴅᴜʀɪɴɢ ʙʀᴏᴀᴅᴄᴀsᴛ.') 
+        text: errorBox(getString(ownerId, 'allKayaError')) 
       }, { quoted: mek });
     }
   }

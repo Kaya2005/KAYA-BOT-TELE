@@ -2,6 +2,7 @@
 import { getSetting, setSetting } from '../setting.js'; 
 import { getBotName, sendWithBotImage } from '../setting/botAssets.js';
 import { boxMessage, errorBox, successBox, usageBox } from '../setting/theme.js';
+import { getString } from '../setting/language.js'; // 🌐 Import de la langue
 
 export default {
   name: 'allprefix',
@@ -11,10 +12,8 @@ export default {
 
   async execute(kaya, mek, from, args, prefix) {
     try {
-      // Nettoyage de l'ID du bot pour obtenir uniquement la partie numérique (ex: 243...)
       const botId = kaya.user.id.split(':')[0];
       
-      // On récupère l'état actuel en fonction de cet ID
       const currentState = Boolean(getSetting(botId, 'allPrefix', true));
       const botName = getBotName(mek.sender);
 
@@ -22,12 +21,12 @@ export default {
       if (!args[0]) {
         const content = 
           `*ʙᴏᴛ :* ${botName}\n\n` +
-          `• *ᴄᴜʀʀᴇɴᴛ ᴍᴏᴅᴇ :* ${currentState ? '✅ ᴇɴᴀʙʟᴇᴅ' : '❌ ᴅɪsᴀʙʟᴇᴅ'}\n\n` +
-          `💡 *ᴜsᴀɢᴇ :*\n` +
+          `• *${getString(botId, 'allPrefixCurrentMode')} :*${currentState ? `✅ ${getString(botId, 'allPrefixEnabled')}` : `❌ ${getString(botId, 'allPrefixDisabled')}`}\n\n` +
+          `💡 *${getString(botId, 'allPrefixUsage')} :*\n` +
           `  • \`${prefix}allprefix on\`\n` +
           `  • \`${prefix}allprefix off\``;
 
-        const caption = boxMessage('all prefix status', content, '⚙️');
+        const caption = boxMessage(getString(botId, 'allPrefixStatusTitle'), content, '⚙️');
         
         return await sendWithBotImage(kaya, from, mek.sender, { caption });
       }
@@ -46,21 +45,21 @@ export default {
         }, { quoted: mek });
       }
 
-      // Enregistrement sur l'ID numérique du bot (à la racine de son dossier)
       setSetting(botId, 'allPrefix', newState); 
 
       const updateContent = 
         `*ʙᴏᴛ :* ${botName}\n\n` +
-        `• *ɴᴇᴡ ᴍᴏᴅᴇ :* ${newState ? '✅ ᴇɴᴀʙʟᴇᴅ (ᴍᴜʟᴛɪ-ᴘʀᴇғɪx)' : '❌ ᴅɪsᴀʙʟᴇᴅ (sᴛʀɪᴄᴛ)'}`;
+        `• *${getString(botId, 'allPrefixNewMode')} :* ${newState ? `✅ ${getString(botId, 'allPrefixMultiActive')}` : `❌ ${getString(botId, 'allPrefixStrictActive')}`}`;
 
-      const caption = boxMessage('mode updated', updateContent, '✅');
+      const caption = boxMessage(getString(botId, 'allPrefixUpdatedTitle'), updateContent, '✅');
 
       return await sendWithBotImage(kaya, from, mek.sender, { caption });
 
     } catch (err) {
       console.error('❌ allprefix.js error:', err);
+      const botId = kaya.user?.id ? kaya.user.id.split(':')[0] : '';
       return await kaya.sendMessage(from, { 
-        text: errorBox('ᴀɴ ᴇʀʀᴏʀ ᴏᴄᴄᴜʀʀᴇᴅ.') 
+        text: errorBox(getString(botId, 'allPrefixError')) 
       }, { quoted: mek });
     }
   }

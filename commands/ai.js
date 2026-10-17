@@ -2,6 +2,7 @@
 import fetch from 'node-fetch';
 import { getSetting, setSetting } from '../setting.js';
 import { boxMessage, errorBox, successBox, usageBox } from '../setting/theme.js';
+import { getString } from '../setting/language.js'; // 🌐 Import de la gestion des langues
 
 export default {
     name: 'ai',
@@ -24,7 +25,7 @@ export default {
             if (args[0] === 'setkey') {
                 if (!isOwner) {
                     return await kaya.sendMessage(from, { 
-                        text: errorBox('ᴏɴʟʏ ᴛʜᴇ ᴏᴡɴᴇʀ ᴄᴀɴ ᴄᴏɴғɪɢᴜʀᴇ ᴛʜᴇ ᴀᴘɪ ᴋᴇʏ.') 
+                        text: errorBox(getString(botId, 'aiOnlyOwnerConfig')) 
                     }, { quoted: mek });
                 }
 
@@ -37,7 +38,7 @@ export default {
                 
                 await setSetting(botId, 'ai_api_key', customKey);
                 return await kaya.sendMessage(from, { 
-                    text: successBox('ᴏᴘᴇɴʀᴏᴜᴛᴇʀ ᴀᴘɪ ᴋᴇʏ sᴜᴄᴄᴇssғᴜʟʟʏ ʀᴇɢɪsᴛᴇʀᴇᴅ !') 
+                    text: successBox(getString(botId, 'aiKeySuccess')) 
                 }, { quoted: mek });
             }
 
@@ -45,13 +46,13 @@ export default {
             if (args[0] === 'delkey') {
                 if (!isOwner) {
                     return await kaya.sendMessage(from, { 
-                        text: errorBox('ᴏɴʟʏ ᴛʜᴇ ᴏᴡɴᴇʀ ᴄᴀɴ ᴅᴇʟᴇᴛᴇ ᴛʜɪs ᴄᴏɴғɪɢᴜʀᴀᴛɪᴏɴ.') 
+                        text: errorBox(getString(botId, 'aiOnlyOwnerDelete')) 
                     }, { quoted: mek });
                 }
 
                 await setSetting(botId, 'ai_api_key', null);
                 return await kaya.sendMessage(from, { 
-                    text: boxMessage('success', 'ᴄᴜsᴛᴏᴍ ᴀᴘɪ ᴋᴇʏ ᴅᴇʟᴇᴛᴇᴅ.', '🗑️') 
+                    text: boxMessage('success', getString(botId, 'aiKeyDeleted'), '🗑️') 
                 }, { quoted: mek });
             }
 
@@ -61,19 +62,19 @@ export default {
             if (!ownerApiKey) {
                 if (isOwner) {
                     const guideContent = 
-                        `ᴀs ᴛʜᴇ ᴏᴡɴᴇʀ, ʏᴏᴜ ᴍᴜsᴛ ᴄᴏɴғɪɢᴜʀᴇ\n` +
-                        `ᴀ ғʀᴇᴇ ᴏᴘᴇɴʀᴏᴜᴛᴇʀ ᴀᴘɪ ᴋᴇʏ.\n\n` +
-                        `• 1. ɢᴏ ᴛᴏ openrouter.ai\n` +
-                        `• 2. ᴄʀᴇᴀᴛᴇ ᴀ ɴᴇᴡ ᴀᴘɪ ᴋᴇʏ\n` +
-                        `• 3. sᴀᴠᴇ ɪᴛ ᴜsɪɴɢ :\n` +
+                        `${getString(botId, 'aiGuideLine1')}\n` +
+                        `${getString(botId, 'aiGuideLine2')}\n\n` +
+                        `• 1. ${getString(botId, 'aiGuideStep1')}\n` +
+                        `• 2. ${getString(botId, 'aiGuideStep2')}\n` +
+                        `• 3. ${getString(botId, 'aiGuideStep3')} :\n` +
                         `  \`${prefix}ai setkey <your_key>\``;
 
                     return await kaya.sendMessage(from, { 
-                        text: boxMessage('ᴀᴘɪ ᴋᴇʏ ᴍɪssɪɴɢ', guideContent, '⚠️') 
+                        text: boxMessage(getString(botId, 'aiKeyMissingTitle'), guideContent, '⚠️') 
                     }, { quoted: mek });
                 } else {
                     return await kaya.sendMessage(from, { 
-                        text: errorBox('ᴛʜᴇ ᴏᴡɴᴇʀ ʜᴀs ɴᴏᴛ ᴄᴏɴғɪɢᴜʀᴇᴅ ᴛʜᴇɪʀ ᴀɪ ᴀᴘɪ ʏᴇᴛ.') 
+                        text: errorBox(getString(botId, 'aiOwnerNotConfigured')) 
                     }, { quoted: mek });
                 }
             }
@@ -96,7 +97,7 @@ export default {
                     'X-Title': 'KAYA BOT'
                 },
                 body: JSON.stringify({
-                    model: 'openrouter/free', // Route automatiquement vers le meilleur modèle gratuit disponible
+                    model: 'openrouter/free',
                     messages: [
                         { role: 'user', content: text }
                     ]
@@ -109,15 +110,16 @@ export default {
             if (json.choices && json.choices[0]?.message?.content) {
                 answer = json.choices[0].message.content;
             } else {
-                answer = json.error?.message || "Sorry, an error occurred while communicating with the AI.";
+                answer = json.error?.message || getString(botId, 'aiCommunicationError');
             }
 
             await kaya.sendMessage(from, { text: answer }, { quoted: mek });
 
         } catch (err) {
             console.error('❌ Error in ai.js :', err);
+            const botId = kaya.user?.id ? kaya.user.id.split(':')[0].replace(/[^0-9]/g, '') : '';
             await kaya.sendMessage(from, { 
-                text: errorBox('ᴜɴᴀʙʟᴇ ᴛᴏ ᴄᴏᴍᴍᴜɴɪᴄᴀᴛᴇ ᴡɪᴛʜ ᴛʜᴇ ᴀɪ.') 
+                text: errorBox(getString(botId, 'aiUnableToCommunicate')) 
             }, { quoted: mek });
         }
     }

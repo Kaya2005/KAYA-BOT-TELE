@@ -1,6 +1,7 @@
 // antibadword.js
 import { getSetting, setSetting } from "../setting.js";
 import { boxMessage, errorBox, successBox } from "../setting/theme.js";
+import { getString } from "../setting/language.js";
 
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -23,11 +24,11 @@ export default {
     try {
       const action = args[0]?.toLowerCase();
       const groupId = from.split('@')[0];
-      const ownerId = kaya.user.id.split(':')[0];
+      const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0].replace(/[^0-9]/g, '') : '';
 
       if (!["on", "off", "delete", "warn", "kick", "status"].includes(action)) {
         const menuContent = 
-          `• \`${prefix}antibadword on\` *(ᴅᴇғᴀᴜʟᴛ: ᴅᴇʟᴇᴛᴇ)*\n` +
+          `• \`${prefix}antibadword on\` *(${getString(ownerId, 'antiBadWordDefaultDelete')})*\n` +
           `• \`${prefix}antibadword delete\`\n` +
           `• \`${prefix}antibadword warn\`\n` +
           `• \`${prefix}antibadword kick\`\n` +
@@ -35,48 +36,55 @@ export default {
           `• \`${prefix}antibadword status\``;
 
         return await kaya.sendMessage(from, { 
-          text: boxMessage('anti-badword menu', menuContent, '📛') 
+          text: boxMessage(getString(ownerId, 'antiBadWordMenuTitle'), menuContent, '📛') 
         }, { quoted: mek });
       }
 
       if (action === "status") {
         const config = getSetting(ownerId, 'antibadword', { enabled: false, action: 'delete' }, groupId);
         
+        const modeTranslationKey = `mode_${config.action}`;
+        const translatedMode = getString(ownerId, modeTranslationKey);
+
         const statusContent = !config.enabled 
-          ? `ᴀɴᴛɪ-ʙᴀᴅᴡᴏʀᴅ ɪs ᴄᴜʀʀᴇɴᴛʟʏ ᴅɪsᴀʙʟᴇᴅ.` 
-          : `• *sᴛᴀᴛᴜs :* ᴇɴᴀʙʟᴇᴅ\n• *ᴍᴏᴅᴇ :* ${config.action.toUpperCase()}`;
+          ? getString(ownerId, 'antiBadWordDisabledMsg')
+          : `• *${getString(ownerId, 'antiBadWordStatusLabel')} :* ${getString(ownerId, 'mode_on')}\n• *${getString(ownerId, 'antiBadWordModeLabel')} :* ${translatedMode}`;
 
         return await kaya.sendMessage(from, { 
-          text: boxMessage('anti-badword status', statusContent, '📊') 
+          text: boxMessage(getString(ownerId, 'antiBadWordStatusTitle'), statusContent, '📊') 
         }, { quoted: mek });
       }
 
       if (action === "off") {
         setSetting(ownerId, 'antibadword', { enabled: false, action: 'delete' }, groupId);
         return await kaya.sendMessage(from, { 
-          text: boxMessage('anti-badword', 'ᴀɴᴛɪ-ʙᴀᴅᴡᴏʀᴅ ᴅɪsᴀʙʟᴇᴅ.', '❌') 
+          text: boxMessage('anti-badword', getString(ownerId, 'antiBadWordOffMsg'), '❌') 
         }, { quoted: mek });
       }
 
-      // Si on active ou change de mode
+      // Activer ou changer de mode
       const mode = action === "on" ? "delete" : action;
       setSetting(ownerId, 'antibadword', { enabled: true, action: mode }, groupId);
       
-      const successContent = `ᴀɴᴛɪ-ʙᴀᴅᴡᴏʀᴅ ᴇɴᴀʙʟᴇᴅ ᴡɪᴛʜ ᴍᴏᴅᴇ :\n*${mode.toUpperCase()}*`;
+      const modeTranslationKey = `mode_${mode}`;
+      const translatedMode = getString(ownerId, modeTranslationKey);
+
+      const successContent = `${getString(ownerId, 'antiBadWordEnabledWithMode')}\n*${translatedMode}*`;
       await kaya.sendMessage(from, { 
         text: successBox(successContent) 
       }, { quoted: mek });
 
     } catch (err) {
       console.error('❌ Error antibadword execute:', err);
-      await kaya.sendMessage(from, { text: errorBox('An error occurred.') }, { quoted: mek });
+      const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0].replace(/[^0-9]/g, '') : '';
+      await kaya.sendMessage(from, { text: errorBox(getString(ownerId, 'antiBadWordError')) }, { quoted: mek });
     }
   },
 
   async detect(kaya, mek, from, body) {
     try {
       const groupId = from.split('@')[0];
-      const ownerId = kaya.user.id.split(':')[0];
+      const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0].replace(/[^0-9]/g, '') : '';
       
       const config = getSetting(ownerId, 'antibadword', { enabled: false, action: 'delete' }, groupId);
       if (!config.enabled || mek.key?.fromMe) return;
@@ -108,20 +116,20 @@ export default {
           await delay(1000);
           await kaya.groupParticipantsUpdate(from, [sender], 'remove');
           await kaya.sendMessage(from, { 
-            text: `🚫 @${sender.split("@")[0]} *ʀᴇᴀᴄʜᴇᴅ 𝟹/𝟹 ᴡᴀʀɴs ᴀɴᴅ wᴀs ᴋɪᴄᴋᴇᴅ.*`, 
+            text: `🚫 @${sender.split("@")[0]} *${getString(ownerId, 'antiBadWordWarnKick')}*`, 
             mentions: [sender] 
           });
           setSetting(ownerId, warnKey, 0, groupId);
         } else {
           setSetting(ownerId, warnKey, newWarns, groupId);
           await kaya.sendMessage(from, { 
-            text: `⚠️ *ᴀɴᴛɪ-ʙᴀᴅᴡᴏʀᴅ ᴀʟᴇʀᴛ*\n• *ᴜsᴇʀ :* @${sender.split("@")[0]}\n• *ᴡᴀʀɴ :* ${newWarns}/3`, 
+            text: `⚠️ *${getString(ownerId, 'antiBadWordAlertTitle')}*\n• *${getString(ownerId, 'antiBadWordUserLabel')} :* @${sender.split("@")[0]}\n• *${getString(ownerId, 'antiBadWordWarnLabel')} :* ${newWarns}/3`, 
             mentions: [sender] 
           });
         }
       } else {
         await kaya.sendMessage(from, { 
-          text: `⚠️ @${sender.split('@')[0]} bad words not allowed.`, 
+          text: `⚠️ @${sender.split('@')[0]} ${getString(ownerId, 'antiBadWordNotAllowed')}`, 
           mentions: [sender] 
         });
       }
