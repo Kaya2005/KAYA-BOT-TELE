@@ -1,6 +1,7 @@
-//ban.js
+// ban.js
 import { getSetting, setSetting } from '../setting.js';
 import { boxMessage, errorBox, successBox, usageBox } from '../setting/theme.js';
+import { getString } from '../setting/language.js';
 
 export default {
     name: 'ban',
@@ -11,7 +12,7 @@ export default {
     async execute(kaya, mek, from, args, prefix) {
         try {
             // ID du propriétaire de l'instance pour stocker la config au bon endroit
-            const ownerId = kaya.user.id.split(':')[0];
+            const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0].replace(/[^0-9]/g, '') : '';
             let target;
 
             // Récupération de la cible
@@ -25,11 +26,11 @@ export default {
 
             if (!target) {
                 const menuContent = 
-                    `• \`${prefix}ban @ᴍᴇɴᴛɪᴏɴ\`\n` +
-                    `• \`${prefix}ban <ɴᴜᴍʙᴇʀ>\``;
+                    `• \`${prefix}ban @${getString(ownerId, 'banMentionLabel')}\`\n` +
+                    `• \`${prefix}ban <${getString(ownerId, 'banNumberLabel')}>\``;
 
                 return await kaya.sendMessage(from, { 
-                    text: boxMessage('ban user menu', menuContent, '🚫') 
+                    text: boxMessage(getString(ownerId, 'banMenuTitle'), menuContent, '🚫') 
                 }, { quoted: mek });
             }
 
@@ -38,22 +39,23 @@ export default {
             
             if (isBanned) {
                 return await kaya.sendMessage(from, { 
-                    text: boxMessage('ban system', 'ᴜsᴇʀ ɪs ᴀʟʀᴇᴀᴅʏ ʙᴀɴɴᴇᴅ.', '⚠️') 
+                    text: boxMessage('ban system', getString(ownerId, 'banAlreadyBanned'), '⚠️') 
                 }, { quoted: mek });
             }
 
             // Enregistrement du bannissement
             setSetting(ownerId, `banned_${target}`, true);
 
-            const successContent = `ᴜsᴇʀ @${target.split('@')[0]} ʜᴀs ʙᴇᴇɴ ʙᴀɴɴᴇᴅ.`;
+            const successContent = `${getString(ownerId, 'banSuccessMsg')} @${target.split('@')[0]}.`;
             await kaya.sendMessage(from, { 
                 text: successBox(successContent), 
                 mentions: [target] 
             }, { quoted: mek });
         } catch (err) {
             console.error('❌ Ban command error:', err);
+            const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0].replace(/[^0-9]/g, '') : '';
             await kaya.sendMessage(from, { 
-                text: errorBox(`ᴄᴏᴜʟᴅ ɴᴏᴛ ʙᴀɴ ᴜsᴇʀ : ${err.message}`) 
+                text: errorBox(`${getString(ownerId, 'banError')} : ${err.message}`) 
             }, { quoted: mek });
         }
     }

@@ -3,6 +3,7 @@ import fetch from 'node-fetch';
 import { getSetting, setSetting } from '../setting.js';
 import { getBotName, sendWithBotImage } from '../setting/botAssets.js';
 import { boxMessage, errorBox, successBox, usageBox } from '../setting/theme.js';
+import { getString } from '../setting/language.js';
 
 export default {
     name: 'chatbot',
@@ -39,7 +40,7 @@ export default {
                     from,
                     mek.sender,
                     {
-                        text: errorBox('ᴏɴʟʏ ᴛʜᴇ ʙᴏᴛ ᴏᴡɴᴇʀ ᴄᴀɴ ᴄᴏɴғɪɢᴜʀᴇ ᴛʜɪs ᴏᴘᴛɪᴏɴ.')
+                        text: errorBox(getString(botId, 'chatBotOwnerOnly'))
                     },
                     { quoted: mek }
                 );
@@ -56,7 +57,11 @@ export default {
                 const customKey = args[1];
 
                 if (!customKey) {
-                    const caption = boxMessage('chatbot menu', '• ᴘʟᴇᴀsᴇ ᴘʀᴏvidᴇ ʏᴏᴜʀ ᴏᴘᴇɴʀᴏᴜᴛᴇʀ ᴀᴘɪ ᴋᴇʏ.\n\n• `' + prefix + 'chatbot setkey sk-or-v1-...`', '🤖');
+                    const caption = boxMessage(
+                        getString(botId, 'chatBotMenuTitle'),
+                        `• ${getString(botId, 'chatBotProvideKey')}\n\n• \`${prefix}chatbot setkey sk-or-v1-...\``,
+                        '🤖'
+                    );
 
                     return await sendWithBotImage(
                         kaya,
@@ -69,7 +74,9 @@ export default {
 
                 await setSetting(botId, 'ai_api_key', customKey);
 
-                const caption = successBox(`ᴏᴘᴇɴʀᴏᴜᴛᴇʀ ᴀᴘɪ ᴋᴇʏ\nsᴜᴄᴄᴇssғᴜʟʟʏ ʀᴇɢɪsᴛᴇʀᴇᴅ\nғᴏʀ ${botName} !`);
+                const caption = successBox(
+                    `${getString(botId, 'chatBotKeyRegistered')}\n${botName} !`
+                );
 
                 return await sendWithBotImage(
                     kaya,
@@ -87,7 +94,11 @@ export default {
             if (option === 'delkey') {
                 await setSetting(botId, 'ai_api_key', null);
 
-                const caption = boxMessage('chatbot menu', 'ᴄᴜsᴛᴏᴍ ᴀᴘɪ ᴋᴇʏ ᴅᴇʟᴇᴛᴇᴅ.', '🗑️');
+                const caption = boxMessage(
+                    getString(botId, 'chatBotMenuTitle'),
+                    getString(botId, 'chatBotKeyDeleted'),
+                    '🗑️'
+                );
 
                 return await sendWithBotImage(
                     kaya,
@@ -113,7 +124,7 @@ export default {
                     `• \`${prefix}chatbot setkey <key>\`\n` +
                     `• \`${prefix}chatbot delkey\``;
 
-                const caption = boxMessage('chatbot menu', usageText, '🤖');
+                const caption = boxMessage(getString(botId, 'chatBotMenuTitle'), usageText, '🤖');
 
                 return await sendWithBotImage(
                     kaya,
@@ -131,7 +142,11 @@ export default {
             if (option === 'off') {
                 await setSetting(botId, 'chatbot_mode', 'off');
 
-                const caption = boxMessage('chatbot menu', 'ᴄʜᴀᴛʙᴏᴛ ᴄᴏᴍᴘʟᴇᴛᴇʟʏ ᴅɪsᴀʙʟᴇᴅ.', '🗑️');
+                const caption = boxMessage(
+                    getString(botId, 'chatBotMenuTitle'),
+                    getString(botId, 'chatBotDisabledMsg'),
+                    '🗑️'
+                );
 
                 return await sendWithBotImage(
                     kaya,
@@ -151,11 +166,15 @@ export default {
 
                 if (!ownerApiKey) {
                     const guideText = 
-                        `• ɢᴏ ᴛᴏ openrouter.ai\n` +
-                        `• ᴄʀᴇᴀᴛᴇ ᴀ ɴᴇᴡ ᴋᴇʏ\n` +
+                        `• ${getString(botId, 'chatBotStepGo')}\n` +
+                        `• ${getString(botId, 'chatBotStepCreate')}\n` +
                         `• \`${prefix}chatbot setkey <key>\``;
 
-                    const caption = boxMessage('chatbot menu', `⚠️ ᴀᴘɪ ᴋᴇʏ ɴᴏᴛ ᴄᴏɴғɪɢᴜʀᴇᴅ\n\n` + guideText, '🤖');
+                    const caption = boxMessage(
+                        getString(botId, 'chatBotMenuTitle'),
+                        `⚠️ ${getString(botId, 'chatBotKeyNotConfigured')}\n\n` + guideText,
+                        '🤖'
+                    );
 
                     return await sendWithBotImage(
                         kaya,
@@ -166,10 +185,10 @@ export default {
                     );
                 }
 
-                if (targetScope === 'all') {
+                if (targetScope === 'all' || targetScope === 'tout') {
                     await setSetting(botId, 'chatbot_mode', 'all');
 
-                    const caption = successBox('ᴄʜᴀᴛʙᴏᴛ ᴇɴᴀʙʟᴇᴅ **ᴇᴠᴇʀʏᴡʜᴇʀᴇ**\n(ᴘʀɪᴠᴀᴛᴇ & ɢʀᴏᴜᴘs).');
+                    const caption = successBox(getString(botId, 'chatBotEnabledAll'));
 
                     return await sendWithBotImage(
                         kaya,
@@ -179,10 +198,10 @@ export default {
                         { quoted: mek }
                     );
 
-                } else if (targetScope === 'private' || targetScope === 'prive') {
+                } else if (targetScope === 'private' || targetScope === 'prive' || targetScope === 'privé') {
                     await setSetting(botId, 'chatbot_mode', 'private');
 
-                    const caption = successBox('ᴄʜᴀᴛʙᴏᴛ ᴇɴᴀʙʟᴇᴅ **ɪɴ ᴘʀɪᴠᴀᴛᴇ ᴄʜᴀᴛs ᴏɴʟ**.');
+                    const caption = successBox(getString(botId, 'chatBotEnabledPrivate'));
 
                     return await sendWithBotImage(
                         kaya,
@@ -208,10 +227,10 @@ export default {
             // ==========================================
 
             if (option === 'group') {
-                if (targetScope === 'all') {
+                if (targetScope === 'all' || targetScope === 'tout') {
                     await setSetting(botId, 'chatbot_mode', 'all_groups');
 
-                    const caption = successBox('ᴄʜᴀᴛʙᴏᴛ ᴇɴᴀʙʟᴇᴅ ɪɴ **ᴀʟʟ ɢʀᴏᴜᴘs**.');
+                    const caption = successBox(getString(botId, 'chatBotEnabledAllGroups'));
 
                     return await sendWithBotImage(
                         kaya,
@@ -226,19 +245,21 @@ export default {
                     return await kaya.sendMessage(
                         from,
                         {
-                            text: errorBox(`ᴛʜɪs sᴜʙᴄᴏmmᴀɴᴅ mᴜsᴛ bᴇ uѕeᴅ iɴsɪdᴇ a gʀoᴜp (oʀ uѕe \`${prefix}chatbot group all\`).`)
+                            text: errorBox(
+                                getString(botId, 'chatBotMustBeInGroup').replace('{prefix}', prefix)
+                            )
                         },
                         { quoted: mek }
                     );
                 }
 
-                const subAction = targetScope === 'off' ? 'off' : 'on';
+                const subAction = (targetScope === 'off' || targetScope === 'non') ? 'off' : 'on';
 
                 if (subAction === 'on') {
                     await setSetting(botId, 'chatbot_group_' + groupId, true);
                     await setSetting(botId, 'chatbot_mode', 'group');
 
-                    const caption = successBox('ᴄʜᴀᴛʙᴏᴛ ᴇɴᴀʙʟᴇᴅ ғᴏʀ **ᴛʜɪs sᴘᴇᴄɪғɪᴄ gʀoᴜp**.');
+                    const caption = successBox(getString(botId, 'chatBotEnabledThisGroup'));
 
                     return await sendWithBotImage(
                         kaya,
@@ -251,7 +272,11 @@ export default {
                 } else {
                     await setSetting(botId, 'chatbot_group_' + groupId, false);
 
-                    const caption = boxMessage('chatbot menu', 'ᴄʜᴀᴛʙᴏᴛ dɪsᴀbʟed fᴏr tʜis spəcifɪc gʀoᴜp.', '❌');
+                    const caption = boxMessage(
+                        getString(botId, 'chatBotMenuTitle'),
+                        getString(botId, 'chatBotDisabledThisGroup'),
+                        '❌'
+                    );
 
                     return await sendWithBotImage(
                         kaya,
@@ -265,11 +290,14 @@ export default {
 
         } catch (err) {
             console.error('❌ Error in chatbot.js :', err);
+            const botId = kaya.user?.id
+                ? kaya.user.id.split(':')[0].replace(/[^0-9]/g, '')
+                : '';
 
             await kaya.sendMessage(
                 from,
                 {
-                    text: errorBox('ᴀɴ ᴇʀʀᴏʀ ᴏᴄᴄᴜʀʀᴇᴅ.')
+                    text: errorBox(getString(botId, 'chatBotError'))
                 },
                 { quoted: mek }
             );

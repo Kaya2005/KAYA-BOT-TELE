@@ -1,4 +1,6 @@
+// groupname.js
 import { usageBox, successBox, errorBox } from '../setting/theme.js';
+import { getString } from '../setting/language.js';
 
 export default {
   name: 'groupname',
@@ -12,11 +14,13 @@ export default {
 
   async execute(kaya, mek, from, args, prefix) {
     try {
+      const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0].replace(/[^0-9]/g, '') : '';
+
       if (!args[0]) {
         return await kaya.sendMessage(
           from,
           {
-            text: usageBox(prefix, 'groupname', 'NewName')
+            text: usageBox(prefix, 'groupname', getString(ownerId, 'groupNameUsagePlaceholder'))
           },
           { quoted: mek }
         );
@@ -30,18 +34,19 @@ export default {
       return await kaya.sendMessage(
         from,
         {
-          text: successBox(`Group name changed to: *${newName}*`)
+          text: successBox(`${getString(ownerId, 'groupNameSuccess')} : *${newName}*`)
         },
         { quoted: mek }
       );
 
     } catch (err) {
       console.error('❌ groupname error:', err);
+      const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0].replace(/[^0-9]/g, '') : '';
 
       return await kaya.sendMessage(
         from,
         {
-          text: errorBox('Unable to change the group name. Make sure I am an admin.')
+          text: errorBox(getString(ownerId, 'groupNameError'))
         },
         { quoted: mek }
       );

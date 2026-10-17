@@ -1,6 +1,8 @@
+// capcut.js
 import axios from 'axios';
 import { getBotName } from '../setting/botAssets.js';
 import { usageBox, errorBox, boxMessage } from '../setting/theme.js';
+import { getString } from '../setting/language.js';
 
 const USER_AGENTS = [
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -38,6 +40,7 @@ export default {
   async execute(kaya, mek, from, args, prefix) {
     const url = args.join(' ').trim();
     const botName = getBotName(mek.sender);
+    const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0].replace(/[^0-9]/g, '') : '';
 
     if (!url) {
       return await kaya.sendMessage(from, { 
@@ -53,15 +56,15 @@ export default {
       const data = response.data;
 
       if (!data?.status || data.code !== 200 || !data.originalVideoUrl) {
-        throw new Error(data?.message || 'Invalid API response');
+        throw new Error(data?.message || getString(ownerId, 'capcutInvalidResponse'));
       }
 
       const videoUrl = data.originalVideoUrl;
-      const title = data.title || 'CapCut Template';
-      const author = data.authorName || 'Unknown';
+      const title = data.title || getString(ownerId, 'capcutDefaultTitle');
+      const author = data.authorName || getString(ownerId, 'capcutUnknownAuthor');
 
-      const content = `📌 *Title:* ${title}\n👤 *Author:* ${author}\n\n> *Powered by ${botName}*`;
-      const caption = boxMessage('CapCut Template', content, '🎬');
+      const content = `📌 *${getString(ownerId, 'capcutTitleLabel')} :* ${title}\n👤 *${getString(ownerId, 'capcutAuthorLabel')} :* ${author}\n\n> *Powered by ${botName}*`;
+      const caption = boxMessage(getString(ownerId, 'capcutBoxTitle'), content, '🎬');
 
       await kaya.sendMessage(from, {
         video: { url: videoUrl },
@@ -73,8 +76,8 @@ export default {
 
     } catch (error) {
       console.error('CapCut download error:', error);
-      let errorMsg = 'Failed to download.';
-      if (error.code === 'ECONNABORTED') errorMsg += ' Request timed out.';
+      let errorMsg = getString(ownerId, 'capcutDownloadFailed');
+      if (error.code === 'ECONNABORTED') errorMsg += ` ${getString(ownerId, 'capcutTimeout')}`;
       else errorMsg += ` ${error.message}`;
       
       await kaya.sendMessage(from, { text: errorBox(errorMsg) }, { quoted: mek });

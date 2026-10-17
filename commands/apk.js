@@ -1,8 +1,9 @@
-//apk.js
+// apk.js
 import axios from 'axios';
 import { getBotName, sendWithBotImage } from '../setting/botAssets.js';
 import { getContextInfo } from '../setting/contextInfo.js';
-import { boxMessage, errorBox, successBox, usageBox } from '../setting/theme.js';
+import { boxMessage, errorBox, successBox } from '../setting/theme.js';
+import { getString } from '../setting/language.js';
 
 const USER_AGENTS = [
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -43,24 +44,27 @@ export default {
     try {
       const appName = args.join(' ').trim();
       const botName = getBotName(mek.sender);
+      const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0].replace(/[^0-9]/g, '') : '';
       
       // Vérification si l'utilisateur est le propriétaire
-      const isOwner = mek.sender.includes(kaya.user.id.split(':')[0]);
+      const isOwner = ownerId && mek.sender.includes(ownerId);
 
       if (!appName) {
         const menuContent = 
-          `• \`${prefix}apk <ᴀᴘᴘ ɴᴀᴍᴇ>\`\n\n` +
-          `• *ᴇxᴀᴍᴘʟᴇ :*\n` +
+          `• \`${prefix}apk <${getString(ownerId, 'apkAppNameLabel')}>\`\n\n` +
+          `• *${getString(ownerId, 'apkExampleLabel')} :*\n` +
           `  \`${prefix}apk WhatsApp\``;
 
         return await kaya.sendMessage(from, { 
-          text: boxMessage('apk download menu', menuContent, '📱') 
+          text: boxMessage(getString(ownerId, 'apkMenuTitle'), menuContent, '📱') 
         }, { quoted: mek });
       }
 
       await kaya.sendMessage(from, { react: { text: '📥', key: mek.key } });
 
-      const statusMsg = await kaya.sendMessage(from, { text: `⏳ *ғᴇᴛᴄʜɪɴɢ ᴀᴘᴋ ᴅᴇᴛᴀɪʟs ғᴏʀ* *${appName}*...` }, { quoted: mek });
+      const statusMsg = await kaya.sendMessage(from, { 
+        text: `⏳ *${getString(ownerId, 'apkFetchingMsg').replace('{appName}', appName)}*...` 
+      }, { quoted: mek });
       const msgKey = statusMsg.key;
 
       const infoUrl = `https://api.princetechn.com/api/download/apkdl?apikey=prince&appName=${encodeURIComponent(appName)}`;
@@ -69,23 +73,28 @@ export default {
       try {
         infoResponse = await fetchWithRetry(infoUrl, 3, 15000);
       } catch (err) {
-        await kaya.sendMessage(from, { text: errorBox(`ғᴀɪʟᴇᴅ ᴛᴏ ғᴇᴛᴄʜ ᴀᴘᴋ ɪɴғᴏ. ᴀᴘɪ ᴍᴀʏ ʙᴇ ᴅᴏᴡɴ.`), edit: msgKey });
+        await kaya.sendMessage(from, { text: errorBox(getString(ownerId, 'apkApiError')), edit: msgKey });
         await kaya.sendMessage(from, { react: { text: '❌', key: mek.key } });
         return;
       }
 
       const infoData = infoResponse.data;
       if (!infoData || !infoData.success || !infoData.result) {
-        await kaya.sendMessage(from, { text: errorBox(`ɴᴏ ᴀᴘᴋ fᴏᴜɴᴅ ғᴏʀ *${appName}*.`), edit: msgKey });
+        await kaya.sendMessage(from, { text: errorBox(getString(ownerId, 'apkNotFound').replace('{appName}', appName)), edit: msgKey });
         await kaya.sendMessage(from, { react: { text: '❌', key: mek.key } });
         return;
       }
 
       const { appname, appicon, developer, download_url } = infoData.result;
 
-      // 1. FLUX UTILISATEUR NORMAL (Lien uniquement via sendWithBotImage)
+      // 1. FLUX UTILISATEUR NORMAL (Lien uniquement)
       if (!isOwner) {
-        const caption = `📱 *ᴀᴘᴋ ғᴏᴜɴᴅ*\n\n• *ᴀᴘᴘ :* ${appname}\n• *ᴅᴇᴠᴇʟᴏᴘᴇʀ :* ${developer || 'Unknown'}\n\n⚠ *ɴᴏᴛᴇ :* Pour des raisons de sécurité, le téléchargement direct du fichier APK est réservé au propriétaire. Voici le lien officiel :\n\n🔗 *ᴅᴏᴡɴʟᴏᴀᴅ :* ${download_url}\n\n_Powered by ${botName}_`;
+        const caption = `📱 *${getString(ownerId, 'apkFoundTitle')}*\n\n` +
+          `• *${getString(ownerId, 'apkAppLabel')} :* ${appname}\n` +
+          `• *${getString(ownerId, 'apkDeveloperLabel')} :* ${developer || getString(ownerId, 'apkUnknown')}\n\n` +
+          `⚠ ${getString(ownerId, 'apkUserNote')}\n\n` +
+          `🔗 *${getString(ownerId, 'apkDownloadLabel')} :* ${download_url}\n\n` +
+          `_Powered by ${botName}_`;
         
         await sendWithBotImage(kaya, from, mek.sender, {
             caption: caption,
@@ -97,21 +106,24 @@ export default {
         return;
       }
 
-      // 2. FLUX PROPRIÉTAIRE (Téléchargement autorisé)
+      // 2. FLUX PROPRIÉTAIRE (Téléchargement direct)
       if (!download_url) {
-        await kaya.sendMessage(from, { text: errorBox(`ᴀᴘᴋ ᴅᴏᴡɴʟᴏᴀᴅ ᴜʀʟ ɴᴏᴛ ᴀᴠᴀɪʟᴀʙʟᴇ.`), edit: msgKey });
+        await kaya.sendMessage(from, { text: errorBox(getString(ownerId, 'apkUrlUnavailable')), edit: msgKey });
         await kaya.sendMessage(from, { react: { text: '❌', key: mek.key } });
         return;
       }
 
-      await kaya.sendMessage(from, { text: `📥 *ᴅᴏᴡɴʟᴏᴀᴅɪɴɢ ᴀᴘᴋ ғᴏʀ ᴏᴡɴᴇʀ :* *${appname}*...`, edit: msgKey });
+      await kaya.sendMessage(from, { 
+        text: `📥 *${getString(ownerId, 'apkDownloadingOwner').replace('{appName}', appname)}*...`, 
+        edit: msgKey 
+      });
 
       let apkBuffer;
       try {
         const apkResponse = await fetchWithRetry(download_url, 2, 60000, 'arraybuffer');
         apkBuffer = Buffer.from(apkResponse.data);
       } catch (err) {
-        await kaya.sendMessage(from, { text: errorBox(`ғᴀɪʟᴇᴅ ᴛᴏ ᴅᴏᴡɴʟᴏᴀᴅ ᴀᴘᴋ fɪʟᴇ.`), edit: msgKey });
+        await kaya.sendMessage(from, { text: errorBox(getString(ownerId, 'apkDownloadFileError')), edit: msgKey });
         await kaya.sendMessage(from, { react: { text: '❌', key: mek.key } });
         return;
       }
@@ -130,7 +142,11 @@ export default {
         document: apkBuffer,
         fileName: fileName,
         mimetype: 'application/vnd.android.package-archive',
-        caption: `📱 *ᴀᴘᴋ fɪʟᴇ (ᴏᴡɴᴇʀ ᴍᴏᴅᴇ)*\n\n• *ᴀᴘᴘ :* ${appname}\n• *ᴅᴇᴠᴇʟᴏᴘᴇʀ :* ${developer || 'Unknown'}\n• *sᴏᴜʀᴄᴇ :* ${download_url}\n\n_Powered by ${botName}_`,
+        caption: `📱 *${getString(ownerId, 'apkOwnerModeTitle')}\n\n` +
+          `• *${getString(ownerId, 'apkAppLabel')} :* ${appname}\n` +
+          `• *${getString(ownerId, 'apkDeveloperLabel')} :* ${developer || getString(ownerId, 'apkUnknown')}\n` +
+          `• *${getString(ownerId, 'apkSourceLabel')} :* ${download_url}\n\n` +
+          `_Powered by ${botName}_`,
         contextInfo: getContextInfo(mek.sender)
       };
 
@@ -142,7 +158,8 @@ export default {
 
     } catch (error) {
       console.error('APK download error:', error);
-      await kaya.sendMessage(from, { text: errorBox(`ᴜɴᴇxᴘᴇᴄᴛᴇᴅ ᴇʀʀᴏʀ : ${error.message}`) }, { quoted: mek });
+      const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0].replace(/[^0-9]/g, '') : '';
+      await kaya.sendMessage(from, { text: errorBox(`${getString(ownerId, 'apkUnexpectedError')} : ${error.message}`) }, { quoted: mek });
       await kaya.sendMessage(from, { react: { text: '❌', key: mek.key } });
     }
   }

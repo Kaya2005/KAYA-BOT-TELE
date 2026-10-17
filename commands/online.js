@@ -1,6 +1,7 @@
 // commands/online.js
 import { getSetting, setSetting } from '../setting.js';
 import { usageBox, successBox, errorBox, boxMessage } from '../setting/theme.js';
+import { getString } from '../setting/language.js';
 
 const KEY_ALWAYS_ONLINE = 'always_online';
 const activeIntervals = new Map();
@@ -8,7 +9,7 @@ const activeIntervals = new Map();
 // 🚀 Fonction exportée pour relancer automatiquement le mode online au démarrage/reconnexion
 export function startAlwaysOnline(kaya) {
     try {
-        const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0] : '';
+        const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0].replace(/[^0-9]/g, '') : '';
         if (!ownerId) return;
         const current = getSetting(ownerId, KEY_ALWAYS_ONLINE, false);
         
@@ -36,9 +37,24 @@ export default {
 
     async execute(kaya, mek, from, args, prefix) {
         try {
-            const ownerId = kaya.user.id.split(':')[0];
-            const sub = String(args[0] || '').toLowerCase();
+            const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0].replace(/[^0-9]/g, '') : '';
+            const rawSub = String(args[0] || '').toLowerCase();
             const current = getSetting(ownerId, KEY_ALWAYS_ONLINE, false);
+
+            // 🔄 MAPPING DES SOUS-COMMANDES SELON LA LANGUE (FR/EN)
+            const subMap = {
+                "on": "on",
+                "oui": "on",
+                "yes": "on",
+                "1": "on",
+
+                "off": "off",
+                "non": "off",
+                "no": "off",
+                "0": "off"
+            };
+
+            const sub = subMap[rawSub];
 
             if (sub === 'on') {
                 setSetting(ownerId, KEY_ALWAYS_ONLINE, true);
@@ -52,7 +68,7 @@ export default {
                 }, 30000);
                 activeIntervals.set(ownerId, interval);
 
-                return await kaya.sendMessage(from, { text: successBox("Online mode enabled.") }, { quoted: mek });
+                return await kaya.sendMessage(from, { text: successBox(getString(ownerId, 'onlineEnabledMsg')) }, { quoted: mek });
             }
 
             if (sub === 'off') {
@@ -62,20 +78,22 @@ export default {
                     activeIntervals.delete(ownerId);
                 }
                 await kaya.sendPresenceUpdate('unavailable');
-                return await kaya.sendMessage(from, { text: successBox("Online mode disabled.") }, { quoted: mek });
+                return await kaya.sendMessage(from, { text: successBox(getString(ownerId, 'onlineDisabledMsg')) }, { quoted: mek });
             }
 
-            const content = `Status: ${current ? 'ON' : 'OFF'}\n\n` +
-                            `• ${prefix}online on\n` +
-                            `• ${prefix}online off`;
+            const content = 
+                `• *${getString(ownerId, 'onlineStatusLabel')} :*${current ? getString(ownerId, 'mode_on') : getString(ownerId, 'mode_off')}\n\n` +
+                `• \`${prefix}online on / oui\`\n` +
+                `• \`${prefix}online off / non\``;
 
-            const msgText = boxMessage('Online Status', content, '📊');
+            const msgText = boxMessage(getString(ownerId, 'onlineMenuTitle'), content, '📊');
 
             await kaya.sendMessage(from, { text: msgText }, { quoted: mek });
 
         } catch (err) {
             console.error('❌ Error in online.js :', err);
-            await kaya.sendMessage(from, { text: errorBox(`An error occurred: ${err.message}`) }, { quoted: mek });
+            const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0].replace(/[^0-9]/g, '') : '';
+            await kaya.sendMessage(from, { text: errorBox(`${getString(ownerId, 'onlineError')} : ${err.message}`) }, { quoted: mek });
         }
     }
 };

@@ -1,6 +1,8 @@
+// kick.js
 import checkAdminOrOwner from "../setting/checkAdminOrOwner.js";
 import { getContextInfo } from "../setting/contextInfo.js";
 import { usageBox, errorBox } from "../setting/theme.js";
+import { getString } from "../setting/language.js";
 
 export default {
   name: "kick",
@@ -12,6 +14,8 @@ export default {
 
   async execute(kaya, mek, from, args, prefix) {
     try {
+      const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0].replace(/[^0-9]/g, '') : '';
+
       // 🔹 Suppression du message de commande en silence
       try {
         await kaya.sendMessage(from, { delete: mek.key });
@@ -22,7 +26,7 @@ export default {
       // 🔹 Validation des permissions
       const status = await checkAdminOrOwner(kaya, from, mek.sender);
       if (!status.isAdmin) {
-        return kaya.sendMessage(from, { text: errorBox("This command is for admins only.") }, { quoted: mek });
+        return kaya.sendMessage(from, { text: errorBox(getString(ownerId, 'adminOnly')) }, { quoted: mek });
       }
 
       // 🔹 Cible du kick
@@ -44,7 +48,7 @@ export default {
       if (!target) {
         return kaya.sendMessage(
           from, 
-          { text: usageBox(prefix, 'kick', '@user or reply to message') }, 
+          { text: usageBox(prefix, 'kick', getString(ownerId, 'kickUsagePlaceholder')) }, 
           { quoted: mek }
         );
       }
@@ -56,7 +60,7 @@ export default {
       const isTargetAdmin = participants.find(p => p.id === target)?.admin;
       
       if (isTargetAdmin) {
-        return kaya.sendMessage(from, { text: errorBox("Cannot kick an *Admin*.") }, { quoted: mek });
+        return kaya.sendMessage(from, { text: errorBox(getString(ownerId, 'kickCannotAdmin')) }, { quoted: mek });
       }
 
       // 🔹 Kick du membre (exécuté en silence, aucun message de succès n'est envoyé)
@@ -64,7 +68,8 @@ export default {
 
     } catch (err) {
       console.error("❌ Kick command error:", err);
-      return kaya.sendMessage(from, { text: errorBox("Unable to remove this member.") }, { quoted: mek });
+      const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0].replace(/[^0-9]/g, '') : '';
+      return kaya.sendMessage(from, { text: errorBox(`${getString(ownerId, 'kickError')} : ${err.message}`) }, { quoted: mek });
     }
   }
 };

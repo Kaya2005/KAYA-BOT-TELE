@@ -1,5 +1,6 @@
 // commands/speed.js
 import { getSetting, setSetting } from '../setting.js';
+import { getString } from '../setting/language.js';
 
 export default {
     name: 'speed',
@@ -10,7 +11,7 @@ export default {
 
     async execute(kaya, mek, from, args, prefix) {
         try {
-            const ownerId = kaya.user.id.split(':')[0];
+            const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0].replace(/[^0-9]/g, '') : '';
             const choice = args[0]?.toLowerCase();
 
             // Available speed presets with descriptive indicators
@@ -28,16 +29,16 @@ export default {
             // If no valid choice is provided, display the interactive menu with instructions
             if (!choice || !validSpeeds[choice]) {
                 const current = getSetting(ownerId, 'botSpeed', '5-8');
-                let menuText = `⚙️ *BOT SPEED MANAGEMENT*\n\n`;
-                menuText += `*Current Speed:* ${current}s\n\n`;
-                menuText += `*Available Options:*\n`;
+                let menuText = `⚙️ *${getString(ownerId, 'speedMenuTitle')}*\n\n`;
+                menuText += `*${getString(ownerId, 'speedCurrentLabel')} :*${current}s\n\n`;
+                menuText += `*${getString(ownerId, 'speedOptionsLabel')} :*\n`;
                 
                 for (const [key, desc] of Object.entries(validSpeeds)) {
                     menuText += `▪️ \`${prefix}speed ${key}\` (${desc})\n`;
                 }
 
-                menuText += `\n*How to use:* Type \`${prefix}speed <range>\` to update.\n`;
-                menuText += `*Example:* \`${prefix}speed 5-8\``;
+                menuText += `\n*${getString(ownerId, 'speedUsageLabel')} :* \`${prefix}speed <range>\`\n`;
+                menuText += `*${getString(ownerId, 'speedExampleLabel')} :* \`${prefix}speed 5-8\``;
 
                 return await kaya.sendMessage(from, { text: menuText }, { quoted: mek });
             }
@@ -46,11 +47,12 @@ export default {
             await setSetting(ownerId, 'botSpeed', choice);
             
             return await kaya.sendMessage(from, { 
-                text: `✅ Response speed updated successfully!\n⏱️ New Range: *${validSpeeds[choice]}*` 
+                text: `✅ ${getString(ownerId, 'speedSuccess')} !\n⏱️ ${getString(ownerId, 'speedNewRange')} : *${validSpeeds[choice]}*` 
             }, { quoted: mek });
 
         } catch (err) {
-            await kaya.sendMessage(from, { text: `❌ Error: ${err.message}` }, { quoted: mek });
+            const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0].replace(/[^0-9]/g, '') : '';
+            await kaya.sendMessage(from, { text: `❌ ${getString(ownerId, 'speedError')} : ${err.message}` }, { quoted: mek });
         }
     }
 };

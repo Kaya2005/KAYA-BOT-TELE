@@ -1,6 +1,7 @@
-//antilink.js
+// antilink.js
 import { getSetting, setSetting } from "../setting.js";
 import { boxMessage, errorBox, successBox } from "../setting/theme.js";
+import { getString } from "../setting/language.js";
 
 // Fonction pour simuler un délai humain (Anti-Ban)
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -14,59 +15,99 @@ export default {
   botAdmin: true,
 
   async execute(kaya, mek, from, args, prefix) {
-    const action = args[0]?.toLowerCase();
-    const groupId = from.split('@')[0];
-    const ownerId = kaya.user.id.split(':')[0]; // ID du propriétaire de l'instance
+    try {
+      const rawAction = args[0]?.toLowerCase();
+      const groupId = from.split('@')[0];
+      const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0].replace(/[^0-9]/g, '') : '';
 
-    if (!["on", "off", "delete", "warn", "kick", "status"].includes(action)) {
-      const menuContent = 
-        `• \`${prefix}antilink on\` *(ᴅᴇғᴀᴜʟᴛ: ᴡᴀʀɴ)*\n` +
-        `• \`${prefix}antilink delete\`\n` +
-        `• \`${prefix}antilink warn\`\n` +
-        `• \`${prefix}antilink kick\`\n` +
-        `• \`${prefix}antilink off\`\n` +
-        `• \`${prefix}antilink status\``;
+      // 🔄 MAPPING DES COMMANDES SELON LA LANGUE (FR/EN)
+      const actionMap = {
+        // Activation
+        "on": "on",
+        "oui": "on",
+        "yes": "on",
 
-      return await kaya.sendMessage(from, { 
-        text: boxMessage('anti-link menu', menuContent, '🔗') 
-      }, { quoted: mek });
-    }
+        // Désactivation
+        "off": "off",
+        "non": "off",
+        "no": "off",
 
-    if (action === "status") {
-      const isEnabled = getSetting(ownerId, "antilink", false, groupId);
-      const mode = getSetting(ownerId, "antiLinkMode", "warn", groupId);
+        // Modes & Actions
+        "delete": "delete",
+        "supprimer": "delete",
+
+        "warn": "warn",
+        "avertir": "warn",
+
+        "kick": "kick",
+        "expulser": "kick",
+
+        "status": "status",
+        "statut": "status"
+      };
+
+      const action = actionMap[rawAction];
+
+      if (!action) {
+        const menuContent = 
+          `• \`${prefix}antilink on / oui\` *(${getString(ownerId, 'antiLinkDefaultWarn')})*\n` +
+          `• \`${prefix}antilink delete / supprimer\` *(${getString(ownerId, 'cmd_delete_desc')})*\n` +
+          `• \`${prefix}antilink warn / avertir\` *(${getString(ownerId, 'cmd_warn_desc')})*\n` +
+          `• \`${prefix}antilink kick / expulser\` *(${getString(ownerId, 'cmd_kick_desc')})*\n` +
+          `• \`${prefix}antilink off / non\` *(${getString(ownerId, 'cmd_off_desc')})*\n` +
+          `• \`${prefix}antilink status / statut\` *(${getString(ownerId, 'cmd_status_desc')})*`;
+
+        return await kaya.sendMessage(from, { 
+          text: boxMessage(getString(ownerId, 'antiLinkMenuTitle'), menuContent, '🔗') 
+        }, { quoted: mek });
+      }
+
+      if (action === "status") {
+        const isEnabled = getSetting(ownerId, "antilink", false, groupId);
+        const mode = getSetting(ownerId, "antiLinkMode", "warn", groupId);
+        
+        const translatedMode = getString(ownerId, `mode_${mode}`);
+        const statusValue = isEnabled ? getString(ownerId, 'mode_on') : getString(ownerId, 'mode_off');
+
+        const statusContent = !isEnabled 
+          ? getString(ownerId, 'antiLinkDisabledMsg') 
+          : `• *${getString(ownerId, 'antiLinkStatusLabel')} :* ${statusValue}\n• *${getString(ownerId, 'antiLinkModeLabel')} :* ${translatedMode}`;
+
+        return await kaya.sendMessage(from, { 
+          text: boxMessage(getString(ownerId, 'antiLinkStatusTitle'), statusContent, '📊') 
+        }, { quoted: mek });
+      }
+
+      if (action === "off") {
+        setSetting(ownerId, "antilink", false, groupId);
+        return await kaya.sendMessage(from, { 
+          text: boxMessage('anti-link', getString(ownerId, 'antiLinkOffMsg'), '❌') 
+        }, { quoted: mek });
+      }
+
+      // Si on active ou change de mode
+      const mode = action === "on" ? "warn" : action;
+      setSetting(ownerId, "antilink", true, groupId);
+      setSetting(ownerId, "antiLinkMode", mode, groupId);
       
-      const statusContent = !isEnabled 
-        ? `ᴀɴᴛɪ-ʟɪɴᴋ ɪs ᴄᴜʀʀᴇɴᴛʟʏ ᴅɪsᴀʙʟᴇᴅ.` 
-        : `• *sᴛᴀᴛᴜs :* ᴇɴᴀʙʟᴇᴅ\n• *ᴍᴏᴅᴇ :* ${mode.toUpperCase()}`;
+      const translatedMode = getString(ownerId, `mode_${mode}`);
 
-      return await kaya.sendMessage(from, { 
-        text: boxMessage('anti-link status', statusContent, '📊') 
+      const successContent = `${getString(ownerId, 'antiLinkEnabledWithMode')}\n*${translatedMode}*`;
+      await kaya.sendMessage(from, { 
+        text: successBox(successContent) 
       }, { quoted: mek });
-    }
 
-    if (action === "off") {
-      setSetting(ownerId, "antilink", false, groupId);
-      return await kaya.sendMessage(from, { 
-        text: boxMessage('anti-link', 'ᴀɴᴛɪ-ʟɪɴᴋ ᴅɪsᴀʙʟᴇᴅ.', '❌') 
-      }, { quoted: mek });
+    } catch (err) {
+      console.error("❌ Erreur dans la commande antilink:", err);
+      const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0].replace(/[^0-9]/g, '') : '';
+      await kaya.sendMessage(from, { text: errorBox(getString(ownerId, 'antiLinkError')) }, { quoted: mek }).catch(() => {});
     }
-
-    // Si on active ou change de mode
-    const mode = action === "on" ? "warn" : action;
-    setSetting(ownerId, "antilink", true, groupId);
-    setSetting(ownerId, "antiLinkMode", mode, groupId);
-    
-    const successContent = `ᴀɴᴛɪ-ʟɪɴᴋ ᴇɴᴀʙʟᴇᴅ ᴡɪᴛʜ ᴍᴏᴅᴇ :\n*${mode.toUpperCase()}*`;
-    await kaya.sendMessage(from, { 
-      text: successBox(successContent) 
-    }, { quoted: mek });
   },
 
   async detect(kaya, mek, from, body) {
     try {
       const groupId = from.split('@')[0];
-      const ownerId = kaya.user.id.split(':')[0];
+      const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0].replace(/[^0-9]/g, '') : '';
       
       const isEnabled = getSetting(ownerId, "antilink", false, groupId);
       if (!isEnabled || mek.key?.fromMe) return;
@@ -87,23 +128,24 @@ export default {
       // 2. Gestion des modes avec délais de sécurité
       if (mode === "kick") {
         await delay(1000); // Pause humaine avant de kicker
-        // Expulsion directe sans envoyer de message de notification
         await kaya.groupParticipantsUpdate(from, [mek.sender], "remove");
       } 
       else if (mode === "warn") {
-        // Sauvegarde des warns dans le dossier du groupe
         const currentWarns = getSetting(ownerId, `warn_${mek.sender}`, 0, groupId);
         const newWarns = currentWarns + 1;
         setSetting(ownerId, `warn_${mek.sender}`, newWarns, groupId);
 
         if (newWarns >= 4) {
-          await delay(1000); // Pause avant le kick après 4 avertissements
+          await delay(1000);
           await kaya.groupParticipantsUpdate(from, [mek.sender], "remove");
-          await kaya.sendMessage(from, { text: `🚫 @${mek.sender.split("@")[0]} *ʀᴇᴀᴄʜᴇᴅ 𝟺/𝟺 ᴡᴀʀɴs ᴀɴᴅ wᴀs ᴋɪᴄᴋᴇᴅ.*`, mentions: [mek.sender] });
-          setSetting(ownerId, `warn_${mek.sender}`, 0, groupId); // Reset après kick
+          await kaya.sendMessage(from, { 
+            text: `🚫 @${mek.sender.split("@")[0]} *${getString(ownerId, 'antiLinkWarnKickMsg')}*`, 
+            mentions: [mek.sender] 
+          });
+          setSetting(ownerId, `warn_${mek.sender}`, 0, groupId);
         } else {
           await kaya.sendMessage(from, { 
-            text: `⚠️ *ᴀɴᴛɪ-ʟɪɴᴋ ᴀʟᴇʀᴛ*\n• *ᴜsᴇʀ :* @${mek.sender.split("@")[0]}\n• *ᴡᴀʀɴ :* ${newWarns}/4`, 
+            text: `⚠️ *${getString(ownerId, 'antiLinkAlertTitle')}*\n• *${getString(ownerId, 'antiLinkUserLabel')} :* @${mek.sender.split("@")[0]}\n• *${getString(ownerId, 'antiLinkWarnLabel')} :* ${newWarns}/4`, 
             mentions: [mek.sender] 
           });
         }

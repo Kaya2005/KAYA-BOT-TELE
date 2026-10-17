@@ -1,6 +1,7 @@
-//antibot.js
+// antibot.js
 import { getSetting, setSetting } from "../setting.js";
 import { boxMessage, errorBox, successBox } from "../setting/theme.js";
+import { getString } from "../setting/language.js";
 
 // Fonction de délai pour éviter le comportement robotique
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -17,18 +18,18 @@ export default {
     try {
       const action = args[0]?.toLowerCase();
       const groupId = from.split('@')[0];
-      const ownerId = kaya.user.id.split(':')[0];
+      const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0].replace(/[^0-9]/g, '') : '';
       
       if (!["on", "off", "delete", "warn", "kick", "status"].includes(action)) {
           const menuContent = 
-              `• \`${prefix}antibot on\` *(ᴅᴇғᴀᴜʟᴛ: ᴡᴀʀɴ)*\n` +
-              `• \`${prefix}antibot delete\`\n` +
-              `• \`${prefix}antibot warn\`\n` +
-              `• \`${prefix}antibot kick\`\n` +
-              `• \`${prefix}antibot off\`\n` +
-              `• \`${prefix}antibot status\``;
+              `• \`${prefix}antibot on\` *(${getString(ownerId, 'antiBotDefaultWarn')})*\n` +
+              `• \`${prefix}antibot delete\` *(${getString(ownerId, 'cmd_delete_desc')})*\n` +
+              `• \`${prefix}antibot warn\` *(${getString(ownerId, 'cmd_warn_desc')})*\n` +
+              `• \`${prefix}antibot kick\` *(${getString(ownerId, 'cmd_kick_desc')})*\n` +
+              `• \`${prefix}antibot off\` *(${getString(ownerId, 'cmd_off_desc')})*\n` +
+              `• \`${prefix}antibot status\` *(${getString(ownerId, 'cmd_status_desc')})*`;
 
-          const menuText = boxMessage('anti-bot menu', menuContent, '🛡️');
+          const menuText = boxMessage(getString(ownerId, 'antiBotMenuTitle'), menuContent, '🛡️');
           return await kaya.sendMessage(from, { text: menuText }, { quoted: mek });
       }
 
@@ -36,36 +37,42 @@ export default {
           const isEnabled = getSetting(ownerId, "antibot", false, groupId);
           const mode = getSetting(ownerId, "antibotMode", "warn", groupId);
           
-          const statusContent = !isEnabled 
-              ? `ᴀɴᴛɪ-ʙᴏᴛ ɪs ᴄᴜʀʀᴇɴᴛʟʏ ᴅɪsᴀʙʟᴇᴅ.` 
-              : `• *sᴛᴀᴛᴜs :* ᴇɴᴀʙʟᴇᴅ\n• *ᴍᴏᴅᴇ :* ${mode.toUpperCase()}`;
+          const translatedMode = getString(ownerId, `mode_${mode}`);
+          const statusValue = isEnabled ? getString(ownerId, 'mode_on') : getString(ownerId, 'mode_off');
 
-          const statusText = boxMessage('anti-bot status', statusContent, '📊');
+          const statusContent = !isEnabled 
+              ? getString(ownerId, 'antiBotDisabledMsg') 
+              : `• *${getString(ownerId, 'antiBotStatusLabel')} :* ${statusValue}\n• *${getString(ownerId, 'antiBotModeLabel')} :* ${translatedMode}`;
+
+          const statusText = boxMessage(getString(ownerId, 'antiBotStatusTitle'), statusContent, '📊');
           return await kaya.sendMessage(from, { text: statusText }, { quoted: mek });
       }
 
       if (action === "off") {
         setSetting(ownerId, "antibot", false, groupId);
-        return await kaya.sendMessage(from, { text: boxMessage('anti-bot', 'ᴀɴᴛɪ-ʙᴏᴛ ᴅɪsᴀʙʟᴇᴅ.', '❌') }, { quoted: mek });
+        return await kaya.sendMessage(from, { text: boxMessage('anti-bot', getString(ownerId, 'antiBotOffMsg'), '❌') }, { quoted: mek });
       }
 
       const mode = action === "on" ? "warn" : action;
       setSetting(ownerId, "antibot", true, groupId);
       setSetting(ownerId, "antibotMode", mode, groupId);
       
-      const successContent = `ᴀɴᴛɪ-ʙᴏᴛ ᴇɴᴀʙʟᴇᴅ ᴡɪᴛʜ ᴍᴏᴅᴇ :\n*${mode.toUpperCase()}*`;
+      const translatedMode = getString(ownerId, `mode_${mode}`);
+
+      const successContent = `${getString(ownerId, 'antiBotEnabledWithMode')}\n*${translatedMode}*`;
       await kaya.sendMessage(from, { text: successBox(successContent) }, { quoted: mek });
       
     } catch (err) {
       console.error("❌ Erreur dans la commande antibot:", err);
-      await kaya.sendMessage(from, { text: errorBox('ᴀɴ ᴇʀʀᴏʀ ᴏᴄᴄᴜʀʀᴇᴅ ᴡʜɪʟᴇ ᴇxᴇᴄᴜᴛɪɴɢ ᴀɴᴛɪʙᴏᴛ.') }, { quoted: mek }).catch(() => {});
+      const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0].replace(/[^0-9]/g, '') : '';
+      await kaya.sendMessage(from, { text: errorBox(getString(ownerId, 'antiBotError')) }, { quoted: mek }).catch(() => {});
     }
   },
 
   async detect(kaya, mek, from) {
     try {
       const groupId = from.split('@')[0];
-      const ownerId = kaya.user.id.split(':')[0];
+      const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0].replace(/[^0-9]/g, '') : '';
       
       const isEnabled = getSetting(ownerId, "antibot", false, groupId);
       const mode = getSetting(ownerId, "antibotMode", "warn", groupId);
@@ -91,7 +98,7 @@ export default {
           await delay(1200);
           await kaya.groupParticipantsUpdate(from, [sender], "remove").catch(() => {});
           await kaya.sendMessage(from, { 
-            text: `🚫 @${sender.split('@')[0]} *ᴡᴀs ᴋɪᴄᴋᴇᴅ ғᴏʀ ʙᴏᴛ ᴀᴄᴛɪᴠɪᴛʏ.*`, 
+            text: `🚫 @${sender.split('@')[0]} *${getString(ownerId, 'antiBotKickedMsg')}*`, 
             mentions: [sender] 
           });
         } else if (mode === "warn") {
@@ -102,11 +109,14 @@ export default {
           if (newWarns >= 4) {
             await delay(1200);
             await kaya.groupParticipantsUpdate(from, [sender], "remove").catch(() => {});
-            await kaya.sendMessage(from, { text: `🚫 @${sender.split('@')[0]} *ʀᴇᴀᴄʜᴇᴅ 𝟺/𝟺 ʙᴏᴛ ᴡᴀʀɴs ᴀɴᴅ ᴡᴀs ᴋɪᴄᴋᴇᴅ.*`, mentions: [sender] });
+            await kaya.sendMessage(from, { 
+              text: `🚫 @${sender.split('@')[0]} *${getString(ownerId, 'antiBotWarnKickMsg')}*`, 
+              mentions: [sender] 
+            });
             setSetting(ownerId, `warn_bot_${sender}`, 0, groupId);
           } else {
             await kaya.sendMessage(from, { 
-              text: `⚠️ *ᴀɴᴛɪ-ʙᴏᴛ ᴀʟᴇʀᴛ*\n• *ᴜsᴇʀ :* @${sender.split('@')[0]}\n• *ᴡᴀʀɴ :* ${newWarns}/4`, 
+              text: `⚠️ *${getString(ownerId, 'antiBotAlertTitle')}*\n• *${getString(ownerId, 'antiBotUserLabel')} :* @${sender.split('@')[0]}\n• *${getString(ownerId, 'antiBotWarnLabel')} :* ${newWarns}/4`, 
               mentions: [sender] 
             });
           }

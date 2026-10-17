@@ -2,6 +2,7 @@
 import { getSetting, setSetting } from '../setting.js'; 
 import { getBotName, sendWithBotImage } from '../setting/botAssets.js';
 import { getContextInfo } from '../setting/contextInfo.js';
+import { getString } from '../setting/language.js';
 
 export default {
   name: 'prefix',
@@ -12,7 +13,7 @@ export default {
   async execute(kaya, mek, from, args, prefix) {
     try {
       // Nettoyage de l'ID pour ne garder que la partie numérique (ex: 243...)
-      const botId = kaya.user.id.split(':')[0];
+      const botId = kaya.user?.id ? kaya.user.id.split(':')[0].replace(/[^0-9]/g, '') : '';
       const currentPrefix = getSetting(botId, 'prefix', '.');
       
       const now = new Date();
@@ -26,10 +27,10 @@ export default {
 ▰▰▰▰▰▰▰▰▰▰▰▰▰
 *⏱️ : ${time} • GMT*
 *📅 : ${date}*
-*⚙️ CURRENT PREFIX :* \`${currentPrefix}\`
+*⚙️ ${getString(botId, 'prefixCurrentLabel')} :* \`${currentPrefix}\`
 ______________________
 
-💡 *Usage:* \`${prefix}prefix <new_prefix>\`
+💡 *${getString(botId, 'prefixUsageLabel')}:* \`${prefix}prefix <new_prefix>\`
 `.trim();
 
         return await sendWithBotImage(kaya, from, mek.sender, { caption, contextInfo: getContextInfo(mek.sender) });
@@ -39,7 +40,7 @@ ______________________
       const newPrefix = args[0].trim();
 
       if (newPrefix.length > 3) {
-        return await kaya.sendMessage(from, { text: '❌ *Error:* Prefix is too long (max 3 characters).' }, { quoted: mek });
+        return await kaya.sendMessage(from, { text: `❌ *${getString(botId, 'prefixTooLong')}*` }, { quoted: mek });
       }
 
       // Enregistre dans le dossier spécifique à ce bot : userall/{botId}/settings.json
@@ -48,17 +49,18 @@ ______________________
       const caption = `
 ▉ \`${getBotName(mek.sender)}\` ▉
 ▰▰▰▰▰▰▰▰▰▰▰▰▰
-*✅ STATUS : PREFIX UPDATED*
+*✅ ${getString(botId, 'prefixUpdatedStatus')}*
 ______________________
 
-New prefix set to: \`${newPrefix}\`
+${getString(botId, 'prefixNewSetText')}: \`${newPrefix}\`
 `.trim();
 
       return await sendWithBotImage(kaya, from, mek.sender, { caption, contextInfo: getContextInfo(mek.sender) });
 
     } catch (err) {
       console.error('❌ prefix.js error:', err);
-      return await kaya.sendMessage(from, { text: '❌ An error occurred.' }, { quoted: mek });
+      const botId = kaya.user?.id ? kaya.user.id.split(':')[0].replace(/[^0-9]/g, '') : '';
+      return await kaya.sendMessage(from, { text: `❌ ${getString(botId, 'prefixError')}` }, { quoted: mek });
     }
   }
 };

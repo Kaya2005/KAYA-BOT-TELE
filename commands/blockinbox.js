@@ -1,5 +1,7 @@
+// blockinbox.js
 import { getSetting, setSetting } from '../setting.js';
-import { usageBox, successBox, errorBox } from '../setting/theme.js';
+import { usageBox, successBox, errorBox, boxMessage } from '../setting/theme.js';
+import { getString } from '../setting/language.js';
 
 export default {
     name: 'blockinbox',
@@ -9,11 +11,27 @@ export default {
 
     async execute(kaya, mek, from, args, prefix) {
         try {
-            // Nettoyage de l'ID du bot pour obtenir uniquement la partie numérique
-            const ownerId = kaya.user.id.split(':')[0];
-            const action = args[0]?.toLowerCase();
+            // Nettoyage sécurisé de l'ID du bot
+            const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0].replace(/[^0-9]/g, '') : '';
+            const rawAction = args[0]?.toLowerCase();
 
-            if (!['on', 'off', 'status'].includes(action)) {
+            // 🔄 MAPPING DES COMMANDES SELON LA LANGUE (FR/EN)
+            const actionMap = {
+                "on": "on",
+                "oui": "on",
+                "yes": "on",
+
+                "off": "off",
+                "non": "off",
+                "no": "off",
+
+                "status": "status",
+                "statut": "status"
+            };
+
+            const action = actionMap[rawAction];
+
+            if (!action) {
                 return kaya.sendMessage(from, {
                     text: usageBox(prefix, 'blockinbox', '<on/off/status>')
                 }, { quoted: mek });
@@ -22,28 +40,31 @@ export default {
             if (action === 'on') {
                 setSetting(ownerId, 'blockInbox', true);
                 return kaya.sendMessage(from, {
-                    text: successBox('The bot is now blocking all private messages.')
+                    text: successBox(getString(ownerId, 'blockInboxBlockedMsg'))
                 }, { quoted: mek });
             }
 
             if (action === 'off') {
                 setSetting(ownerId, 'blockInbox', false);
                 return kaya.sendMessage(from, {
-                    text: successBox('The bot is now accepting private messages.')
+                    text: successBox(getString(ownerId, 'blockInboxAllowedMsg'))
                 }, { quoted: mek });
             }
 
             if (action === 'status') {
                 const isBlocked = getSetting(ownerId, 'blockInbox', false);
-                const statusText = `Private Inbox: ${isBlocked ? '🚫 BLOCKED' : '✅ ALLOWED'}`;
+                const statusText = `• *${getString(ownerId, 'blockInboxStatusLabel')} :* ${isBlocked ? '🚫 BLOCKED' : '✅ ALLOWED'}`;
                 return kaya.sendMessage(from, {
-                    text: successBox(statusText)
+                    text: boxMessage(getString(ownerId, 'blockInboxStatusTitle'), statusText, '📊')
                 }, { quoted: mek });
             }
 
         } catch (err) {
             console.error('❌ blockinbox error:', err);
-            await kaya.sendMessage(from, { text: errorBox('An error occurred.') }, { quoted: mek });
+            const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0].replace(/[^0-9]/g, '') : '';
+            await kaya.sendMessage(from, { 
+                text: errorBox(getString(ownerId, 'blockInboxError')) 
+            }, { quoted: mek });
         }
     }
 };

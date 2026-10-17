@@ -5,6 +5,7 @@ import sharp from 'sharp';
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
+import { getString } from '../setting/language.js';
 
 export default {
     name: 'photo',
@@ -14,14 +15,17 @@ export default {
 
     async execute(kaya, mek, from, args, prefix) {
         try {
+            const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0].replace(/[^0-9]/g, '') : '';
+
             // Détection du sticker (réponse ou message direct)
             const quoted = mek.message?.extendedTextMessage?.contextInfo?.quotedMessage;
             const stickerMsg = mek.message?.stickerMessage || quoted?.stickerMessage;
 
             if (!stickerMsg) {
+                const usageMsg = getString(ownerId, 'photoUsage').replace('{prefix}', prefix);
                 return kaya.sendMessage(
                     from,
-                    { text: `⚠️ *Usage:* Réponds à un sticker avec ${prefix}photo` },
+                    { text: `⚠️ *${usageMsg}*` },
                     { quoted: mek }
                 );
             }
@@ -42,7 +46,7 @@ export default {
             if (!buffer || buffer.length < 100) {
                 return kaya.sendMessage(
                     from,
-                    { text: '❌ Impossible de lire ce sticker (corrompu ou invalide).' },
+                    { text: `❌ ${getString(ownerId, 'photoCorrupted')}` },
                     { quoted: mek }
                 );
             }
@@ -55,7 +59,7 @@ export default {
                 from,
                 {
                     image: pngBuffer,
-                    caption: '✅ Sticker converti en PNG.',
+                    caption: `✅ ${getString(ownerId, 'photoSuccess')}`,
                     mimetype: 'image/png'
                 },
                 { quoted: mek }
@@ -63,10 +67,11 @@ export default {
 
         } catch (error) {
             console.error('❌ Photo command error:', error);
+            const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0].replace(/[^0-9]/g, '') : '';
 
             await kaya.sendMessage(
                 from,
-                { text: '❌ Erreur lors de la conversion du sticker.' },
+                { text: `❌ ${getString(ownerId, 'photoError')}` },
                 { quoted: mek }
             );
         }

@@ -2,6 +2,7 @@
 import { setSetting, getSetting } from '../setting.js';
 import { getBotName, sendWithBotImage } from '../setting/botAssets.js';
 import { getContextInfo } from '../setting/contextInfo.js';
+import { getString } from '../setting/language.js';
 
 export default {
     name: 'botname',
@@ -10,12 +11,12 @@ export default {
     ownerOnly: true,
 
     async execute(kaya, mek, from, args, prefix) {
-        const newName = args.join(' ');
+        const newName = args.join(' ').trim();
         
         // Récupération sécurisée de l'ID du propriétaire du bot
-        const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0] : '';
+        const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0].replace(/[^0-9]/g, '') : '';
         if (!ownerId) {
-            return await kaya.sendMessage(from, { text: "❌ Erreur : Impossible de récupérer l'ID du propriétaire du bot." }, { quoted: mek });
+            return await kaya.sendMessage(from, { text: `❌ ${getString(ownerId, 'botNameOwnerError')}` }, { quoted: mek });
         }
         
         // On récupère le nom actuel configuré pour le propriétaire
@@ -23,7 +24,7 @@ export default {
         
         if (!newName) {
             return await kaya.sendMessage(from, { 
-                text: `⚠️ Please provide a new name.\nCurrent name for your profile: *${currentName}*` 
+                text: `⚠️ ${getString(ownerId, 'botNameProvideNew')}\n${getString(ownerId, 'botNameCurrent')}: *${currentName}*` 
             }, { quoted: mek });
         }
 
@@ -40,10 +41,10 @@ export default {
 ▰▰▰▰▰▰▰▰▰▰▰▰▰
 *⏱️ : ${time} • GMT*
 *📅 : ${date}*
-*✅ STATUS : NAME UPDATED*
+*✅ STATUS : ${getString(ownerId, 'botNameUpdatedStatus')}*
 ______________________
 
-Bot name successfully updated for your profile!
+${getString(ownerId, 'botNameSuccessMsg')}
 `.trim();
 
             // Envoi avec l'image dynamique et passage de ownerId
@@ -54,7 +55,8 @@ Bot name successfully updated for your profile!
 
         } catch (err) {
             console.error('❌ Error in botname.js:', err);
-            await kaya.sendMessage(from, { text: '❌ Error while saving the new name.' }, { quoted: mek });
+            const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0].replace(/[^0-9]/g, '') : '';
+            await kaya.sendMessage(from, { text: `❌ ${getString(ownerId, 'botNameSaveError')}` }, { quoted: mek });
         }
     }
 };

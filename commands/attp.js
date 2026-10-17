@@ -2,7 +2,8 @@
 import fs from 'fs'
 import path from 'path'
 import { spawn } from 'child_process'
-import { writeExif } from '../setting/exif.js' // IMPORTANT: ajouter .js en ESM
+import { writeExif } from '../setting/exif.js'
+import { getString } from '../setting/language.js'
 
 // ==================== FFmpeg Function ====================
 function renderBlinkingVideoWithFfmpeg(text) {
@@ -16,8 +17,7 @@ function renderBlinkingVideoWithFfmpeg(text) {
             .replace(/:/g, '\\:')
             .replace(/,/g, '\\,')
             .replace(/'/g, "\\'")
-            .replace(/\[/g, '\\[')
-            .replace(/\]/g, '\\]')
+            .replace(/\[/g, '\\[') .replace(/\]/g, '\\]')
             .replace(/%/g, '\\%')
 
         const safeFont = process.platform === 'win32'
@@ -70,11 +70,12 @@ export default {
     async execute(kaya, mek, from, args, prefix) {
         try {
             const text = args.join(' ').trim()
+            const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0].replace(/[^0-9]/g, '') : ''
 
             if (!text) {
                 return await kaya.sendMessage(
                     from,
-                    { text: `❌ Usage: \`${prefix}attp your text here\`` },
+                    { text: `❌ ${getString(ownerId, 'attpUsage').replace('{prefix}', prefix)}` },
                     { quoted: mek }
                 )
             }
@@ -102,10 +103,11 @@ export default {
 
         } catch (err) {
             console.error('[ATT-P] Error:', err)
+            const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0].replace(/[^0-9]/g, '') : ''
 
             await kaya.sendMessage(
                 from,
-                { text: '❌ Could not generate the sticker.' },
+                { text: `❌ ${getString(ownerId, 'attpError')}` },
                 { quoted: mek }
             )
         }

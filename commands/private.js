@@ -1,6 +1,7 @@
 // ==================== commands/private.js ====================
 import { setSetting } from '../setting.js';
 import { usageBox, successBox, errorBox, boxMessage } from '../setting/theme.js';
+import { getString } from '../setting/language.js';
 
 export default {
   name: 'private',
@@ -11,13 +12,32 @@ export default {
   async execute(kaya, mek, from, args, prefix) {
     try {
       // Nettoyage de l'ID du bot pour obtenir uniquement la partie numérique
-      const botId = kaya.user.id.split(':')[0];
-      const action = args[0]?.toLowerCase();
+      const botId = kaya.user?.id ? kaya.user.id.split(':')[0].replace(/[^0-9]/g, '') : '';
+      const rawAction = args[0]?.toLowerCase();
 
-      if (!action || !['on', 'off'].includes(action)) {
-        const usageContent = `Usage:\n• \`${prefix}private on\` (Private mode for this instance)\n• \`${prefix}private off\` (Public mode)`;
+      // 🔄 MAPPING DES SOUS-COMMANDES SELON LA LANGUE (FR/EN)
+      const actionMap = {
+          "on": "on",
+          "oui": "on",
+          "yes": "on",
+          "1": "on",
+
+          "off": "off",
+          "non": "off",
+          "no": "off",
+          "0": "off"
+      };
+
+      const action = actionMap[rawAction];
+
+      if (!rawAction || !action) {
+        const usageContent = 
+          `${getString(botId, 'privateUsageLabel')}:\n` +
+          `• \`${prefix}private on / oui\` (${getString(botId, 'privateOnDesc')})\n` +
+          `• \`${prefix}private off / non\` (${getString(botId, 'privateOffDesc')})`;
+
         return await kaya.sendMessage(from, { 
-          text: boxMessage('Private Mode Settings', usageContent, '🔐') 
+          text: boxMessage(getString(botId, 'privateMenuTitle'), usageContent, '🔐') 
         }, { quoted: mek });
       }
 
@@ -25,13 +45,17 @@ export default {
       // Le réglage est sauvegardé spécifiquement pour cet ID de bot dans son dossier racine
       setSetting(botId, 'privateMode', isPrivate);
 
+      const statusText = isPrivate ? getString(botId, 'mode_on') : getString(botId, 'mode_off');
+      const successText = `${getString(botId, 'privateSuccessText')} : *${statusText}*`;
+
       await kaya.sendMessage(from, { 
-        text: successBox(`Private mode for this bot is now: *${isPrivate ? 'ON' : 'OFF'}*`) 
+        text: successBox(successText) 
       }, { quoted: mek });
 
     } catch (err) {
       console.error('❌ private.js error:', err);
-      return await kaya.sendMessage(from, { text: errorBox('An error occurred.') }, { quoted: mek });
+      const botId = kaya.user?.id ? kaya.user.id.split(':')[0].replace(/[^0-9]/g, '') : '';
+      return await kaya.sendMessage(from, { text: errorBox(getString(botId, 'privateError')) }, { quoted: mek });
     }
   }
 };

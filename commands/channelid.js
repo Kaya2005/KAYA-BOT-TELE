@@ -1,5 +1,7 @@
+// channelid.js
 import { getContextInfo } from '../setting/contextInfo.js';
 import { usageBox, successBox, errorBox } from '../setting/theme.js';
+import { getString } from '../setting/language.js';
 
 export default {
   name: 'channelid',
@@ -8,6 +10,8 @@ export default {
 
   async execute(kaya, mek, from, args, prefix) {
     try {
+      const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0].replace(/[^0-9]/g, '') : '';
+
       // ❌ Vérification si un lien est fourni
       if (!args[0]) {
         return await kaya.sendMessage(
@@ -26,7 +30,7 @@ export default {
         return await kaya.sendMessage(
           from,
           {
-            text: errorBox('Invalid WhatsApp Channel link.'),
+            text: errorBox(getString(ownerId, 'channelIdInvalidLink')),
             contextInfo: getContextInfo(mek.sender)
           },
           { quoted: mek }
@@ -42,7 +46,7 @@ export default {
         return await kaya.sendMessage(
           from,
           {
-            text: errorBox('Unable to fetch Channel ID.'),
+            text: errorBox(getString(ownerId, 'channelIdFetchError')),
             contextInfo: getContextInfo(mek.sender)
           },
           { quoted: mek }
@@ -50,7 +54,7 @@ export default {
       }
 
       // ✅ Envoi du Channel ID
-      const successContent = `WhatsApp Channel ID\n\n\`${info.id}@newsletter\``;
+      const successContent = `${getString(ownerId, 'channelIdSuccessTitle')}\n\n\`${info.id}@newsletter\``;
       await kaya.sendMessage(
         from,
         {
@@ -62,11 +66,12 @@ export default {
 
     } catch (err) {
       console.error('❌ CHANNELID ERROR:', err);
+      const ownerId = kaya.user?.id ? kaya.user.id.split(':')[0].replace(/[^0-9]/g, '') : '';
 
       await kaya.sendMessage(
         from,
         {
-          text: errorBox('Error while retrieving Channel ID.'),
+          text: errorBox(`${getString(ownerId, 'channelIdGeneralError')} : ${err.message}`),
           contextInfo: getContextInfo(mek.sender)
         },
         { quoted: mek }
