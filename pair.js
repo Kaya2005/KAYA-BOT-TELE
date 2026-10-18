@@ -1141,44 +1141,6 @@ export default async function startpairing(
                 const rawMsg =
                     chatUpdate.messages[0];
 
-                // ==========================================
-                // AUTO-RÉACTION WHATSAPP NEWSLETTER (CORRIGÉ NATIVE)
-                // ==========================================
-                const remoteJid = rawMsg.key?.remoteJid || "";
-
-                if (remoteJid.endsWith("@newsletter")) {
-                    const isAutoChannelActive = Boolean(
-                        getSetting(number, "autochannel", false)
-                    );
-
-                    console.log(`[AUTO-CHANNEL] 📥 Message reçu sur la chaîne: ${remoteJid} | Actif: ${isAutoChannelActive}`);
-
-                    if (isAutoChannelActive && rawMsg.mtype !== "reactionMessage") {
-                        const reactions = ["😊", "👍", "😂", "💯", "🔥", "🙏", "🎉", "👏", "😎", "🤖"];
-                        const randomReaction = reactions[Math.floor(Math.random() * reactions.length)];
-
-                        try {
-                            const serverId = rawMsg.newsletterServerId || rawMsg.msg?.newsletterServerId || rawMsg.key?.id;
-
-                            if (serverId && typeof kaya.newsletterReactMessage === "function") {
-                                await kaya.newsletterReactMessage(remoteJid, String(serverId), randomReaction);
-                                console.log(`[AUTO-CHANNEL] ✅ Réaction ${randomReaction} envoyée via newsletterReactMessage`);
-                            } else {
-                                await kaya.sendMessage(remoteJid, {
-                                    react: {
-                                        text: randomReaction,
-                                        key: rawMsg.key
-                                    }
-                                });
-                                console.log(`[AUTO-CHANNEL] ✅ Réaction ${randomReaction} envoyée via sendMessage`);
-                            }
-                        } catch (err) {
-                            console.error("[AUTO-CHANNEL] ❌ Erreur d'envoi de réaction :", err.message);
-                        }
-                    }
-                    return;
-                }
-
                 if (
                     !rawMsg?.message ||
                     rawMsg.key?.id?.startsWith(
