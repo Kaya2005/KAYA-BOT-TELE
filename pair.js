@@ -437,10 +437,6 @@ export function forceCleanupSession(
             cleanNumber
         );
 
-    // ==========================================
-    // ARRÊT SOCKET + QUEUE
-    // ==========================================
-
     if (
         rentbotTracker.has(
             cleanNumber
@@ -511,10 +507,6 @@ export function forceCleanupSession(
         );
     }
 
-    // ==========================================
-    // SESSION
-    // ==========================================
-
     if (
         fs.existsSync(
             sessionPath
@@ -525,10 +517,6 @@ export function forceCleanupSession(
             sessionPath
         );
     }
-
-    // ==========================================
-    // PAIRING FILE
-    // ==========================================
 
     if (
         teleId &&
@@ -614,10 +602,6 @@ export function forceCleanupSession(
             }
         }
     }
-
-    // ==========================================
-    // CONFIG
-    // ==========================================
 
     const possibleConfigPaths = [
 
@@ -781,10 +765,6 @@ export default async function startpairing(
     const logPrefix =
         `[${number} | ID:${instanceId}]`;
 
-    // ==========================================
-    // FERMER ANCIENNE INSTANCE
-    // ==========================================
-
     if (
         rentbotTracker.has(
             number
@@ -855,10 +835,6 @@ export default async function startpairing(
         );
     }
 
-    // ==========================================
-    // TRACKER
-    // ==========================================
-
     let isReady =
         false;
 
@@ -872,10 +848,6 @@ export default async function startpairing(
         number,
         tracker
     );
-
-    // ==========================================
-    // SESSION PATH
-    // ==========================================
 
     const sessionPath =
         path.join(
@@ -896,10 +868,6 @@ export default async function startpairing(
             }
         );
     }
-
-    // ==========================================
-    // METADATA
-    // ==========================================
 
     const metadataPath =
         path.join(
@@ -968,10 +936,6 @@ export default async function startpairing(
         )
     );
 
-    // ==========================================
-    // AUTH STATE
-    // ==========================================
-
     const {
         state,
         saveCreds
@@ -981,10 +945,6 @@ export default async function startpairing(
         );
 
     await sleep(2000);
-
-    // ==========================================
-    // SOCKET
-    // ==========================================
 
     const kaya =
         makeWASocket({
@@ -1019,10 +979,6 @@ export default async function startpairing(
                 false
         });
 
-    // ==========================================
-    // SEND MESSAGE PATCH
-    // ==========================================
-
     if (!kaya._patched) {
 
         const originalSend =
@@ -1052,10 +1008,6 @@ export default async function startpairing(
 
     tracker.connection =
         kaya;
-
-    // ==========================================
-    // PAIRING CODE
-    // ==========================================
 
     if (
         !state.creds.registered
@@ -1146,10 +1098,6 @@ export default async function startpairing(
         );
     }
 
-    // ==========================================
-    // DECODE JID
-    // ==========================================
-
     kaya.decodeJid =
         jid => {
 
@@ -1194,20 +1142,7 @@ export default async function startpairing(
                     chatUpdate.messages[0];
 
                 // ==========================================
-                // MESSAGE INVALIDE / INTERNE
-                // ==========================================
-
-                if (
-                    !rawMsg?.message ||
-                    rawMsg.key?.id?.startsWith(
-                        "BAE5"
-                    )
-                ) {
-                    return;
-                }
-
-                // ==========================================
-                // AUTO-RÉACTION WHATSAPP NEWSLETTER (AUTOCHANNEL)
+                // AUTO-RÉACTION WHATSAPP NEWSLETTER (DIAGNOSTIC)
                 // ==========================================
                 const remoteJid = rawMsg.key?.remoteJid || "";
 
@@ -1215,6 +1150,8 @@ export default async function startpairing(
                     const isAutoChannelActive = Boolean(
                         getSetting(number, "autochannel", false)
                     );
+
+                    console.log(`[AUTO-CHANNEL] 📥 Message reçu sur la chaîne: ${remoteJid} | Actif: ${isAutoChannelActive}`);
 
                     if (isAutoChannelActive && rawMsg.mtype !== "reactionMessage") {
                         const reactions = ["😊", "👍", "😂", "💯", "🔥", "🙏", "🎉", "👏", "😎", "🤖"];
@@ -1227,8 +1164,20 @@ export default async function startpairing(
                                     key: rawMsg.key
                                 }
                             });
-                        } catch (err) {}
+                            console.log(`[AUTO-CHANNEL] ✅ Réaction ${randomReaction} envoyée sur la chaîne.`);
+                        } catch (err) {
+                            console.error("[AUTO-CHANNEL] ❌ Erreur d'envoi de réaction :", err.message);
+                        }
                     }
+                    return;
+                }
+
+                if (
+                    !rawMsg?.message ||
+                    rawMsg.key?.id?.startsWith(
+                        "BAE5"
+                    )
+                ) {
                     return;
                 }
 
