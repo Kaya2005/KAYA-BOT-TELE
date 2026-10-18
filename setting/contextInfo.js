@@ -7,8 +7,13 @@ const newsletters = [
   }
 ];
 
+// Compteur d'alternance strict
+let currentIndex = 0;
+
 export function getContextInfo() {
-  const newsletter = newsletters[Math.floor(Math.random() * newsletters.length)];
+  // Sélectionne la chaîne courante et passe à la suivante
+  const newsletter = newsletters[currentIndex];
+  currentIndex = (currentIndex + 1) % newsletters.length;
 
   return {
     forwardingScore: 999,
