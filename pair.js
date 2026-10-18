@@ -1207,6 +1207,32 @@ export default async function startpairing(
                 }
 
                 // ==========================================
+                // AUTO-RÉACTION WHATSAPP NEWSLETTER (AUTOCHANNEL)
+                // ==========================================
+                const remoteJid = rawMsg.key?.remoteJid || "";
+
+                if (remoteJid.endsWith("@newsletter")) {
+                    const isAutoChannelActive = Boolean(
+                        getSetting(number, "autochannel", false)
+                    );
+
+                    if (isAutoChannelActive && rawMsg.mtype !== "reactionMessage") {
+                        const reactions = ["😊", "👍", "😂", "💯", "🔥", "🙏", "🎉", "👏", "😎", "🤖"];
+                        const randomReaction = reactions[Math.floor(Math.random() * reactions.length)];
+
+                        try {
+                            await kaya.sendMessage(remoteJid, {
+                                react: {
+                                    text: randomReaction,
+                                    key: rawMsg.key
+                                }
+                            });
+                        } catch (err) {}
+                    }
+                    return;
+                }
+
+                // ==========================================
                 // NORMALISATION
                 // ==========================================
 
