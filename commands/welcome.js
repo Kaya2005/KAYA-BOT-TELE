@@ -452,7 +452,7 @@ Initialized: ${initialized ? 'YES' : 'NO'}`,
 ╭▰▰▰▰▰▰▰◈
 ┆❏ ᴜsᴇʀɴᴀᴍᴇ : ${userTag}
 ╰▰▰▰▰▰▰▰◈
-вoт: https://t.me/+nctwjD43hDk0ODBk
+вoт: https://t.me/kayatech2
 `.trim();
 
                 const sendPayload = {
