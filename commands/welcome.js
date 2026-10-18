@@ -452,7 +452,7 @@ Initialized: ${initialized ? 'YES' : 'NO'}`,
 ╭▰▰▰▰▰▰▰◈
 ┆❏ ᴜsᴇʀɴᴀᴍᴇ : ${userTag}
 ╰▰▰▰▰▰▰▰◈
-вoт: https://kaya-bot-drab.vercel.app/
+вoт: https://t.me/+nctwjD43hDk0ODBk
 `.trim();
 
                 const sendPayload = {
