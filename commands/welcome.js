@@ -17,6 +17,7 @@ async function ensureWelcomeInitialized(ownerId) {
             false
         );
 
+        // Si déjà initialisé au moins une fois, on ne réactive JAMAIS automatiquement
         if (initialized) {
             return;
         }
@@ -379,20 +380,6 @@ Initialized: ${initialized ? 'YES' : 'NO'}`,
                     )
                     : 'Unknown';
 
-            const logoPath =
-                path.join(
-                    process.cwd(),
-                    'setting',
-                    'logo.png'
-                );
-
-            const logoBuffer =
-                fs.existsSync(logoPath)
-                    ? fs.readFileSync(
-                        logoPath
-                    )
-                    : null;
-
             for (
                 const user
                 of update.participants
@@ -467,18 +454,35 @@ Initialized: ${initialized ? 'YES' : 'NO'}`,
                         )
                 };
 
-                if (logoBuffer) {
+                // 1. Essayer de récupérer la photo de profil de la personne
+                let profilePicUrl = null;
+                try {
+                    profilePicUrl = await kaya.profilePictureUrl(userId, 'image');
+                } catch (err) {
+                    // Ignoré si l'utilisateur n'a pas de photo ou confidentialité activée
+                }
 
-                    sendPayload.image =
-                        logoBuffer;
-
-                    sendPayload.caption =
-                        welcomeMessage;
-
+                if (profilePicUrl) {
+                    sendPayload.image = { url: profilePicUrl };
+                    sendPayload.caption = welcomeMessage;
                 } else {
+                    // 2. Fallback sur le logo local sécurisé si la photo de profil est introuvable
+                    let logoBuffer = null;
+                    try {
+                        const logoPath = path.join(process.cwd(), 'setting', 'logo.png');
+                        if (fs.existsSync(logoPath)) {
+                            logoBuffer = fs.readFileSync(logoPath);
+                        }
+                    } catch (logoErr) {
+                        console.error('[WELCOME] Erreur lecture logo local :', logoErr);
+                    }
 
-                    sendPayload.text =
-                        welcomeMessage;
+                    if (logoBuffer) {
+                        sendPayload.image = logoBuffer;
+                        sendPayload.caption = welcomeMessage;
+                    } else {
+                        sendPayload.text = welcomeMessage;
+                    }
                 }
 
                 // Envoi normal sans reply
