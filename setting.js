@@ -1,20 +1,35 @@
+// ==================== setting.js ====================
 import fs from "fs";
 import path from "path";
 import { writeFile } from "fs/promises";
 
-// 🚀 CACHE EN MÉMOIRE
+// 🚀 CACHE EN MÉMOIRE ET FILES D'ATTENTE D'ÉCRITURE
 const cache = new Map();
+const writeQueues = new Map();
 
 /**
- * Nettoie un ID
+ * Nettoie un ID et extrait le numéro propre (compatible groupes et newsletters)
  */
 function cleanId(id) {
     if (!id) return '';
 
-    return String(id)
+    const strId = String(id);
+
+    // Sécurité : Empêche formellement qu'un ID de groupe devienne un dossier d'owner
+    if (strId.includes('@g.us')) {
+        return '';
+    }
+
+    const cleanNumber = strId
         .split('@')[0]
         .split(':')[0]
         .replace(/[^0-9]/g, '');
+
+    if (!cleanNumber || cleanNumber.length < 5) {
+        return '';
+    }
+
+    return cleanNumber;
 }
 
 /**
@@ -108,17 +123,6 @@ function loadSettings(ownerId) {
 
 /**
  * Récupère un réglage
- *
- * Les réglages globaux sont stockés directement :
- *
- * welcomeAll: "on"
- *
- * Les réglages de groupe sont stockés ainsi :
- *
- * welcomeEnabled: {
- *     "120363xxxx": true,
- *     "120364xxxx": false
- * }
  */
 export function getSetting(
     ownerId,
@@ -128,9 +132,6 @@ export function getSetting(
 ) {
     const settings = loadSettings(ownerId);
 
-    /*
-     * Réglage spécifique à un groupe
-     */
     if (groupId !== null) {
         const cleanGroupId = cleanId(groupId);
 
@@ -150,9 +151,6 @@ export function getSetting(
         return defaultValue;
     }
 
-    /*
-     * Réglage global
-     */
     return Object.prototype.hasOwnProperty.call(
         settings,
         key
@@ -162,7 +160,7 @@ export function getSetting(
 }
 
 /**
- * Enregistre un réglage
+ * Enregistre un réglage (Stockage optimisé avec persistance des états désactivés)
  */
 export async function setSetting(
     ownerId,
@@ -179,9 +177,6 @@ export async function setSetting(
     try {
         const settings = loadSettings(ownerId);
 
-        /*
-         * Réglage spécifique à un groupe
-         */
         if (groupId !== null) {
             const cleanGroupId = cleanId(groupId);
 
@@ -196,9 +191,6 @@ export async function setSetting(
             settings[key][cleanGroupId] = value;
 
         } else {
-            /*
-             * Réglage global
-             */
             settings[key] = value;
         }
 
@@ -207,21 +199,31 @@ export async function setSetting(
             settings
         );
 
-        const filePath = getSettingsPath(
-            ownerId,
-            true
-        );
-
-        if (filePath) {
-            await writeFile(
-                filePath,
-                JSON.stringify(
-                    settings,
-                    null,
-                    2
-                )
-            );
+        // Système de file d'attente d'écriture (Debounce 1 seconde) pour protéger le disque
+        if (writeQueues.has(cleanOwnerId)) {
+            clearTimeout(writeQueues.get(cleanOwnerId));
         }
+
+        writeQueues.set(
+            cleanOwnerId,
+            setTimeout(async () => {
+                try {
+                    const filePath = getSettingsPath(cleanOwnerId, true);
+                    if (filePath) {
+                        // Écriture compacte sur 1 ligne pour économiser l'espace disque
+                        await writeFile(
+                            filePath,
+                            JSON.stringify(settings),
+                            'utf8'
+                        );
+                    }
+                } catch (err) {
+                    console.error(`[SETTING] Erreur écriture fichier ${cleanOwnerId}:`, err);
+                } finally {
+                    writeQueues.delete(cleanOwnerId);
+                }
+            }, 1000)
+        );
 
     } catch (e) {
         console.error(
