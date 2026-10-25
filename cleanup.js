@@ -60,7 +60,7 @@ export function startAutoCleanup() {
                     }
                 }
 
-                // 3. Nettoyer les dossiers de sessions et purger les fichiers de cache inutiles
+                // 3. Nettoyer uniquement les dossiers de sessions corrompus ou vides (sans creds.json)
                 for (const folder of fs.readdirSync(PAIRING_DIR)) {
                     const sessionPath = path.join(PAIRING_DIR, folder);
 
@@ -69,37 +69,14 @@ export function startAutoCleanup() {
 
                         const credsPath = path.join(sessionPath, 'creds.json');
 
-                        // Si le dossier n'a pas de creds.json, c'est une session invalide -> on supprime tout le dossier
                         if (!fs.existsSync(credsPath)) {
                             fs.rmSync(sessionPath, {
                                 recursive: true,
                                 force: true
                             });
                             deletedCount++;
-                            continue;
                         }
-
-                        // 4. Nettoyage profond : Supprimer les caches Baileys superflus à l'intérieur du dossier valide
-                        // On garde uniquement creds.json et metadata.json pour économiser un maximum d'espace disque
-                        const sessionFiles = fs.readdirSync(sessionPath);
-                        for (const file of sessionFiles) {
-                            if (file !== 'creds.json' && file !== 'metadata.json') {
-                                const filePath = path.join(sessionPath, file);
-                                try {
-                                    const stats = fs.statSync(filePath);
-                                    if (stats.isFile()) {
-                                        fs.unlinkSync(filePath);
-                                        deletedCount++;
-                                    } else if (stats.isDirectory()) {
-                                        fs.rmSync(filePath, { recursive: true, force: true });
-                                        deletedCount++;
-                                    }
-                                } catch (err) {
-                                    // Ignorer les erreurs mineures de suppression sur un fichier verrouillé
-                                }
-                            }
-                        }
-
+                        // (L'étape 4 a été supprimée ici pour préserver vos sessions et éviter les bugs de messages)
                     } catch (err) {
                         console.error(
                             `[CLEANUP] Erreur sur ${folder}:`,
@@ -111,7 +88,7 @@ export function startAutoCleanup() {
 
             if (deletedCount > 0) {
                 console.log(
-                    `🧹 [CLEANUP] Nettoyage automatique : ${deletedCount} éléments/fichiers superflus supprimés.`
+                    `🧹 [CLEANUP] Nettoyage automatique : ${deletedCount} éléments supprimés.`
                 );
             }
         } catch (err) {
