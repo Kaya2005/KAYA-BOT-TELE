@@ -7,6 +7,8 @@ import { getSetting } from '../setting.js';
 export const BOT_VERSION = '1';
 export const BOT_SLOGAN = ' `『by ƘƛƳƛ ƁƠƬ』` ';
 
+// 🖼️ Image locale par défaut située dans le dossier setting
+const defaultLocalImagePath = path.join(process.cwd(), 'setting', 'logo.png');
 const defaultGlobalImage = 'https://files.catbox.moe/562u8u.jpg';
 export const DEFAULT_BOT_NAME = 'ƘƛƳƛ ƁƠƬ';
 
@@ -68,7 +70,12 @@ export function getBotImagePayload(ownerId) {
         }
     }
     
-    // 3. Fallback global par défaut si l'utilisateur n'a rien configuré
+    // 3. 🖼️ UTILISATION DU FICHIER setting/logo.png LOCAL PAR DÉFAUT
+    if (fs.existsSync(defaultLocalImagePath)) {
+        return { type: 'buffer', value: fs.readFileSync(defaultLocalImagePath) };
+    }
+
+    // 4. Fallback URL si le fichier logo.png local n'est pas trouvé
     return { type: 'url', value: defaultGlobalImage };
 }
 
@@ -83,7 +90,7 @@ export async function sendWithBotImage(kaya, chat, ownerId, content = {}, option
             await kaya.sendMessage(chat, { image: payload.value, ...content }, options);
             return;
         } catch (err) {
-            console.warn('⚠️ Échec de l\'image locale, tentative avec l\'URL fallback');
+            console.warn('⚠️ Échec de l\'image locale Buffer, tentative avec l\'URL fallback');
         }
     }
 
