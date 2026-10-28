@@ -9,7 +9,7 @@ export const BOT_SLOGAN = ' `『by ƘƛƳƛ ƁƠƬ』` ';
 
 // 🖼️ Image locale par défaut située dans le dossier setting
 const defaultLocalImagePath = path.join(process.cwd(), 'setting', 'logo.png');
-const defaultGlobalImage = 'https://files.catbox.moe/562u8u.jpg';
+const defaultGlobalImage = 'https://files.catbox.moe/n9ysz3.jpg';
 export const DEFAULT_BOT_NAME = 'ƘƛƳƛ ƁƠƬ';
 
 const settingDir = path.join(process.cwd(), 'setting');
