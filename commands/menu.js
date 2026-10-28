@@ -98,9 +98,27 @@ ${buildHeader({ user: userMention, prefix, totalCmds, botName })}
 ${menuList.trim()}
 `.trim();
 
+            // Récupération sécurisée du contexte d'origine
+            const baseContext = getContextInfo(mek.sender);
+
+            // Ajout de l'externalAdReply tout en respectant votre logique de taille de miniature
+            const externalAdReply = {
+                title: `WELCOME TO ${botName}`,
+                body: `${totalCmds} COMMANDS • v1.0.0`,
+                mediaType: 1,
+                renderLargerThumbnail: true
+            };
+
             await sendWithBotImage(kaya, from, mek.sender, { 
                 caption: finalMenuText, 
-                contextInfo: { ...getContextInfo(mek.sender), mentionedJid: [userId] } 
+                contextInfo: { 
+                    ...baseContext, 
+                    mentionedJid: [userId],
+                    externalAdReply: {
+                        ...(baseContext?.externalAdReply || {}),
+                        ...externalAdReply
+                    }
+                } 
             });
 
         } catch (err) {
