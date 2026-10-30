@@ -4,7 +4,7 @@ import { getSetting } from '../setting.js';
 
 // ===================== BOT CORE =====================
 
-export const BOT_VERSION = '1';
+export const BOT_VERSION = '3';
 export const BOT_SLOGAN = ' `『by ƘƛƳƛ ƁƠƬ』` ';
 
 // 🖼️ Image locale par défaut située dans le dossier setting
