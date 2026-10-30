@@ -2,7 +2,7 @@
 import fs from 'fs';
 import path from 'path';
 import { getContextInfo } from '../setting/contextInfo.js';
-import { getBotName, getLocalBotImagePath } from '../setting/botAssets.js';
+import { getBotName, sendWithBotImage, BOT_VERSION } from '../setting/botAssets.js'; // 👈 Import de BOT_VERSION
 
 // Table de conversion pour transformer le texte standard en sᴍᴀʟʟ ᴄᴀᴘs stylisés
 function toSmallCaps(str) {
@@ -15,12 +15,14 @@ function toSmallCaps(str) {
     return str.toLowerCase().split('').map(char => map[char] || char).join('');
 }
 
-// 🎨 Style avec conservation du préfixe `>` et alignement parfait des encadrés
+// 🎨 En-tête avec l'owner, le préfixe, le nombre de commandes et la version
 function buildHeader({ user, prefix, totalCmds, botName }) {
         return `
 > ╭────↯
 > │ ➠ *𝙾𝚆𝙽𝙴𝚁:* ${user}
 > │ ➠ *𝙿𝚁𝙴𝙵𝙸𝚇:* ${prefix || 'Sans préfixe'}
+> │ ➠ *𝙲𝙼𝙳𝚂:* ${totalCmds}
+> │ ➠ *𝚅𝙴𝚁𝚂𝙸𝙾𝙽:* v${BOT_VERSION}
 > ╰────↯
 
 `.trim();
@@ -29,7 +31,6 @@ function buildHeader({ user, prefix, totalCmds, botName }) {
 function buildMenuCategoryText({ cat, cmds = [], prefix }) {
     if (!cmds.length) return '';
 
-    // Transforme la catégorie et "MENU" en police stylisée sᴍᴀʟʟ ᴄᴀᴘs (ex: ɢʀᴏᴜᴘ ᴍᴇɴᴜ)
     const rawCategoryName = `${cat} MENU`;
     const formattedCatName = toSmallCaps(rawCategoryName);
 
@@ -97,43 +98,22 @@ ${buildHeader({ user: userMention, prefix, totalCmds, botName })}
 ${menuList.trim()}
 `.trim();
 
-            // 🖼️ Récupération de l'image (owner ou défaut) pour l'aperçu sous n'importe quelle taille
-            let thumbnailBuffer = undefined;
-            try {
-                let imgPath = getLocalBotImagePath(ownerId);
-                if (!fs.existsSync(imgPath)) {
-                    imgPath = getLocalBotImagePath('default') || getLocalBotImagePath();
-                }
-                if (imgPath && fs.existsSync(imgPath)) {
-                    thumbnailBuffer = fs.readFileSync(imgPath);
-                }
-            } catch (e) {
-                console.error("Erreur lecture miniature menu:", e);
-            }
-
-            // Définition de l'externalAdReply
-            const externalAdReply = {
-                title: `WELCOME TO ${botName}`,
-                body: `${totalCmds} COMMANDS • v3`,
-                mediaType: 1,
-                renderLargerThumbnail: true,
-                ...(thumbnailBuffer ? { thumbnail: thumbnailBuffer } : {})
-            };
-
             const baseContext = getContextInfo(mek.sender);
 
-            // Envoi d'un message purement textuel avec l'aperçu d'annonce (sans doubler l'image)
-            await kaya.sendMessage(from, { 
-                text: finalMenuText, 
-                contextInfo: { 
-                    ...baseContext, 
-                    mentionedJid: [userId],
-                    externalAdReply: {
-                        ...(baseContext?.externalAdReply || {}),
-                        ...externalAdReply
-                    }
-                } 
-            }, { quoted: mek });
+            // Envoi de l'image avec le texte mis à jour
+            await sendWithBotImage(
+                kaya, 
+                from, 
+                ownerId, 
+                { 
+                    caption: finalMenuText, 
+                    contextInfo: { 
+                        ...baseContext, 
+                        mentionedJid: [userId] 
+                    } 
+                }, 
+                { quoted: mek }
+            );
 
         } catch (err) {
             console.error('❌ Erreur dans menu.js :', err);

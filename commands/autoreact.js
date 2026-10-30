@@ -14,6 +14,7 @@ export default {
     name: 'autoreact',
     category: 'Owner',
     description: 'Configure auto-reaction mode',
+    ownerOnly: true,
 
     async execute(kaya, mek, from, args, prefix) {
         try {
