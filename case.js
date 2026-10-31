@@ -1096,14 +1096,13 @@ export default async function caseHandler(
                 );
             }
 
-            const botJid = decodeJid(kaya.user.id);
-            const botNumber = botJid.split("@")[0].split(":")[0];
+            const rawBotId = kaya.user?.id || "";
+            const botNumber = rawBotId.split(":")[0].replace(/[^0-9]/g, "");
 
             const botData =
                 metadata.participants.find(
                     participant => {
-                        const participantJid = decodeJid(participant.id);
-                        const participantNumber = participantJid.split("@")[0].split(":")[0];
+                        const participantNumber = (participant.id || "").split(":")[0].replace(/[^0-9]/g, "");
                         return participantNumber === botNumber;
                     }
                 );
