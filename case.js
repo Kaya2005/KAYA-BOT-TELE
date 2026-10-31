@@ -1096,33 +1096,21 @@ export default async function caseHandler(
                 );
             }
 
-            const botNumber =
-                decodeJid(
-                    kaya.user.id
-                ).split("@")[0];
+            const botJid = decodeJid(kaya.user.id);
+            const botNumber = botJid.split("@")[0].split(":")[0];
 
             const botData =
                 metadata.participants.find(
                     participant => {
-
-                        const participantNumber =
-                            (
-                                participant.phoneNumber ||
-                                decodeJid(
-                                    participant.id
-                                )
-                            ).split("@")[0];
-
-                        return (
-                            participantNumber ===
-                            botNumber
-                        );
+                        const participantJid = decodeJid(participant.id);
+                        const participantNumber = participantJid.split("@")[0].split(":")[0];
+                        return participantNumber === botNumber;
                     }
                 );
 
             if (
                 !botData ||
-                botData.admin === null
+                (botData.admin !== 'admin' && botData.admin !== 'superadmin')
             ) {
 
                 return await kaya.sendMessage(
