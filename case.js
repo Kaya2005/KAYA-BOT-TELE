@@ -1096,31 +1096,34 @@ export default async function caseHandler(
                 );
             }
 
-            const rawBotId = kaya.user?.id || kaya.authState?.creds?.me?.id || "";
-            const botNumber = decodeJid(rawBotId).split("@")[0].split(":")[0];
-
-            console.log(`🔍 [BOT ADMIN CHECK] Numéro du bot recherché : ${botNumber}`);
+            const botNumber =
+                decodeJid(
+                    kaya.user.id
+                ).split("@")[0];
 
             const botData =
                 metadata.participants.find(
                     participant => {
-                        const participantJid = decodeJid(participant.id || "");
-                        const participantNumber = participantJid.split("@")[0].split(":")[0];
-                        return participantNumber === botNumber;
+
+                        const participantNumber =
+                            (
+                                participant.phoneNumber ||
+                                decodeJid(
+                                    participant.id
+                                )
+                            ).split("@")[0];
+
+                        return (
+                            participantNumber ===
+                            botNumber
+                        );
                     }
                 );
 
-            let isAdminOrSuper = false;
-            if (botData) {
-                isAdminOrSuper = (botData.admin === 'admin' || botData.admin === 'superadmin');
-            } else {
-                const meParticipant = metadata.participants.find(p => decodeJid(p.id).includes(botNumber) && (p.admin === 'admin' || p.admin === 'superadmin'));
-                if (meParticipant) isAdminOrSuper = true;
-            }
-
-            console.log(`🔍 [BOT ADMIN CHECK] Résultat : Bot trouvé ? ${!!botData}, Est Admin ? ${isAdminOrSuper}`);
-
-            if (!isAdminOrSuper) {
+            if (
+                !botData ||
+                botData.admin === null
+            ) {
 
                 return await kaya.sendMessage(
                     from,
