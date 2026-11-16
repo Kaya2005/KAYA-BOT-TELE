@@ -1,12 +1,11 @@
 import { getSetting, setSetting } from "../setting.js";
 import { boxMessage, errorBox, successBox } from "../setting/theme.js";
 
-// Fonction pour simuler un délai humain (Anti-Ban)
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 export default {
   name: "antistatus",
-  description: "Anti-status share system",
+  description: "Anti-group status system",
   category: "Group",
   group: true,
   admin: true,
@@ -15,7 +14,7 @@ export default {
   async execute(kaya, mek, from, args, prefix) {
     const action = args[0]?.toLowerCase();
     const groupId = from.split('@')[0];
-    const ownerId = kaya.user.id.split(':')[0]; // ID du propriétaire de l'instance
+    const ownerId = kaya.user.id.split(':')[0];
 
     if (!["on", "off", "delete", "warn", "kick", "status"].includes(action)) {
       const menuContent = 
@@ -51,7 +50,6 @@ export default {
       }, { quoted: mek });
     }
 
-    // Si on active ou change de mode
     const mode = action === "on" ? "warn" : action;
     setSetting(ownerId, "antistatus", true, groupId);
     setSetting(ownerId, "antiStatusMode", mode, groupId);
@@ -72,25 +70,31 @@ export default {
 
       const mode = getSetting(ownerId, "antiStatusMode", "warn", groupId);
 
-      // Détection des messages de partage de statut WhatsApp (ex: "Statut de...", mention du groupe par un statut, etc.)
-      const isStatusShare = 
-        (body && (body.includes("Statut de") || body.includes("Ce groupe a été mentionné"))) ||
-        mek.message?.protocolMessage?.type === 0 || // Messages contextuels de statut parfois associés
-        (mek.message?.extendedTextMessage?.text && mek.message.extendedTextMessage.text.includes("Statut de"));
+      // Analyse de la structure du message pour identifier un statut de groupe
+      const mtype = mek.mtype || '';
+      const messageObj = mek.message || {};
+      
+      const isGroupStatus = 
+        mtype === "groupStatusMessage" ||
+        messageObj.groupStatusMessage ||
+        (messageObj.protocolMessage && messageObj.protocolMessage.type === 0) ||
+        (body && (body.includes("Statut de") || body.includes("Ajouté par") || body.includes("groupe a été mentionné")));
 
-      if (!isStatusShare) return;
+      if (!isGroupStatus) return;
 
       const metadata = await kaya.groupMetadata(from).catch(() => null);
       const participant = metadata?.participants.find(p => p.id === mek.sender);
+      
+      // Si l'expéditeur est admin ou super-admin, on laisse passer
       if (participant?.admin || participant?.isSuperAdmin) return;
 
-      // 1. Suppression du statut partagé (Avec délai pour un comportement naturel)
-      await delay(500);
+      // 1. Suppression immédiate du statut
+      await delay(300);
       await kaya.sendMessage(from, { delete: mek.key }).catch(() => {});
 
-      // 2. Gestion des modes de sanction
+      // 2. Application des sanctions configurées
       if (mode === "kick") {
-        await delay(1000); 
+        await delay(800); 
         await kaya.groupParticipantsUpdate(from, [mek.sender], "remove");
       } 
       else if (mode === "warn") {
@@ -99,10 +103,10 @@ export default {
         setSetting(ownerId, `status_warn_${mek.sender}`, newWarns, groupId);
 
         if (newWarns >= 4) {
-          await delay(1000);
+          await delay(800);
           await kaya.groupParticipantsUpdate(from, [mek.sender], "remove");
           await kaya.sendMessage(from, { text: `🚫 @${mek.sender.split("@")[0]} *ʀᴇᴀᴄʜᴇᴅ 𝟺/𝟺 sᴛᴀᴛᴜs ᴡᴀʀɴs ᴀɴᴅ wᴀs ᴋɪᴄᴋᴇᴅ.*`, mentions: [mek.sender] });
-          setSetting(ownerId, `status_warn_${mek.sender}`, 0, groupId); // Reset après kick
+          setSetting(ownerId, `status_warn_${mek.sender}`, 0, groupId);
         } else {
           await kaya.sendMessage(from, { 
             text: `⚠️ *ᴀɴᴛɪ-sᴛᴀᴛᴜs ᴀʟᴇʀᴛ*\n• *ᴜsᴇʀ :* @${mek.sender.split("@")[0]}\n• *ᴡᴀʀɴ :* ${newWarns}/4`, 
